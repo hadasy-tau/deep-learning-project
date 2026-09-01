@@ -1,0 +1,862 @@
+<title>Personalizing Hebrew ASR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,500;0,600;1,400&display=swap">
+
+<style>
+  /* ---- tokens: complete light palette on bare :root ---- */
+  :root {
+    --ground:      #F5F7F9;
+    --surface:     #FFFFFF;
+    --surface-2:   #EDF1F4;
+    --ink:         #101720;
+    --ink-2:       #3D4855;
+    --ink-3:       #6B7684;
+    --rule:        #D8DFE6;
+    --rule-soft:   #E7ECF0;
+
+    --arm-a:       #0072B2;   /* Okabe-Ito blue   — model A, general */
+    --arm-b:       #C24E00;   /* Okabe-Ito vermilion — model B, Hebrew FT */
+    --gain:        #00795C;   /* Okabe-Ito bluish green — gain */
+    --warn:        #8A6100;
+
+    --arm-a-wash:  #E4EFF7;
+    --arm-b-wash:  #F8EBE2;
+    --gain-wash:   #E1F0EB;
+    --warn-wash:   #F6EFDE;
+
+    --shadow:      0 1px 2px rgba(16,23,32,.05), 0 8px 24px -16px rgba(16,23,32,.30);
+
+    --measure: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:     #0D1218;
+      --surface:    #141B23;
+      --surface-2:  #1B242E;
+      --ink:        #E7ECF1;
+      --ink-2:      #B9C4CF;
+      --ink-3:      #8593A1;
+      --rule:       #2A3540;
+      --rule-soft:  #202A34;
+
+      --arm-a:      #5FB4E8;
+      --arm-b:      #F0885A;
+      --gain:       #4CC9A6;
+      --warn:       #D9AE55;
+
+      --arm-a-wash: #12293A;
+      --arm-b-wash: #33200F;
+      --gain-wash:  #0F2E27;
+      --warn-wash:  #2E2510;
+
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:     #0D1218;
+    --surface:    #141B23;
+    --surface-2:  #1B242E;
+    --ink:        #E7ECF1;
+    --ink-2:      #B9C4CF;
+    --ink-3:      #8593A1;
+    --rule:       #2A3540;
+    --rule-soft:  #202A34;
+
+    --arm-a:      #5FB4E8;
+    --arm-b:      #F0885A;
+    --gain:       #4CC9A6;
+    --warn:       #D9AE55;
+
+    --arm-a-wash: #12293A;
+    --arm-b-wash: #33200F;
+    --gain-wash:  #0F2E27;
+    --warn-wash:  #2E2510;
+
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  /* ---- base ---- */
+  body {
+    background: var(--ground);
+    color: var(--ink-2);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 78ch;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1.1rem, 4vw, 2rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.25rem;
+  }
+
+  h1, h2, h3 {
+    font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+    color: var(--ink);
+    text-wrap: balance;
+    line-height: 1.22;
+    font-weight: 600;
+  }
+
+  p { max-width: var(--measure); }
+
+  strong { color: var(--ink); font-weight: 600; }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: .87em;
+    background: var(--surface-2);
+    border-radius: 3px;
+    padding: .1em .34em;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  a { color: var(--arm-a); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--arm-a);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .705rem;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+
+  /* ---- masthead ---- */
+  .masthead { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .masthead h1 {
+    font-size: clamp(2.05rem, 5.4vw, 3rem);
+    letter-spacing: -.018em;
+    margin: 0;
+  }
+
+  .thesis {
+    font-family: "IBM Plex Serif", serif;
+    font-style: italic;
+    font-size: clamp(1.12rem, 2.4vw, 1.32rem);
+    line-height: 1.45;
+    color: var(--ink);
+    border-left: 2px solid var(--arm-b);
+    padding-left: 1.1rem;
+    max-width: 56ch;
+    margin: .25rem 0 0;
+  }
+
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: .1rem 1.5rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 1.1rem;
+    font-size: .855rem;
+  }
+  .meta div { padding: .3rem 0; }
+  .meta dt {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .meta dd { margin: .15rem 0 0; color: var(--ink); }
+
+  /* ---- sections ---- */
+  section { display: flex; flex-direction: column; gap: 1.05rem; }
+
+  section > h2 {
+    font-size: 1.42rem;
+    letter-spacing: -.012em;
+    margin: 0;
+    padding-bottom: .55rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  section > h2 .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--ink-3);
+    margin-right: .7rem;
+    vertical-align: .12em;
+  }
+
+  h3 {
+    font-size: 1.03rem;
+    margin: .7rem 0 -.2rem;
+    font-weight: 600;
+  }
+  h4.sub {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: .55rem 0 -.35rem;
+  }
+
+  h3 .tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .72rem;
+    color: var(--arm-b);
+    letter-spacing: .06em;
+    margin-right: .55rem;
+  }
+
+  ul, ol { max-width: var(--measure); padding-left: 1.15rem; margin: 0; display: flex; flex-direction: column; gap: .45rem; }
+  li::marker { color: var(--ink-3); }
+
+  /* ---- finding cards ---- */
+  .findings { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .findings { grid-template-columns: repeat(3, 1fr); } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-top: 2px solid var(--accent, var(--rule));
+    border-radius: 2px;
+    padding: 1.05rem 1.1rem 1.2rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .card .eyebrow { color: var(--accent, var(--ink-3)); }
+  .card h3 { margin: 0; font-size: .99rem; }
+  .card p { font-size: .87rem; margin: 0; color: var(--ink-2); max-width: none; }
+
+  /* ---- tables ---- */
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 32rem;
+    font-size: .875rem;
+    background: var(--surface);
+  }
+  caption {
+    text-align: left;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding-bottom: .55rem;
+  }
+  th, td {
+    text-align: left;
+    padding: .62rem .8rem;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .69rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  tbody th { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-variant-numeric: tabular-nums; }
+
+  .pill {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    letter-spacing: .05em;
+    padding: .12rem .45rem;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .pill-a { background: var(--arm-a-wash); color: var(--arm-a); }
+  .pill-b { background: var(--arm-b-wash); color: var(--arm-b); }
+  .pill-g { background: var(--gain-wash); color: var(--gain); }
+  .pill-w { background: var(--warn-wash); color: var(--warn); }
+
+  /* ---- the 2x2 control matrix ---- */
+  .matrix {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, .85fr) 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 30rem;
+  }
+  .matrix > * { background: var(--surface); padding: .85rem .95rem; }
+  .matrix .corner { background: var(--surface-2); }
+  .matrix .colhead, .matrix .rowhead {
+    background: var(--surface-2);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    align-items: center;
+  }
+  .matrix .cell { display: flex; flex-direction: column; gap: .3rem; }
+  .matrix .cell b {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+    font-weight: 500;
+    letter-spacing: .01em;
+  }
+  .matrix .cell span { font-size: .82rem; color: var(--ink-2); line-height: 1.45; }
+  .matrix .cell.key { background: var(--gain-wash); }
+  .matrix .cell.key b { color: var(--gain); }
+  .matrix .cell.ctl b { color: var(--arm-b); }
+
+  .equation {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .87rem;
+    background: var(--surface-2);
+    border-left: 2px solid var(--gain);
+    padding: .7rem .95rem;
+    color: var(--ink);
+    border-radius: 0 2px 2px 0;
+  }
+
+  /* ---- pipeline ---- */
+  .pipeline .phase {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .63rem; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--ink-3); background: var(--surface-2);
+    padding: .42rem 1rem;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-radius: 2px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .stage {
+    display: grid;
+    grid-template-columns: 2.4rem 8.5rem 1fr;
+    gap: .3rem 1rem;
+    padding: .72rem 1rem;
+    border-bottom: 1px solid var(--rule-soft);
+    align-items: baseline;
+  }
+  .stage:last-child { border-bottom: none; }
+  .stage .n {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .72rem;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .stage .nm {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .84rem;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .stage .ds { font-size: .855rem; color: var(--ink-2); }
+  .stage.gate { background: var(--warn-wash); }
+  .stage.gate .nm { color: var(--warn); }
+  @media (max-width: 620px) {
+    .stage { grid-template-columns: 2.2rem 1fr; }
+    .stage .ds { grid-column: 2; }
+  }
+
+  /* ---- split diagram ---- */
+  .splitviz {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .78rem;
+  }
+  .splitviz .axis {
+    display: flex; justify-content: space-between;
+    color: var(--ink-3); font-size: .68rem;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .splitbar { display: flex; gap: 2px; height: 2.6rem; }
+  .splitbar div {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px; color: var(--ink); font-size: .72rem;
+    text-align: center; padding: 0 .3rem; line-height: 1.15;
+  }
+  .sb-train { flex: 4.2; background: var(--arm-a-wash); box-shadow: inset 0 0 0 1px var(--arm-a); }
+  .sb-dev   { flex: 1;   background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--rule); }
+  .sb-test  { flex: 2.1; background: var(--gain-wash); box-shadow: inset 0 0 0 1px var(--gain); }
+
+  /* ---- callout ---- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-left: 2px solid var(--warn);
+    border-radius: 0 2px 2px 0;
+    padding: .95rem 1.1rem;
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+  .callout .eyebrow { color: var(--warn); }
+  .callout p { margin: 0; font-size: .89rem; max-width: none; }
+
+  /* ---- checklist ---- */
+  .checks { list-style: none; padding: 0; gap: .55rem; }
+  /* Not a grid: grid promotes every inline child (<code>, <strong>) to a grid
+     item, which drops them into the marker column one character wide. Absolute
+     marker + padding keeps the content as normal inline flow. */
+  .checks li {
+    position: relative;
+    padding-left: 1.75rem;
+    font-size: .885rem;
+  }
+  .checks li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: .48em;
+    width: .72rem; height: .72rem;
+    border: 1px solid var(--ink-3);
+    border-radius: 2px;
+  }
+
+  /* ---- tier blocks ---- */
+  .tiers { display: flex; flex-direction: column; gap: .8rem; }
+  .tier {
+    display: grid;
+    grid-template-columns: minmax(7rem, auto) 1fr;
+    gap: .3rem 1.2rem;
+    padding: .9rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-left: 2px solid var(--tc, var(--rule));
+    border-radius: 0 2px 2px 0;
+  }
+  .tier dt {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--tc, var(--ink-3));
+  }
+  .tier dd { margin: 0; font-size: .885rem; }
+  @media (max-width: 620px) { .tier { grid-template-columns: 1fr; } }
+
+  .foot {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.2rem;
+    font-size: .8rem;
+    color: var(--ink-3);
+    display: flex; flex-direction: column; gap: .35rem;
+  }
+  .foot a { color: var(--ink-3); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Stage 2 · Research design</p>
+    <h1>Personalizing Hebrew ASR to a Single Speaker</h1>
+    <p class="thesis">How many minutes of your own voice are worth five thousand hours of everyone else&rsquo;s?</p>
+    <dl class="meta">
+      <div><dt>Team</dt><dd>Dolev Abudi · Hadas Yonat</dd></div>
+      <div><dt>Corpus</dt><dd>VoxKnesset — 2,307 h, 393 speakers</dd></div>
+      <div><dt>Models</dt><dd>whisper-large-v3, openai &amp; ivrit-ai</dd></div>
+      <div><dt>Panel shape</dt><dd>Depth — 4 speakers, full recipe</dd></div>
+    </dl>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span>What changed since the proposal</h2>
+    <p>Three findings reshape Stage 2 before a single GPU hour is spent. Each one invalidates part of the original plan, and together they point at a sharper question.</p>
+
+    <div class="findings">
+      <article class="card" style="--accent: var(--gain)">
+        <p class="eyebrow">Stage 1 result</p>
+        <h3>The population fine-tune already helps everyone</h3>
+        <p>It removes <strong>~50% of relative error for essentially every speaker</strong>, hurts nobody, and <code>wer_A</code>/<code>wer_B</code> correlate at ≈&nbsp;+0.8. The worst-served speakers got there by <em>starting hard</em>, not by gaining less. So &ldquo;fine-tune the poorly-served&rdquo; is no longer the open question.</p>
+      </article>
+      <article class="card" style="--accent: var(--arm-b)">
+        <p class="eyebrow">Contamination</p>
+        <h3>The target model already saw this corpus</h3>
+        <p><code>ivrit-ai/whisper-large-v3</code> was trained on <strong>~4,700 h of Knesset plenums</strong> — the same source as VoxKnesset. Any gain measured on it sits on top of heavy prior exposure to these exact speakers.</p>
+      </article>
+      <article class="card" style="--accent: var(--arm-a)">
+        <p class="eyebrow">Data shape</p>
+        <h3>The corpus cannot feed Whisper as-is</h3>
+        <p>VoxKnesset enforces a <em>minimum</em> of 30&nbsp;s per segment; the mean is ~124&nbsp;s and Stage 1 hit a <strong>4.2-hour</strong> one. Whisper&rsquo;s window is exactly 30&nbsp;s. And the official 80/20 split is <strong>speaker-disjoint</strong> — precisely backwards for personalization.</p>
+      </article>
+    </div>
+
+    <h3>The question, restated</h3>
+    <p>Once a population-level Hebrew fine-tune has already taken half the error, <strong>is there anything speaker-specific left</strong> — and if so, how many minutes of one person&rsquo;s voice does it take to get it?</p>
+    <p>Either answer is a contribution. If personalization on top of ivrit-ai buys little, that is a real and useful negative result — and the uncontaminated model arm still yields the full recipe curve.</p>
+
+    <h4 class="sub">Where this sits against prior adaptation work</h4>
+    <p>Classical ASR adaptation spent years trying to make representations speaker-<strong>invariant</strong> — i-vector and x-vector conditioning, adversarial speaker-invariant training — because a recognizer that ignores who is talking generalizes better across a population. This project does the exact inverse: it deliberately specializes a model to one person and treats the loss of invariance as the product rather than the failure. That inversion is worth stating plainly in the related-work section; it frames the encoder axis below, where the same question appears as <em>how much speaker-specific information is the encoder still throwing away?</em></p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>Choosing the panel</h2>
+    <p>No GPU and no Stage-2 training code. It belongs in the <strong>Stage-1 notebook</strong>, alongside the split-half correction already in §9, and it must be settled before any of the design below matters.</p>
+
+    <h3>Selection must not select on noise</h3>
+    <p>Every speaker&rsquo;s measured WER is <em>true WER + sampling noise</em> from a finite set of segments. Taking the worst decile by <em>measured</em> WER selects a mixture of genuinely-hard speakers and speakers who merely drew a bad sample. Re-measure them and the bad-luck component does not repeat, so their WER falls — a gain that looks caused by the fine-tune and would have appeared with no fine-tune at all.</p>
+    <p>The principle is the one Stage 1 already uses: <strong>the variable you select on and the variable you measure the outcome on must not share noise.</strong></p>
+    <p>Rather than a separate split-half, get this from the session split that D2 defines anyway. <strong>Define the session-disjoint split first, rank speakers using only their train-side sessions, and leave personal-test untouched until final scoring.</strong> Noise independence then falls out of ordinary don&rsquo;t-touch-the-test-set hygiene, and there is one split in the project instead of two.</p>
+    <div class="callout">
+      <p class="eyebrow">Ordering cost of doing it this way</p>
+      <p>Splitting by session requires temporal metadata for <em>every candidate speaker</em>, not just the four you end up picking. The session id is carried in the filename (<code>speaker_session_start_end.wav</code>), so that metadata is free — but the <code>index</code> stage still has to run before selection, which means this section is not quite purely Stage-1-local.</p>
+    </div>
+
+    <h3>Entry requirements</h3>
+    <p><strong>≥ 3 h</strong> of speech and <strong>≥ 8 distinct sessions</strong>, so an 80-minute training budget plus disjoint dev and test is possible. Stage 1&rsquo;s ≥ 20-segment reliability floor applies on top.</p>
+    <p>A third requirement follows from the power calculation: <strong>enough speech left over for a personal-test sized to that speaker&rsquo;s WER</strong>, rather than a flat number of minutes for everyone. Resolution tracks WER — a low-WER speaker has few errors left to remove, so detecting the same <em>relative</em> change takes far more test data. This binds hardest at the low-WER end, so S4 must be chosen for volume.</p>
+    <div class="scroll">
+      <table>
+        <caption>The four-speaker panel</caption>
+        <thead><tr><th>Speaker</th><th>Profile</th><th>What they test</th></tr></thead>
+        <tbody>
+          <tr><th>S1</th><td>high <code>wer_B</code>, low <code>gain_rel</code></td><td>The population fine-tune failed them</td></tr>
+          <tr><th>S2</th><td>high <code>wer_B</code>, normal <code>gain_rel</code></td><td>Simply hard</td></tr>
+          <tr><th>S3</th><td>median <code>wer_B</code></td><td>The typical speaker</td></tr>
+          <tr><th>S4</th><td>low <code>wer_B</code></td><td>Headroom check — is anything left at 6% WER?</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>Design decisions</h2>
+
+    <h3><span class="tag">D1</span>Two model arms, not one</h3>
+    <p>Stage 1 already produced per-speaker baselines for both models, so the second arm costs no new baseline work — it extends the existing <code>gain_rel</code> table with a third column.</p>
+    <div class="scroll">
+      <table>
+        <caption>Model arms</caption>
+        <thead><tr><th>Arm</th><th>Model</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr>
+            <th><span class="pill pill-a">A</span></th>
+            <td><code>openai/whisper-large-v3</code></td>
+            <td><strong>Positive control.</strong> Hebrew is in its multilingual mix but low-resource, and it has no Knesset-specific training. Stage 1&rsquo;s ~50% median relative gain puts it at roughly twice arm B&rsquo;s WER — a working model with ample headroom.</td>
+          </tr>
+          <tr>
+            <th><span class="pill pill-b">B</span></th>
+            <td><code>ivrit-ai/whisper-large-v3</code></td>
+            <td>The real target. Gains here are on top of ~4,700 h of Knesset exposure.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Arm A is not an upper bound — it is the control that makes a null result on B <em>interpretable</em>. Given Stage 1 suggests B&rsquo;s residual may be small, you need one arm where you are confident an effect exists:</p>
+    <p class="equation">if the recipe shows nothing on B, arm A says whether that is<br>because nothing is left, or because the pipeline is broken</p>
+    <p>Two things follow. First, <strong>arm A&rsquo;s gains are mostly Hebrew and Knesset-style learning, not personalization</strong> — its Δ domain will be large, so only <code>Δ personal − Δ domain</code> is comparable across arms. Second, arm A does <strong>not</strong> get the full grid: reference config plus the data-budget axis is enough for it to do its job, which roughly halves its cost.</p>
+    <p>The <strong>A-vs-B gap after personalization</strong> remains the headline number, and it is what turns the thesis question into something measurable.</p>
+
+    <h3><span class="tag">D2</span>Session-disjoint splits, built by us</h3>
+    <p>Personalization needs train <em>and</em> test from the same person, so VoxKnesset&rsquo;s speaker-disjoint split is unusable. Partition each speaker&rsquo;s sessions instead, using the <strong>session id carried in the filename</strong> — <code>speaker_session_start_end.wav</code>. Sessions are ordered by <code>age</code>, which is constant within any one <code>(speaker, session)</code> and so gives a clean chronology. This split is defined <strong>before</strong> panel selection, which reads only its train side — see §02.</p>
+    <div class="splitviz">
+      <div class="axis"><span>earliest session</span><span>latest session</span></div>
+      <div class="splitbar">
+        <div class="sb-train">personal-train<br>nested budgets</div>
+        <div class="sb-dev">dev<br>~15 min</div>
+        <div class="sb-test">personal-test<br>sized per speaker</div>
+      </div>
+    </div>
+    <p>Never split randomly <em>within</em> a session — same room, same mic, same topic, adjacent audio. Run the random split once as a deliberate contrast and report the gap: that number quantifies how much of a naive personalization gain is just session memorization, and most personalization papers omit it.</p>
+
+    <h3><span class="tag">D3</span>The cross-speaker control is mandatory</h3>
+    <p>&ldquo;Train on S, WER drops&rdquo; conflates four effects: speaker acoustics (what we want), protocol <em>style</em> adaptation, session memorization, and topic drift. A budget-matched 2×2 separates them.</p>
+    <div class="scroll">
+      <div class="matrix">
+        <div class="corner"></div>
+        <div class="colhead">eval on S</div>
+        <div class="colhead">eval on other speakers</div>
+
+        <div class="rowhead">trained on S</div>
+        <div class="cell key"><b>Δ personal</b><span>Speaker acoustics plus everything else.</span></div>
+        <div class="cell"><b>transfer</b><span>Secondary. How far one person&rsquo;s adapter travels outward.</span></div>
+
+        <div class="rowhead">trained on others<br>(same minutes)</div>
+        <div class="cell ctl"><b>Δ domain</b><span><strong>The primary control.</strong> What any Knesset audio of that size would have bought — could anyone&rsquo;s data have done this?</span></div>
+        <div class="cell"><b>floor</b><span>Sanity check for the pooled arm.</span></div>
+      </div>
+    </div>
+    <p class="equation">personalization effect = Δ personal − Δ domain</p>
+    <p>If the two are equal, the gain is domain adaptation and there is no personalization at all.</p>
+
+    <h4 class="sub">Personalization and shareability are the same axis, pointing opposite ways</h4>
+    <p>The transfer cell measures one quantity with two consequences, not two separate outcomes. Write <code>r = Δ(others) / Δ(S)</code>:</p>
+    <ul>
+      <li><strong>r → 1</strong> — the adapter is generic. Ideal for deployment: train once on one person, ship to all 393. And precisely <em>because</em> of that, no personalization has occurred.</li>
+      <li><strong>r → 0</strong> — genuinely personal. The scientifically interesting result, and the expensive one to deploy: one adapter per speaker.</li>
+      <li><strong>in between</strong> — both components present, and each can be sized.</li>
+    </ul>
+    <p>The two goals are therefore in real tension, and mapping that tension is part of what this project delivers. Report <strong>both gains, not the ratio alone</strong> — <code>r</code> can look large simply because Δ(S) is small. The personalization quantity is the difference, Δ(S) − Δ(others).</p>
+
+    <h3><span class="tag">D4</span>Recipe axes — one factor at a time</h3>
+    <p>Same OFAT structure that worked in the lora-lens project. Reference config: LoRA r=8, α=16, q/v projections, encoder+decoder, lr 1e-3, 30-minute budget, early stop on personal-dev.</p>
+    <div class="scroll">
+      <table>
+        <caption>Experiment grid</caption>
+        <thead><tr><th>Axis</th><th>Levels</th><th>Question it answers</th></tr></thead>
+        <tbody>
+          <tr>
+            <th>Where to adapt<br><span class="pill pill-a">site</span></th>
+            <td>encoder-only · decoder self-attn · decoder cross-attn · encoder+decoder · all-linear</td>
+            <td>Is personalization acoustic or lexical? Self-attention is language modeling; cross-attention is the acoustic→text mapping, so they must be separate levels or the answer stays hidden.</td>
+          </tr>
+          <tr>
+            <th>How to adapt<br><span class="pill pill-a">method</span></th>
+            <td>LoRA r=8 <em>(reference)</em> · DoRA · (IA)³ · LayerNorm+bias (BitFit) · full FT</td>
+            <td>Which parameter-efficient family suits a few minutes of one voice? All are drop-in <code>peft</code> with the same training code. (IA)³ is ~0.01% of parameters and often wins at the smallest budgets; DoRA usually beats LoRA at low rank.</td>
+          </tr>
+          <tr>
+            <th>How much data</th>
+            <td class="num">1, 2, 5, 10, 20, 40, 80 min — <strong>nested</strong></td>
+            <td>The core recipe curve: minutes → relative WER reduction</td>
+          </tr>
+          <tr>
+            <th>Capacity</th>
+            <td class="num">rank 1, 4, 8, 16, 32 (α = 2r)</td>
+            <td>Optimal rank <em>as a function of</em> budget — this interaction is the real recipe</td>
+          </tr>
+          <tr>
+            <th>Optimization</th>
+            <td>lr {3e-4, 1e-3, 3e-3}, steps, warmup</td>
+            <td>A recipe needing per-speaker LR tuning is not a recipe. Report the <em>spread</em>, not just the winner — see below.</td>
+          </tr>
+          <tr>
+            <th>Sharing</th>
+            <td>personal-only · subgroup-only · subgroup-then-personal</td>
+            <td>Does personalization add anything beyond group membership?</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h4 class="sub">The site axis carries a prediction that differs between arms</h4>
+    <p>Arm B has already absorbed 4,700 h of Knesset: protocol style and parliamentary vocabulary are learned at population level, so the residual should be <strong>acoustic — encoder-side</strong>. Arm A has learned neither Hebrew formatting nor Knesset vocabulary, so its gain should sit <strong>decoder-side</strong>. State this before running it. A prediction that flips between arms is falsifiable in a way &ldquo;we expect the encoder matters&rdquo; is not, and if it holds it is the most quotable result in the study.</p>
+
+    <h4 class="sub">Insensitivity is itself the finding</h4>
+    <p>The optimization and capacity sweeps already give a spread across configurations — no separate search is needed to read it. If the best configuration barely beats the reference, <strong>report that</strong>: it means the recipe transfers without per-speaker tuning, which is exactly what makes it a recipe rather than four tuned models. Report the range across the sweep alongside the winner, not the winner alone.</p>
+
+    <h4 class="sub">Start the sharing axis at one speaker, and make it configurable</h4>
+    <p>Run the three sharing configurations for <strong>one speaker and one subgroup definition</strong> first, rather than the whole panel. Both the target speaker and subgroup membership are <strong>config parameters, never hardcoded</strong>, so the same code answers two different questions: hold the speaker fixed and vary the subgroup definition to ask <em>what kind of similarity matters</em>; or hold the definition fixed and vary the speaker to ask <em>whether the answer generalizes</em>. Expand only once one cell has told you which question is worth the compute.</p>
+    <p>The released metadata supports genuinely demographic subgroups rather than improvised ones. Three definition families worth contrasting: <strong>demographic</strong> (<code>speaker_place_of_birth</code> and <code>speaker_year_of_aliya</code> are the closest proxies for accent, alongside religion, nationality, religious orientation, age and gender), <strong>behavioural</strong> (Stage-1 error profile, or per-speaker <code>wpm</code>), and <strong>acoustic</strong> (x-vector/ECAPA distance). If demographic similarity predicts transfer as well as acoustic similarity does, that is a useful result in itself — subgroup assignment would need no audio.</p>
+
+    <h3><span class="tag">D5</span>Report the cost, not just the gain</h3>
+    <p>Every personalized model is also scored on other Knesset speakers and on an out-of-domain Hebrew set (FLEURS <code>he_il</code>, or an ivrit-ai crowd-transcribe split). A recipe must state what it breaks. Track <strong>hallucination and repetition rate</strong> too — fine-tuned Whisper is known to regress there, and Stage 1 explicitly flagged looping decoders as an unhandled case.</p>
+
+    <h4 class="sub">Two ways to buy generality back — as a frontier, not an optimum</h4>
+    <p>Both trade personal-test WER for everything else, so <strong>the headline recipe runs unconstrained</strong>. Neither is a training aid; they are deployment knobs.</p>
+    <ul>
+      <li><strong>α-scaling</strong> — scale the LoRA adapter down at inference. Traces the whole trade-off curve <em>post hoc</em> from a single unconstrained run. Free.</li>
+      <li><strong>KL-to-base</strong> — add <code>λ · KL(p_base ‖ p_tuned)</code> on generic Hebrew audio to the loss, so the model is penalized for drifting where you don&rsquo;t want it to. Costs ~2–2.5× step time, since every speaker batch needs a generic batch beside it. With LoRA the teacher is free: <code>with model.disable_adapter():</code> gives base predictions without a second 1.5 B model in VRAM.</li>
+    </ul>
+    <p>Sweep <code>λ ∈ {0, 0.1, 0.5, 1, 5}</code> and plot personal WER against other-speaker WER as a Pareto frontier. Do <em>not</em> search for an optimal λ — naming one asserts an exchange rate between your speaker&rsquo;s errors and everyone else&rsquo;s, which nothing in the study justifies. Test α-scaling first: if its free frontier matches KL&rsquo;s, drop KL entirely.</p>
+
+    <h3><span class="tag">D6</span>Regularization</h3>
+    <p>Dropout, weight decay, early stopping on personal-dev, checkpoint averaging (the ivrit-ai model is itself a three-checkpoint weight average). These <em>do</em> improve personal-test WER, by fighting overfitting — and they apply at every budget, because 80 minutes against a 1.5 B model is still a heavily over-parameterized regime. The budget-dependent question is not whether to use them but <strong>how their optimal strength scales with minutes</strong>, which is itself part of the recipe.</p>
+    <p>One arm deserves explicit ablation rather than assumption:</p>
+    <ul>
+      <li><strong>Augmentation</strong> — SpecAugment, speed perturbation 0.9/1.1, noise and gain. Note the tension: augmentation deliberately <em>smears</em> the speaker&rsquo;s acoustics, which may be counterproductive for personalization specifically.</li>
+    </ul>
+
+    <h3><span class="tag">D7</span>Evaluation protocol: short-form primary, long-form secondary</h3>
+    <p>Stage 1 scored <strong>whole recordings</strong> — long-form, up to 4.2 hours. Stage 2 trains on ≤ 30 s chunks and would naturally score per chunk — short-form. These are not the same measurement: long-form decoding adds drift, context carryover and hallucination that short-form does not have. Reporting one and comparing against the other silently mixes two effects.</p>
+    <ul>
+      <li><strong>Primary — short-form, per chunk.</strong> Matches the training distribution, yields far more test items for the paired bootstrap, and removes long-form decoding pathologies as a confounder of the personalization effect.</li>
+      <li><strong>Secondary — long-form, on personal-test recordings.</strong> Deployment realism, and the only figure comparable to Stage 1.</li>
+    </ul>
+    <p>Report both. <strong>The gap between them is where D5&rsquo;s hallucination and repetition metric actually shows up</strong> — a personalized model that improves short-form while degrading long-form has learned something that does not survive real use, and only running both will reveal it.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>Pipeline</h2>
+    <p>The real work runs on a <strong>GPU VM</strong>; Colab is only a proof-of-concept target for checking the pipeline executes end to end. That removes session survival as an architecture driver, and with it two constraints that shaped the earlier lora-lens design:</p>
+    <ul>
+      <li><strong>No streaming.</strong> Materialize the panel speakers and control pool to local disk once — budget ~20–40 GB out of VoxKnesset&rsquo;s 275 GB — and stop reasoning about HTTP range reads after the <code>index</code> stage.</li>
+      <li><strong>Resumability is a convenience, not the design.</strong> Keep the staged CLI and per-stage artifacts under <code>output_dir</code> because they make partial re-runs cheap, but a plain config-driven package is enough. The <code>cells.csv</code> manifest stays only as a way to drive several GPUs in parallel.</li>
+    </ul>
+    <p>The dedicated VM also puts <strong>full fine-tuning genuinely on the table</strong>, depending on the card — which is what keeps axis 1 from collapsing into a comparison of LoRA variants.</p>
+    <div class="pipeline">
+      <div class="phase">Gate — before anything else</div>
+      <div class="stage gate">
+        <span class="n">00</span><span class="nm">stage0_gate</span>
+        <span class="ds"><strong>Decision rule.</strong> Bootstrap Stage-1 per-segment errors to find the smallest WER change a given test-set size could resolve, and size each speaker&rsquo;s personal-test from the answer. If the panel cannot resolve the effect we expect, fix the panel before spending GPU time.</span>
+      </div>
+      <div class="phase">Prepare the data</div>
+      <div class="stage"><span class="n">01</span><span class="nm">index</span><span class="ds">Read the public ct2 dump — it carries <code>reference_text</code>, <code>segments_json</code>, durations and all demographics. Gated VoxKnesset is needed for <strong>waveforms only</strong>, so nothing here touches the 275 GB.</span></div>
+      <div class="stage"><span class="n">02</span><span class="nm">materialize</span><span class="ds">Fetch audio by <strong>split</strong>, not by speaker — dev, test, and the largest budget rung only. A cached filename → (shard, row group) index keeps the download to the rows actually needed.</span></div>
+      <div class="stage"><span class="n">03</span><span class="nm">chunk</span><span class="ds">Align protocol text to audio (text-anchored from Stage-1 segments; <code>stable-ts</code> fallback); emit ≤ 30 s examples with a per-chunk alignment score, unfiltered.</span></div>
+      <div class="stage"><span class="n">04</span><span class="nm">split</span><span class="ds">Per-speaker session-disjoint train/dev/test on the session id from the filename, ordered by <code>age</code>, plus nested budget subsets. Test sized per speaker by <code>stage0_gate</code>.</span></div>
+      <div class="phase">Measure the baseline</div>
+      <div class="stage"><span class="n">05</span><span class="nm">baseline</span><span class="ds">Transcribe personal-test with both base models, short-form <em>and</em> long-form; store per-segment error counts.</span></div>
+      <div class="phase">Train</div>
+      <div class="stage"><span class="n">06</span><span class="nm">train</span><span class="ds">One cell = (speaker, arm, site, method, budget, rank, lr, seed) → adapter. Idempotent, skips completed cells, checkpoints every N steps.</span></div>
+      <div class="phase">Score and analyse</div>
+      <div class="stage"><span class="n">07</span><span class="nm">eval</span><span class="ds">Score every checkpoint on personal-test, cross-speaker, and out-of-domain.</span></div>
+      <div class="stage"><span class="n">08</span><span class="nm">stats</span><span class="ds">Paired bootstrap and Wilcoxon over segments; recipe curves; mixed-effects across the panel.</span></div>
+      <div class="stage"><span class="n">09</span><span class="nm">visualize</span><span class="ds">Figures and LaTeX snippets.</span></div>
+    </div>
+
+    <h3>What VoxKnesset actually ships</h3>
+    <p>Confirmed schema of the main table — this is the whole of it:</p>
+    <div class="scroll">
+      <table>
+        <caption>Released columns</caption>
+        <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><th><code>audio</code></th><td>Audio</td><td>Raw waveform, 16 kHz. The <code>path</code> field is the only apparent join key</td></tr>
+          <tr><th><code>speaker_id</code></th><td>int</td><td></td></tr>
+          <tr><th><code>age</code></th><td>float</td><td>Age at time of recording — <strong>the only temporal signal in the release</strong></td></tr>
+          <tr><th><code>gender</code></th><td>int</td><td>0 = female, 1 = male</td></tr>
+          <tr><th>5 speaker_* strings</th><td>string</td><td>place of birth · year of aliya · religion · nationality · religious orientation</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Two absences drive everything below. <strong>No timestamps</strong> — chunking requires alignment. <strong>No alignment-quality score</strong>, despite the paper stating confidence is provided; Stage 1 had already noticed its absence. What the release does give us, and the schema above hides, is the <strong>session id encoded in the filename</strong> — which is what makes D2 possible. Transcripts live in a separate <code>transcripts.parquet</code> keyed by filename, joined via <code>audio.path</code>.</p>
+
+    <h3>The chunking stage — the main new engineering</h3>
+    <p>Segments average ~124 s against Whisper&rsquo;s 30 s window and carry no timestamps, so text must be aligned to audio before anything can be trained. Two routes, cheapest first.</p>
+    <h4 class="sub">Primary — text-anchored chunking, no GPU and no new model</h4>
+    <p>Your Stage-1 dumps already contain a Whisper-produced segmentation of every recording (<code>segments_json</code>, with <code>start</code>/<code>end</code> per hypothesis segment). Reuse it:</p>
+    <ol>
+      <li>Take the hypothesis segments and their <code>[start, end]</code> for a recording.</li>
+      <li>Normalize hypothesis and protocol reference with <code>normalize_he()</code>.</li>
+      <li>Word-level alignment between the two — <code>rapidfuzz</code>&rsquo;s <code>Levenshtein.opcodes</code>, already in the stack.</li>
+      <li>Map each hypothesis segment boundary to a reference word index; cut the reference there.</li>
+      <li>Emit <code>(audio[start:end], reference_slice)</code> pairs, packing consecutive spans up to 30 s.</li>
+    </ol>
+    <p>Boundaries only need to be approximately right — cuts fall roughly every 20 s — so local ASR errors do not propagate. Only the ct2 dump carries <code>segments_json</code>, so boundaries are B-derived: the same boundary-only bias the caveat below already accepts. Note that some hypothesis segments run past 30 s, so cuts are made <em>inside</em> them by interpolating word times rather than trusting segment boundaries alone.</p>
+    <h4 class="sub">Fallback — audio forced alignment</h4>
+    <p>If the text-anchored route aligns poorly, use <strong><code>stable-ts</code></strong> with <code>ivrit-ai/whisper-large-v3</code>: the same tooling and model family VoxKnesset&rsquo;s own authors used, so boundaries match the corpus&rsquo;s construction. Greedily pack word spans into ≤ 30 s chunks, breaking at the longest intra-window pause.</p>
+    <p>Either route: <strong>compute a per-chunk alignment score, keep it as a column, and do not filter on it.</strong> Nothing usable is released, so this is <em>our</em> score, not VoxKnesset&rsquo;s. Carry Stage 1&rsquo;s <code>wpm</code> filter (30–350 reference words/minute) forward — it is what caught the 4.2-hour/126-word segment, and chunking does not make that class of mismatch disappear.</p>
+    <div class="callout">
+      <p class="eyebrow">Circularity caveat — why we do not filter on alignment quality</p>
+      <p>Both routes derive boundaries from a Whisper model, so alignment is most accurate exactly where that model <em>already understands the audio</em>. Where it struggles — accent, crosstalk, noise — boundaries drift and our alignment score drops. Filter on that score and you have quietly deleted B&rsquo;s hard cases: B&rsquo;s baseline reads optimistically low, the headroom personalization would fill is removed, and worst, <strong>arms A and B end up compared on a test set curated by B</strong> — which biases the headline of the entire design.</p>
+      <p><strong>Decision: keep every chunk.</strong> The bias is then confined to boundary placement rather than set membership, and no segment is removed for being hard. Note the reasoning briefly in the notebook where the score is computed.</p>
+      <p>The two filters differ in kind, which is why one survives and one does not: <code>wpm</code> is <em>model-independent</em> — it catches text that does not correspond to its audio at all. Alignment quality is <em>model-dependent</em> — it catches audio the aligner found hard, which is the very thing under study. If a reviewer pushes, the airtight fix is to align with a CTC model outside the Whisper family (<code>ctc-forced-aligner</code> / MMS) so alignment errors are uncorrelated with either arm.</p>
+    </div>
+
+    <h3>Reuse from Stage 1, verbatim</h3>
+    <ul>
+      <li><code>normalize_he()</code> — the niqqud and geresh/gershayim normalizer, including the geresh→space rule. Freeze it; use the identical function for every arm. Do not re-derive it.</li>
+      <li>rapidfuzz <code>Levenshtein.distance</code> over word lists and characters, storing <strong>error counts, not rates</strong>, so speaker WER stays <code>total_errors / total_words</code>.</li>
+      <li>The <code>wpm</code> sanity filter and the ≥ 20-segment reliability floor.</li>
+      <li>The split-half noise correction from §9 of <code>stage1_basic.ipynb</code>.</li>
+      <li>The existing HF inference dumps as the baseline column — no re-transcription needed for Stage 1 numbers.</li>
+    </ul>
+
+    <h3>Whisper fine-tuning gotchas to encode in the training stage</h3>
+    <ul class="checks">
+      <li>Set <code>language="he"</code>, <code>task="transcribe"</code>. <strong><code>forced_decoder_ids</code> no longer exists</strong> as of transformers&nbsp;5 — <code>GenerationConfig</code> dropped it, so set language and task on the generation config and leave <code>suppress_tokens = []</code>.</li>
+      <li>The tokenizer prepends <code>&lt;|startoftranscript|&gt;</code> and <code>shift_tokens_right</code> prepends <code>decoder_start_token_id</code> — the <strong>same id</strong>. Strip one, or the decoder trains on a doubled start token.</li>
+      <li>Mask pad labels with <code>-100</code>; keep the special-token prefix identical between train and eval.</li>
+      <li>Gradient checkpointing needs <code>use_cache = False</code> plus <code>enable_input_require_grads()</code> under PEFT.</li>
+      <li><code>target_modules</code> accepts a <strong>regex string</strong> in PEFT — use it to isolate encoder (<code>.*model\.encoder.*\.(q_proj|v_proj)</code>), decoder self-attn (<code>.*self_attn.*</code>) and decoder cross-attn (<code>.*encoder_attn.*</code>). Without that separation the site axis cannot be run at all.</li>
+      <li>Decide once whether to train with timestamp tokens and hold it constant; ivrit-ai&rsquo;s training data used them, so dropping them may degrade timestamp behaviour.</li>
+      <li>Fast eval path: merge the adapter, then <code>ct2-transformers-converter</code> — it drops straight into the faster-whisper harness Stage 1 already used.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>Compute</h2>
+    <p><code>whisper-large-v3</code> is 1.55 B parameters, so full fine-tuning is a hardware question before it is a research question.</p>
+    <div class="scroll">
+      <table>
+        <caption>Feasibility by accelerator</caption>
+        <thead><tr><th>Setup</th><th>LoRA</th><th>Full fine-tune</th></tr></thead>
+        <tbody>
+          <tr>
+            <th>16 GB, no bf16<br><span class="pill pill-w">Colab / Kaggle T4 — PoC only</span></th>
+            <td><span class="pill pill-g">feasible</span> fp16 autocast + fp32 master weights + grad checkpointing, batch 1–2 with accumulation — exactly the lora-lens <code>training.py</code> pattern, since T4 has no bf16. Fine for verifying the pipeline runs.</td>
+            <td><span class="pill pill-b">not feasible</span></td>
+          </tr>
+          <tr>
+            <th>24 GB, bf16<br><span class="pill pill-a">L4 / A10G VM</span></th>
+            <td><span class="pill pill-g">comfortable</span></td>
+            <td><span class="pill pill-w">tight</span> needs 8-bit Adam, grad checkpointing, and small batches</td>
+          </tr>
+          <tr>
+            <th>40 GB+, bf16<br><span class="pill pill-a">A100 VM — target</span></th>
+            <td><span class="pill pill-g">comfortable</span></td>
+            <td><span class="pill pill-g">feasible</span> 8-bit Adam + grad checkpointing, ~24–30 GB</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>VM requirement: 40 GB VRAM.</strong> Below that, full fine-tuning is either impossible or so constrained that axis 1 degenerates into a comparison of LoRA variants — and the encoder-versus-decoder question, which is the most interesting thing in the study, loses its most informative arm. Provision for it before starting, not after.</p>
+    <div class="callout">
+      <p class="eyebrow">Compute saving worth taking</p>
+      <p>Run the wide sweep on <code>ivrit-ai/whisper-large-v3-turbo</code> (809 M, four decoder layers — roughly 5× cheaper) and confirm the top two configurations on large-v3. Caveat to state: turbo&rsquo;s decoder is far shallower, so <em>encoder-versus-decoder conclusions may not transfer</em> and that axis must be re-run on large-v3.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>Scope</h2>
+    <div class="tiers">
+      <dl class="tier" style="--tc: var(--gain)">
+        <dt>Tier 1 — must land</dt>
+        <dd>Step zero · chunk and split · four-speaker panel · both model arms (arm A on the reference config and budget axis only) · data-budget axis (nested) × site axis reduced to {encoder, decoder cross-attn, encoder+decoder, full FT} · one sharing cell (one speaker, one subgroup definition) · cross-speaker control · session-disjoint vs. random contrast · short-form primary with long-form on personal-test (D7) · paired-bootstrap statistics.</dd>
+      </dl>
+      <dl class="tier" style="--tc: var(--arm-a)">
+        <dt>Tier 2 — if time</dt>
+        <dd>Rank × budget interaction · the method axis ((IA)³, DoRA, BitFit, all-linear) · decoder self-attn as its own level · remaining sharing cells — more subgroup definitions, more speakers · inference-time α interpolation curve · augmentation and KL-to-base ablations · out-of-domain forgetting probe · temporal generalization (train early years, test later) — VoxKnesset is longitudinal, and this connects directly to the source paper&rsquo;s aging angle.</dd>
+      </dl>
+      <dl class="tier" style="--tc: var(--ink-3)">
+        <dt>Out of scope</dt>
+        <dd>All 393 speakers · prompt and prefix tuning · text-only LM fusion · speaker-embedding conditioning · algorithmic hyperparameter search.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span>Verification</h2>
+    <ul class="checks">
+      <li><strong>Chunking</strong> — listen to 20 random chunks and confirm the audio matches its text. Assert every chunk is ≤ 30 s and that chunk text concatenates back to the original protocol text.</li>
+      <li><strong>Split integrity</strong> — zero session overlap between personal-train/dev/test; nested budgets are strict subsets; the control pool shares no speaker with the panel.</li>
+      <li><strong>Baseline reproduction — compare like with like.</strong> Stage 1 measured long-form WER over whole recordings, so the gate must re-score personal-test <strong>in long-form</strong> with the base ivrit-ai model and reproduce that speaker&rsquo;s Stage-1 <code>wer_B</code> within noise. Comparing Stage-1 long-form against Stage-2 chunk-level WER would fail for reasons that have nothing to do with a bug. If the like-for-like check fails, chunking or normalization changed the metric and every later comparison is invalid — hard abort, the way lora-lens gates on <code>_check_base_final_layer()</code>.</li>
+      <li><strong>Short-vs-long sanity</strong> — also record the base model&rsquo;s short-form WER on the same chunks. The long-form/short-form gap for the <em>base</em> model is the reference against which every tuned model&rsquo;s gap is read (D7).</li>
+      <li><strong>Training sanity</strong> — overfit a 20-example subset to near-zero loss before any real run.</li>
+      <li><strong>Statistics</strong> — paired bootstrap over segments (base vs. tuned on the <em>same</em> segments), plus the insertion/deletion/substitution breakdown. If gains come mostly from fewer insertions, the model learned protocol style rather than the speaker.</li>
+      <li><strong>End-to-end smoke</strong> — one speaker × one budget × one method on turbo, all stages, before committing to the grid.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">08</span>Open risks</h2>
+    <ol>
+      <li><strong>Contamination.</strong> The ivrit-ai model likely saw these speakers and possibly these exact utterances. Arm A exists specifically so the recipe is measurable on an uncontaminated model. Report exposure explicitly rather than claiming a clean baseline.</li>
+      <li><strong>Non-verbatim references.</strong> Protocol text is not what was said. There is a WER floor no amount of personalization can cross, and part of any gain is style learning — which is what the cross-speaker control and the I/D/S breakdown exist to detect.</li>
+      <li><strong>The null result.</strong> Stage 1&rsquo;s uniform-gain finding makes a small arm-B effect plausible. The design survives that: arm A still yields the full recipe, and &ldquo;personalization adds little once a strong population model exists&rdquo; is defensible — <em>provided</em> <code>stage0_gate</code> establishes that the study could have detected an effect.</li>
+    </ol>
+  </section>
+
+  <footer class="foot">
+    <span>Toward Personalized Hebrew ASR · Stage 2 design · Dolev Abudi &amp; Hadas Yonat</span>
+    <span>Sources: <a href="https://arxiv.org/abs/2603.01270">VoxKnesset (Marmor et al., 2026)</a> · <a href="https://huggingface.co/ivrit-ai/whisper-large-v3">ivrit-ai/whisper-large-v3</a> · <a href="https://github.com/hadasy-tau/deep-learning-project">Stage 1 notebook</a></span>
+  </footer>
+
+</div>
