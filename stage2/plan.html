@@ -336,6 +336,13 @@
   }
 
   /* ---- pipeline ---- */
+  .pipeline .phase {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .63rem; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--ink-3); background: var(--surface-2);
+    padding: .42rem 1rem;
+    border-bottom: 1px solid var(--rule-soft);
+  }
   .pipeline {
     display: flex;
     flex-direction: column;
@@ -429,28 +436,6 @@
     border-radius: 2px;
   }
 
-  /* ---- resolved Step-0 checks ---- */
-  .checks li.done::before {
-    background: var(--gain);
-    border-color: var(--gain);
-    box-shadow: inset 0 0 0 1px var(--surface), inset 0 0 0 2px var(--gain);
-  }
-  .checks li.done > strong:first-child,
-  .checks li.done > s:first-child { color: var(--ink-3); font-weight: 500; }
-  .verdict {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: .68rem; letter-spacing: .05em; text-transform: uppercase;
-    color: var(--gain); background: var(--gain-wash);
-    padding: .1em .4em; border-radius: 2px; margin-right: .4rem;
-    white-space: nowrap; vertical-align: .05em;
-  }
-  tr.done th, tr.done td { color: var(--ink-3); }
-  tr.done th { border-left: 2px solid var(--gain); }
-  td.hi { background: var(--gain-wash); color: var(--ink); font-weight: 600; }
-  tbody th .sub2 { display:block; font-family:"IBM Plex Sans",sans-serif;
-    font-size:.72rem; font-weight:400; color:var(--ink-3); letter-spacing:0;
-    text-transform:none; }
-
   /* ---- tier blocks ---- */
   .tiers { display: flex; flex-direction: column; gap: .8rem; }
   .tier {
@@ -541,12 +526,12 @@
     <p>Rather than a separate split-half, get this from the session split that D2 defines anyway. <strong>Define the session-disjoint split first, rank speakers using only their train-side sessions, and leave personal-test untouched until final scoring.</strong> Noise independence then falls out of ordinary don&rsquo;t-touch-the-test-set hygiene, and there is one split in the project instead of two.</p>
     <div class="callout">
       <p class="eyebrow">Ordering cost of doing it this way</p>
-      <p>Splitting by session requires temporal metadata for <em>every candidate speaker</em>, not just the four you end up picking. <strong>Step&nbsp;0 resolved this: the session id is already in the filename</strong> (<code>speaker_session_start_end.wav</code>), so no proxy is needed and the year-disjoint fallback is retired. The <code>index</code> stage still has to run before selection, so this section is not quite purely Stage-1-local.</p>
+      <p>Splitting by session requires temporal metadata for <em>every candidate speaker</em>, not just the four you end up picking. The session id is carried in the filename (<code>speaker_session_start_end.wav</code>), so that metadata is free — but the <code>index</code> stage still has to run before selection, which means this section is not quite purely Stage-1-local.</p>
     </div>
 
     <h3>Entry requirements</h3>
-    <p><strong>≥ 3 h</strong> of speech and <strong>≥ 8 distinct sessions</strong>, so an 80-minute training budget plus disjoint dev and test is possible. Stage 1&rsquo;s ≥ 20-segment reliability floor applies on top. On train-side sessions this leaves <strong>174 of 392</strong> speakers eligible.</p>
-    <p>Step&nbsp;0&rsquo;s power gate adds a third requirement: <strong>enough speech left over for a personal-test sized to that speaker&rsquo;s WER</strong>, not a flat 45 min — 40 min at WER .19 but ~7 h at WER .06 for a common 10% relative target (§06). This binds hardest on the low-WER end, so S4 must be picked for volume.</p>
+    <p><strong>≥ 3 h</strong> of speech and <strong>≥ 8 distinct sessions</strong>, so an 80-minute training budget plus disjoint dev and test is possible. Stage 1&rsquo;s ≥ 20-segment reliability floor applies on top.</p>
+    <p>A third requirement follows from the power calculation: <strong>enough speech left over for a personal-test sized to that speaker&rsquo;s WER</strong>, rather than a flat number of minutes for everyone. Resolution tracks WER — a low-WER speaker has few errors left to remove, so detecting the same <em>relative</em> change takes far more test data. This binds hardest at the low-WER end, so S4 must be chosen for volume.</p>
     <div class="scroll">
       <table>
         <caption>The four-speaker panel</caption>
@@ -590,7 +575,7 @@
     <p>The <strong>A-vs-B gap after personalization</strong> remains the headline number, and it is what turns the thesis question into something measurable.</p>
 
     <h3><span class="tag">D2</span>Session-disjoint splits, built by us</h3>
-    <p>Personalization needs train <em>and</em> test from the same person, so VoxKnesset&rsquo;s speaker-disjoint split is unusable. Partition each speaker&rsquo;s sessions instead, using the <strong>session id carried in the filename</strong> (<code>speaker_session_start_end.wav</code>) — verified in Step&nbsp;0 across all 66,294 segments. Order sessions by <code>age</code>, which Step&nbsp;0 confirmed is constant within every <code>(speaker, session)</code> cell and ranks sessions identically to the session id (median Spearman 0.9999). This split is defined <strong>before</strong> panel selection, which reads only its train side — see §02.</p>
+    <p>Personalization needs train <em>and</em> test from the same person, so VoxKnesset&rsquo;s speaker-disjoint split is unusable. Partition each speaker&rsquo;s sessions instead, using the <strong>session id carried in the filename</strong> — <code>speaker_session_start_end.wav</code>. Sessions are ordered by <code>age</code>, which is constant within any one <code>(speaker, session)</code> and so gives a clean chronology. This split is defined <strong>before</strong> panel selection, which reads only its train side — see §02.</p>
     <div class="splitviz">
       <div class="axis"><span>earliest session</span><span>latest session</span></div>
       <div class="splitbar">
@@ -716,16 +701,21 @@
     </ul>
     <p>The dedicated VM also puts <strong>full fine-tuning genuinely on the table</strong>, depending on the card — which is what keeps axis 1 from collapsing into a comparison of LoRA variants.</p>
     <div class="pipeline">
+      <div class="phase">Gate — before anything else</div>
       <div class="stage gate">
         <span class="n">00</span><span class="nm">stage0_gate</span>
-        <span class="ds"><strong>Decision rule — run, see §06.</strong> Bootstrap Stage-1 per-segment errors to find the minimum detectable WER delta at a given test-set size. Result: personal-test is sized per speaker (40 min at WER .19, ~7 h at WER .06), not a flat 45 min.</span>
+        <span class="ds"><strong>Decision rule.</strong> Bootstrap Stage-1 per-segment errors to find the smallest WER change a given test-set size could resolve, and size each speaker&rsquo;s personal-test from the answer. If the panel cannot resolve the effect we expect, fix the panel before spending GPU time.</span>
       </div>
-      <div class="stage"><span class="n">01</span><span class="nm">index</span><span class="ds"><code>pd.read_parquet</code> of the <strong>public</strong> ct2 dump — it already carries <code>reference_text</code>, <code>segments_json</code> and all demographics. Gated VoxKnesset is needed for <strong>waveforms only</strong>, so the 275 GB column-projection scan is not needed. 66,670 recordings.</span></div>
-      <div class="stage"><span class="n">02</span><span class="nm">materialize</span><span class="ds">Fetch audio by <strong>split</strong>, not by speaker: dev + test + the largest budget rung. 22.6 h rather than the panel&rsquo;s full 136 h. Targets shard/row-group via a cached filename → (shard, row_group) index.</span></div>
+      <div class="phase">Prepare the data</div>
+      <div class="stage"><span class="n">01</span><span class="nm">index</span><span class="ds">Read the public ct2 dump — it carries <code>reference_text</code>, <code>segments_json</code>, durations and all demographics. Gated VoxKnesset is needed for <strong>waveforms only</strong>, so nothing here touches the 275 GB.</span></div>
+      <div class="stage"><span class="n">02</span><span class="nm">materialize</span><span class="ds">Fetch audio by <strong>split</strong>, not by speaker — dev, test, and the largest budget rung only. A cached filename → (shard, row group) index keeps the download to the rows actually needed.</span></div>
       <div class="stage"><span class="n">03</span><span class="nm">chunk</span><span class="ds">Align protocol text to audio (text-anchored from Stage-1 segments; <code>stable-ts</code> fallback); emit ≤ 30 s examples with a per-chunk alignment score, unfiltered.</span></div>
-      <div class="stage"><span class="n">04</span><span class="nm">split</span><span class="ds">Per-speaker session-disjoint train/dev/test on the real session id from the filename, ordered by <code>age</code>, plus nested budget subsets. Test sized by §06.</span></div>
+      <div class="stage"><span class="n">04</span><span class="nm">split</span><span class="ds">Per-speaker session-disjoint train/dev/test on the session id from the filename, ordered by <code>age</code>, plus nested budget subsets. Test sized per speaker by <code>stage0_gate</code>.</span></div>
+      <div class="phase">Measure the baseline</div>
       <div class="stage"><span class="n">05</span><span class="nm">baseline</span><span class="ds">Transcribe personal-test with both base models, short-form <em>and</em> long-form; store per-segment error counts.</span></div>
+      <div class="phase">Train</div>
       <div class="stage"><span class="n">06</span><span class="nm">train</span><span class="ds">One cell = (speaker, arm, site, method, budget, rank, lr, seed) → adapter. Idempotent, skips completed cells, checkpoints every N steps.</span></div>
+      <div class="phase">Score and analyse</div>
       <div class="stage"><span class="n">07</span><span class="nm">eval</span><span class="ds">Score every checkpoint on personal-test, cross-speaker, and out-of-domain.</span></div>
       <div class="stage"><span class="n">08</span><span class="nm">stats</span><span class="ds">Paired bootstrap and Wilcoxon over segments; recipe curves; mixed-effects across the panel.</span></div>
       <div class="stage"><span class="n">09</span><span class="nm">visualize</span><span class="ds">Figures and LaTeX snippets.</span></div>
@@ -746,7 +736,7 @@
         </tbody>
       </table>
     </div>
-    <p>Two absences drive everything below. <strong>No timestamps</strong> — chunking requires alignment. <strong>No alignment-quality score</strong>, despite the paper stating confidence is provided; Stage 1 had already noticed its absence. A third apparent absence turned out not to be one: Step&nbsp;0 found the <strong>session id encoded in the filename</strong>. Transcripts live in a separate <code>transcripts.parquet</code> keyed by filename, joined via the audio path — and <code>audio.path</code> is byte-identical to <code>filename</code>, confirmed.</p>
+    <p>Two absences drive everything below. <strong>No timestamps</strong> — chunking requires alignment. <strong>No alignment-quality score</strong>, despite the paper stating confidence is provided; Stage 1 had already noticed its absence. What the release does give us, and the schema above hides, is the <strong>session id encoded in the filename</strong> — which is what makes D2 possible. Transcripts live in a separate <code>transcripts.parquet</code> keyed by filename, joined via <code>audio.path</code>.</p>
 
     <h3>The chunking stage — the main new engineering</h3>
     <p>Segments average ~124 s against Whisper&rsquo;s 30 s window and carry no timestamps, so text must be aligned to audio before anything can be trained. Two routes, cheapest first.</p>
@@ -759,7 +749,7 @@
       <li>Map each hypothesis segment boundary to a reference word index; cut the reference there.</li>
       <li>Emit <code>(audio[start:end], reference_slice)</code> pairs, packing consecutive spans up to 30 s.</li>
     </ol>
-    <p>Boundaries only need to be approximately right — cuts fall roughly every 20 s — so local ASR errors do not propagate. <strong>Step&nbsp;0 settled this: only the ct2 dump carries <code>segments_json</code></strong>, so boundaries are B-derived — the same boundary-only bias the caveat below already accepts. Implemented chunking scores a <strong>median word-level alignment of 0.923</strong> against the protocol text, so the <code>stable-ts</code> fallback is not needed. One wrinkle: 22% of hypothesis segments still exceed 30 s (max 112 s), so cuts are made <em>inside</em> them by interpolating word times rather than trusting segment boundaries.</p>
+    <p>Boundaries only need to be approximately right — cuts fall roughly every 20 s — so local ASR errors do not propagate. Only the ct2 dump carries <code>segments_json</code>, so boundaries are B-derived: the same boundary-only bias the caveat below already accepts. Note that some hypothesis segments run past 30 s, so cuts are made <em>inside</em> them by interpolating word times rather than trusting segment boundaries alone.</p>
     <h4 class="sub">Fallback — audio forced alignment</h4>
     <p>If the text-anchored route aligns poorly, use <strong><code>stable-ts</code></strong> with <code>ivrit-ai/whisper-large-v3</code>: the same tooling and model family VoxKnesset&rsquo;s own authors used, so boundaries match the corpus&rsquo;s construction. Greedily pack word spans into ≤ 30 s chunks, breaking at the longest intra-window pause.</p>
     <p>Either route: <strong>compute a per-chunk alignment score, keep it as a column, and do not filter on it.</strong> Nothing usable is released, so this is <em>our</em> score, not VoxKnesset&rsquo;s. Carry Stage 1&rsquo;s <code>wpm</code> filter (30–350 reference words/minute) forward — it is what caught the 4.2-hour/126-word segment, and chunking does not make that class of mismatch disappear.</p>
@@ -781,11 +771,11 @@
 
     <h3>Whisper fine-tuning gotchas to encode in the training stage</h3>
     <ul class="checks">
-      <li>Set <code>language="he"</code>, <code>task="transcribe"</code>. <strong><code>forced_decoder_ids</code> no longer exists</strong> as of transformers&nbsp;5 — <code>GenerationConfig</code> dropped it, so set language/task on the generation config and leave <code>suppress_tokens = []</code>. (Verified against transformers 5.8.1.)</li>
+      <li>Set <code>language="he"</code>, <code>task="transcribe"</code>. <strong><code>forced_decoder_ids</code> no longer exists</strong> as of transformers&nbsp;5 — <code>GenerationConfig</code> dropped it, so set language and task on the generation config and leave <code>suppress_tokens = []</code>.</li>
       <li>The tokenizer prepends <code>&lt;|startoftranscript|&gt;</code> and <code>shift_tokens_right</code> prepends <code>decoder_start_token_id</code> — the <strong>same id</strong>. Strip one, or the decoder trains on a doubled start token.</li>
       <li>Mask pad labels with <code>-100</code>; keep the special-token prefix identical between train and eval.</li>
       <li>Gradient checkpointing needs <code>use_cache = False</code> plus <code>enable_input_require_grads()</code> under PEFT.</li>
-      <li><code>target_modules</code> accepts a <strong>regex string</strong> in PEFT — use it to isolate encoder (<code>.*model\.encoder.*\.(q_proj|v_proj)</code>), decoder self-attn (<code>.*self_attn.*</code>) and decoder cross-attn (<code>.*encoder_attn.*</code>) for the site axis. Verified against real Whisper module names: every site yields non-zero trainable parameters.</li>
+      <li><code>target_modules</code> accepts a <strong>regex string</strong> in PEFT — use it to isolate encoder (<code>.*model\.encoder.*\.(q_proj|v_proj)</code>), decoder self-attn (<code>.*self_attn.*</code>) and decoder cross-attn (<code>.*encoder_attn.*</code>). Without that separation the site axis cannot be run at all.</li>
       <li>Decide once whether to train with timestamp tokens and hold it constant; ivrit-ai&rsquo;s training data used them, so dropping them may degrade timestamp behaviour.</li>
       <li>Fast eval path: merge the adapter, then <code>ct2-transformers-converter</code> — it drops straight into the faster-whisper harness Stage 1 already used.</li>
     </ul>
@@ -825,104 +815,7 @@
   </section>
 
   <section>
-    <h2><span class="num">06</span>Step zero — before anything else</h2>
-
-    <h3>Purpose</h3>
-    <p>Step zero exists to settle the facts this design rests on <strong>while changing them is still free</strong>. Every question below is answerable in an afternoon with no GPU; none is answerable cheaply once the pipeline has been built around assuming an answer. That asymmetry is the whole justification — it is a gate, not a warm-up, and nothing in §04 should be written until these return.</p>
-    <p>Two classes of question, with different failure modes:</p>
-    <ul>
-      <li><strong>What the data actually contains.</strong> Whether <code>age</code> resolves sessions decides if D2 and the merged panel selection in §02 work as specified or degrade to a year split. Whether the join key holds decides whether the project is possible at all. Whether the dumps carry <code>segments_json</code> decides if <code>chunk</code> is a text-processing step or an audio forced-alignment run. These do not change <em>whether</em> you can proceed so much as <em>what you are building</em> — and finding out after the fact means rewriting the pipeline.</li>
-      <li><strong>Whether the study is powered.</strong> This guards against the worst outcome available to this project, which is not a negative result but an <strong>uninterpretable</strong> one: running the full grid, getting &ldquo;6% relative reduction, p&nbsp;=&nbsp;0.3&rdquo;, and having no way to tell whether that means no effect exists or the test set was too small to see one. Months of compute, nothing concluded. Stage 1&rsquo;s uniform-gain finding already makes a small arm-B effect plausible, so this is a live risk rather than a formality.</li>
-    </ul>
-
-    <h3>The checks</h3>
-    <p>Roughly thirty minutes, no GPU.</p>
-    <ul class="checks">
-      <li class="done"><span class="verdict">done</span><strong>Accept the VoxKnesset license.</strong> Licence accepted and <code>HF_TOKEN</code> working; the 70 shards (50 train + 20 test, ~3.5 GB each) are readable. Because of check&nbsp;5 this now gates <code>materialize</code> only, not <code>index</code>.</li>
-      <li class="done"><span class="verdict">done</span><s>Test <code>age</code> granularity</s> — <strong>the workaround turned out to be unnecessary.</strong> The session id is encoded in the filename: <code>speaker_session_start_end.wav</code>. All 66,294 filenames parse; field 1 equals <code>speaker_id</code> in every row but one; <code>end − start</code> matches <code>duration_s</code> to within 1 s for 99.98% of segments. Field 2 is a <em>shared</em> protocol id — 1,126 sessions, a median of 22 speakers each — exactly what a plenary sitting should look like. Three confirmations it is a genuine session key: <code>age</code> is constant within <strong>every one</strong> of the 26,560 <code>(speaker, session)</code> cells; session id and <code>age</code> order a speaker&rsquo;s sessions identically (median Spearman 0.9999); and <code>age</code> is <em>strictly coarser</em> — rounded to 0.01 y (3.65 d), so derived from a full birth date, yet still colliding across 13.1% of sessions. <strong>Use <code>(speaker_id, session_id)</code> as the key and <code>age</code> only for ordering.</strong> One data-quality item: <code>526_24724_5142_5204.wav</code> carries a corrupted <code>speaker_id</code> in the Stage-1 CSV — recover it from the filename.</li>
-      <li class="done"><span class="verdict">done</span><strong>Confirm the join key — it holds.</strong> <code>audio.path</code> is byte-identical to <code>filename</code>. The one row that stops the project does not. Two useful side-effects: parquet stores struct fields as separate columns, so <code>audio.path</code> reads <strong>without pulling a single waveform</strong> — which is what makes the shard index cheap — and the shard geometry pins the audio at 16 kHz 16-bit mono, confirmed against real files. The resulting index of all 66,670 recordings matches the ct2 dump exactly: zero duplicates, zero missing.</li>
-      <li class="done"><span class="verdict">done</span><s>Check which dumps carry <code>segments_json</code></s> — <strong>only the ct2 dump (arm B) has it</strong>; the baseline jsonl carries a flat <code>transcription</code> and no segmentation. Boundaries are therefore B-derived — accepted, boundary-only bias. Its segments are <code>{start, end, text}</code> and already ~30 s (median 28.4 s), so the cheap text-anchored route is confirmed and <code>stable-ts</code> is not needed.</li>
-      <li class="done"><span class="verdict">n/a</span><s>Index without downloading audio</s> — <strong>not needed.</strong> The public ct2 dump <em>is</em> the index: <code>reference_text</code>, <code>segments_json</code>, <code>duration_s</code> and every demographic column, for all 70 shards. Gated VoxKnesset is required for <strong>waveforms only</strong>, which moves the licence and token from a blocker on <code>index</code> to a blocker on <code>materialize</code> alone.</li>
-      <li class="done"><span class="verdict">done</span><strong>Run <code>stage0_gate</code></strong> — <strong>and it is the binding constraint on the study.</strong> 45 min of personal-test does <em>not</em> resolve a 10% relative change for three of the four panel speakers. Numbers below.</li>
-    </ul>
-
-    <h3>How <code>stage0_gate</code> works</h3>
-    <p>It answers one question in advance: <em>given N words of test data, what is the smallest WER change I could reliably detect?</em> Runs today, no GPU, on data you already have.</p>
-    <ol>
-      <li>Take a candidate speaker&rsquo;s per-segment <code>werr_B</code> and <code>n_words</code> from Stage 1 — already computed.</li>
-      <li>Bootstrap-resample their segments to a target test size; compute WER.</li>
-      <li>Repeat 2,000 times → the sampling distribution of &ldquo;WER measured on that much of this speaker&rdquo;.</li>
-      <li>Its width is your resolution.</li>
-      <li><strong>Run it on the paired per-segment difference, not on WER itself.</strong> The real comparison is base vs. tuned on the <em>same</em> segments. That is the number that actually governs the study.</li>
-    </ol>
-<h4 class="sub">How the paired difference had to be simulated</h4>
-    <p>There is no tuned model yet, so the paired difference cannot simply be measured. Using the A-vs-B pair as a stand-in <strong>does not work</strong>: A and B are different models whose per-segment disagreement is enormous, so the A−B difference is <em>noisier</em> than a single system&rsquo;s WER (pairing gain &lt; 1) and badly overstates the noise for a model compared against its own fine-tune. Instead the gate simulates a tuned system that removes a fraction <code>p</code> of base&rsquo;s word errors, and solves for the smallest <code>p</code> detectable at 80% power (α = .05, two-sided, 2,000 bootstrap reps).</p>
-    <p>The one thing that simulation must not assume is <em>how clustered</em> the improvements are, because that dominates the answer. So clustering is <strong>estimated per speaker from that speaker&rsquo;s real A/B pair</strong> (a Pearson overdispersion <code>phi</code> against independent-word removal) and applied through a beta-binomial draw, which keeps the removal count inside <code>[0, errors_i]</code> and unbiased. Measured <code>phi</code> is <strong>7.5–30</strong> — error changes are an order of magnitude more clustered than independent word removal, because improvements arrive in whole-segment lumps. At <code>phi = 1</code> the 45-minute figure would read 0.8–4% relative, which is what an analysis ignoring clustering would wrongly report.</p>
-
-    <h3>What <code>stage0_gate</code> returned</h3>
-    <div class="scroll">
-      <table>
-        <caption>Minimum detectable relative WER reduction — 80% power, α = .05 two-sided</caption>
-        <thead><tr><th>personal-test</th><th class="num">S1 <span class="sub2">spk 11835 · WER .194</span></th><th class="num">S2 <span class="sub2">spk 528 · WER .161</span></th><th class="num">S3 <span class="sub2">spk 1057 · WER .098</span></th><th class="num">S4 <span class="sub2">spk 4416 · WER .060</span></th></tr></thead>
-        <tbody>
-          <tr><th>30 min</th><td class="num">13.0%</td><td class="num">29.7%</td><td class="num">61.4%</td><td class="num">74.4%</td></tr>
-          <tr><th>45 min</th><td class="num hi">8.9%</td><td class="num hi">21.3%</td><td class="num hi">49.0%</td><td class="num hi">58.3%</td></tr>
-          <tr><th>60 min</th><td class="num">7.0%</td><td class="num">16.2%</td><td class="num">43.3%</td><td class="num">49.8%</td></tr>
-          <tr><th>120 min</th><td class="num">3.6%</td><td class="num">9.0%</td><td class="num">26.8%</td><td class="num">30.0%</td></tr>
-          <tr><th>240 min</th><td class="num">1.9%</td><td class="num">4.6%</td><td class="num">14.4%</td><td class="num">16.9%</td></tr>
-          <tr><th>480 min</th><td class="num">0.9%</td><td class="num">2.4%</td><td class="num">7.6%</td><td class="num">9.1%</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p><strong>The 45 min / 10% placeholder was optimistic by 2–6× for every speaker except S1.</strong> Resolution tracks WER: a low-WER speaker has few errors to remove, so the same relative change is a far smaller absolute one. Inverting the curve:</p>
-    <div class="scroll">
-      <table>
-        <caption>Personal-test required, against what each speaker has</caption>
-        <thead><tr><th></th><th class="num">S1</th><th class="num">S2</th><th class="num">S3</th><th class="num">S4</th></tr></thead>
-        <tbody>
-          <tr><th>for 10% relative</th><td class="num hi">40 min</td><td class="num hi">1.8 h</td><td class="num hi">6.1 h</td><td class="num hi">7.2 h</td></tr>
-          <tr><th>for 20% relative</th><td class="num">18 min</td><td class="num">48 min</td><td class="num">2.9 h</td><td class="num">3.3 h</td></tr>
-          <tr><th>total speech available</th><td class="num">27.3 h</td><td class="num">18.4 h</td><td class="num">24.9 h</td><td class="num">65.8 h</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p><strong>Decision: enlarge personal-test, and size it per speaker rather than by a flat 45 min.</strong> The last row is why this is affordable — every panel speaker has enough speech to buy the test set their WER requires, at a cost of 6–30% of their material. Scoring is inference only, paid once per (speaker × arm × cell). A flat 45 min would leave S3 and S4 unable to resolve anything short of a halving of WER.</p>
-    <p>Two consequences worth carrying forward. First, <strong>S4&rsquo;s headroom check is now the weakest cell in the design</strong> — it needs the largest test set to detect the smallest effect, which is exactly the speaker where a null result is most likely and most in need of being interpretable. Second, the binding resource is <strong>error count, not minutes</strong>: 45 min buys only ~20 segments here (mean segment length 107–145 s), and because the clustering is a property of the speech rather than the segmentation, the ≤ 30 s chunking in §04 will <em>not</em> recover this power on its own.</p>
-
-    <h4 class="sub">What each check can invalidate</h4>
-    <div class="scroll">
-      <table>
-        <caption>Stakes</caption>
-        <thead><tr><th>If this fails</th><th>What happens</th><th>Fallback</th></tr></thead>
-        <tbody>
-          <tr class="done">
-            <th><s><code>age</code> is year-granular</s></th>
-            <td><strong>Settled — did not fail.</strong> The filename carries a real session id, so the split is session-disjoint as originally specified. <code>age</code> is day-granular anyway but coarser than the session id, so it orders sessions and nothing more</td>
-            <td>n/a</td>
-          </tr>
-          <tr class="done">
-            <th><s>join key does not match</s></th>
-            <td><strong>Settled — did not fail.</strong> <code>audio.path</code> equals <code>filename</code> exactly, so audio pairs with transcripts as assumed</td>
-            <td>n/a</td>
-          </tr>
-          <tr class="done">
-            <th><s>no <code>segments_json</code></s></th>
-            <td><strong>Settled.</strong> The ct2 dump has it, so <code>chunk</code> stayed a text-processing step; measured alignment 0.923 median</td>
-            <td><code>stable-ts</code> not needed</td>
-          </tr>
-          <tr>
-            <th>statistical power</th>
-            <td>The interpretability of any null result — the study can run to completion and answer nothing</td>
-            <td>Enlarge personal-test, choose speakers with more data, or declare up front that only large effects are resolvable</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p>Note what the fallback column says: only one row stops the project. The rest change <em>what you build</em>, which is exactly why they are worth half a day now rather than a rewrite later.</p>
-  </section>
-
-  <section>
-    <h2><span class="num">07</span>Scope</h2>
+    <h2><span class="num">06</span>Scope</h2>
     <div class="tiers">
       <dl class="tier" style="--tc: var(--gain)">
         <dt>Tier 1 — must land</dt>
@@ -940,7 +833,7 @@
   </section>
 
   <section>
-    <h2><span class="num">08</span>Verification</h2>
+    <h2><span class="num">07</span>Verification</h2>
     <ul class="checks">
       <li><strong>Chunking</strong> — listen to 20 random chunks and confirm the audio matches its text. Assert every chunk is ≤ 30 s and that chunk text concatenates back to the original protocol text.</li>
       <li><strong>Split integrity</strong> — zero session overlap between personal-train/dev/test; nested budgets are strict subsets; the control pool shares no speaker with the panel.</li>
@@ -953,7 +846,7 @@
   </section>
 
   <section>
-    <h2><span class="num">09</span>Open risks</h2>
+    <h2><span class="num">08</span>Open risks</h2>
     <ol>
       <li><strong>Contamination.</strong> The ivrit-ai model likely saw these speakers and possibly these exact utterances. Arm A exists specifically so the recipe is measurable on an uncontaminated model. Report exposure explicitly rather than claiming a clean baseline.</li>
       <li><strong>Non-verbatim references.</strong> Protocol text is not what was said. There is a WER floor no amount of personalization can cross, and part of any gain is style learning — which is what the cross-speaker control and the I/D/S breakdown exist to detect.</li>
