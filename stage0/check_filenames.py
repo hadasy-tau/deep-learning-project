@@ -1,5 +1,5 @@
 import pandas as pd, numpy as np, re
-P = r"C:/Users/hadas/git/deep-learning-project/stage1_diagnose/outputs/segment_metrics.csv.gz"
+P = r"C:/Users/hadas/git/deep-learning-project/stage1/outputs/segment_metrics.csv.gz"
 df = pd.read_csv(P)
 
 pat = re.compile(r"^(\d+)_(\d+)_(\d+)_(\d+)\.wav$")

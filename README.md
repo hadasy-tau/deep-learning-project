@@ -20,7 +20,7 @@ stage0/                  Step 0 — cheap checks that gate the Stage 2 design
   stage0_gate.py           statistical power: smallest detectable WER change
   outputs/                 gate curves, required test sizes, eligible speakers
 
-stage1_diagnose/         Stage 1 — the speaker-level error map (complete)
+stage1/                  Stage 1 — the speaker-level error map (complete)
   stage1_diagnose.ipynb    full analysis: error map, predictors, ICC, Stage 2 groups
   stage1_basic.ipynb       the paired-segment scoring path; defines normalize_he()
   outputs/                 segment_metrics.csv.gz, speaker_error_map.csv, figures/
