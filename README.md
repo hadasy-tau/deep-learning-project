@@ -18,6 +18,7 @@ stage0/                  Step 0 — cheap checks that gate the Stage 2 design
   check_filenames.py       filename is speaker_session_start_end.wav (66,294 segments)
   check_sessions.py        confirms it is a real session key, and finer than `age`
   stage0_gate.py           statistical power: smallest detectable WER change
+  explore.ipynb            look up a wav or a speaker, and listen to the audio
   outputs/                 gate curves, required test sizes, eligible speakers
 
 stage1/                  Stage 1 — the speaker-level error map (complete)
