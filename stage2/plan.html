@@ -411,20 +411,22 @@
 
   /* ---- checklist ---- */
   .checks { list-style: none; padding: 0; gap: .55rem; }
+  /* Not a grid: grid promotes every inline child (<code>, <strong>) to a grid
+     item, which drops them into the marker column one character wide. Absolute
+     marker + padding keeps the content as normal inline flow. */
   .checks li {
-    display: grid;
-    grid-template-columns: 1.1rem 1fr;
-    gap: .65rem;
+    position: relative;
+    padding-left: 1.75rem;
     font-size: .885rem;
-    align-items: baseline;
   }
   .checks li::before {
     content: "";
-    display: block;
+    position: absolute;
+    left: 0;
+    top: .48em;
     width: .72rem; height: .72rem;
     border: 1px solid var(--ink-3);
     border-radius: 2px;
-    transform: translateY(.12rem);
   }
 
   /* ---- resolved Step-0 checks ---- */
@@ -440,7 +442,7 @@
     font-size: .68rem; letter-spacing: .05em; text-transform: uppercase;
     color: var(--gain); background: var(--gain-wash);
     padding: .1em .4em; border-radius: 2px; margin-right: .4rem;
-    white-space: nowrap;
+    white-space: nowrap; vertical-align: .05em;
   }
   tr.done th, tr.done td { color: var(--ink-3); }
   tr.done th { border-left: 2px solid var(--gain); }
