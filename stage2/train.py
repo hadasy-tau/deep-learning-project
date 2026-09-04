@@ -9,7 +9,7 @@ language/task are set on the generation config instead. The rest of the plan's
 gotchas -- -100 label masking, use_cache=False under gradient checkpointing,
 enable_input_require_grads() under PEFT -- still apply and are encoded below.
 """
-import os
+import contextlib, os
 import numpy as np, torch
 from torch.utils.data import Dataset
 from transformers import (WhisperForConditionalGeneration, WhisperProcessor,
@@ -147,20 +147,40 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     return out
 
 
-def overfit_check(chunks, audio_dir, speaker, arm='B', n=20, steps=60):
+def overfit_check(chunks, audio_dir, speaker, arm='B', n=20, steps=60, batch=4):
     """Plan section 08 training sanity: a correct setup drives a 20-example
     subset to near-zero loss. If this does not fall, nothing downstream is
-    worth running."""
+    worth running.
+
+    This is a hand-rolled loop, not a Trainer, so device placement and mixed
+    precision are ours to do -- there is nothing here to do them for us.
+    """
     spk = chunks[(chunks.speaker_id == speaker) & (chunks.part == 'train')].head(n)
     proc = WhisperProcessor.from_pretrained(ARMS[arm], language='he', task='transcribe')
+    # Same prefix tokens train_cell uses. Without this the sanity check vouches
+    # for a slightly different setup from the one it is meant to vouch for.
+    proc.tokenizer.set_prefix_tokens(language='he', task='transcribe',
+                                     predict_timestamps=False)
     model = WhisperForConditionalGeneration.from_pretrained(ARMS[arm])
     dsti = model.config.decoder_start_token_id
     model.generation_config.language, model.generation_config.task = 'he', 'transcribe'
     from peft import LoraConfig, get_peft_model
     model = get_peft_model(model, LoraConfig(r=8, lora_alpha=16,
                                              target_modules=SITES['both'], bias='none'))
+
+    dev = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model.to(dev)
+    # fp32 master weights with an autocast forward: 1.55 B in fp32 leaves a
+    # 16 GB T4 no room for batch-4 activations. bf16 needs no loss scaler,
+    # fp16 does -- and a T4 has no bf16, which is why both paths exist.
+    amp = (torch.bfloat16 if dev == 'cuda' and torch.cuda.is_bf16_supported()
+           else torch.float16 if dev == 'cuda' else None)
+    scaler = torch.amp.GradScaler(dev, enabled=(amp is torch.float16))
+    print(f'device {dev}' + (f', autocast {amp}' if amp is not None else '')
+          + f', batch {batch}')
+
     ds = ChunkDataset(spk, audio_dir, proc)
-    dl = torch.utils.data.DataLoader(ds, batch_size=4, shuffle=True,
+    dl = torch.utils.data.DataLoader(ds, batch_size=batch, shuffle=True,
                                      collate_fn=lambda b: collate(b, dsti))
     opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=1e-3)
     model.train()
@@ -170,8 +190,12 @@ def overfit_check(chunks, audio_dir, speaker, arm='B', n=20, steps=60):
             b = next(it)
         except StopIteration:
             it = iter(dl); b = next(it)
-        loss = model(**b).loss
-        loss.backward(); opt.step(); opt.zero_grad()
+        b = {k: v.to(dev) for k, v in b.items()}
+        with (torch.autocast(dev, dtype=amp) if amp is not None
+              else contextlib.nullcontext()):
+            loss = model(**b).loss
+        scaler.scale(loss).backward()
+        scaler.step(opt); scaler.update(); opt.zero_grad()
         losses.append(loss.item())
         if s % 10 == 0:
             print(f'  step {s:3d}  loss {loss.item():.4f}')
