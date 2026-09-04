@@ -219,17 +219,28 @@ def make_splits(chunks, test_min, dev_min=15):
     Sized per speaker from stage0_gate -- a flat 45 min leaves low-WER
     speakers unable to resolve anything short of a halving of WER.
     """
-    def one(g):
-        want = test_min[g.name] if isinstance(test_min, dict) else test_min
+    def one(spk, g):
+        want = test_min[spk] if isinstance(test_min, dict) else test_min
         dur  = g.groupby('session').duration_s.sum().sort_index(ascending=False)
         cum  = dur.cumsum() / 60
         test = set(dur.index[cum <= want]) or {dur.index[0]}
         rest = dur.drop(index=list(test))
         dev  = set(rest.index[rest.cumsum() / 60 <= dev_min]) or set(rest.index[:1])
         return g.session.map(lambda s: 'test' if s in test else 'dev' if s in dev else 'train')
+
     out = chunks.copy()
-    out['part'] = chunks.groupby('speaker_id', group_keys=False).apply(one, include_groups=False)
+    if out.empty:
+        out['part'] = pd.Series(dtype=object)
+        return out
+    # Concatenated explicitly rather than through groupby.apply: apply infers
+    # its own return shape, and on pandas 3 a SINGLE group comes back as a
+    # 1xN DataFrame rather than a Series -- so a one-speaker call (which is
+    # exactly what the smoke-test notebook does) failed where the four-speaker
+    # panel worked. Nothing here should depend on how many speakers there are.
+    parts = [one(spk, g) for spk, g in out.groupby('speaker_id')]
+    out['part'] = pd.concat(parts).reindex(out.index)
     return out
+
 
 def budget_order(train_chunks):
     """Train chunks ordered latest session first, so D4's nested budgets
