@@ -12,7 +12,25 @@ import glob, json, os, re, unicodedata, wave
 import numpy as np, pandas as pd
 from rapidfuzz.distance import Levenshtein
 
-MAX_S, WPM_RANGE = 30.0, (30, 350)
+MAX_S = 30.0
+
+# Recording-level QC, matching stage1_basic.ipynb exactly. A rate filter cannot
+# work here: a segment is a contiguous span of session time and so contains the
+# speaker's pauses, and because a rate is a ratio its allowance shrinks toward
+# zero for short references. Stage 1 replaced wpm 30-350 (which dropped 309
+# recordings, ~246 of them legitimate) with a flat allowance for audio the
+# reference cannot account for -- 14 recordings, and it still catches the
+# 4.2-hour file carrying a 126-word reference.
+SLOW_WPM          = 40            # generous; the corpus averages ~108
+SEC_PER_WORD      = 60 / SLOW_WPM
+MAX_UNEXPLAINED_S = 300
+
+# Chunk-level guard. NOT a speaking-rate filter: ~6 words/second is not humanly
+# plausible, so it flags spans where our own linear word-time interpolation
+# compressed too much text, not speech the model found hard. There is no lower
+# bound on purpose -- a 30 s chunk holding one word ("thank you", then a pause)
+# is legitimate speech, which is the case Stage 1 established.
+MAX_CHUNK_WPM = 350
 SR = 16000
 REPO_B = 'Dolevabudi/voxknesset-whisper-large-v3-ct2-inference'
 
@@ -59,7 +77,17 @@ def load_index(local_only=True):
     assert parts[0].notna().all(), 'unparseable filenames'
     df['speaker_id'] = parts[0].astype(int)
     df['session']    = parts[1].astype(int)
-    return df.drop_duplicates('filename').reset_index(drop=True)
+    df = df.drop_duplicates('filename').reset_index(drop=True)
+
+    # Same QC as Stage 1, on the same unit, so the two stages agree about which
+    # recordings exist at all. Without it Stage 2 would chunk the recordings
+    # Stage 1 threw away.
+    n_words = df.reference_text.map(lambda t: len(normalize_he(t).split()))
+    keep = (df.duration_s - n_words * SEC_PER_WORD) <= MAX_UNEXPLAINED_S
+    if not keep.all():
+        print(f'QC: dropping {(~keep).sum()} recording(s) with more than '
+              f'{MAX_UNEXPLAINED_S}s of audio the reference cannot account for')
+    return df[keep].reset_index(drop=True)
 
 # ---- materialize ----------------------------------------------------------
 # Gated VoxKnesset is needed for waveforms only.  `audio.path` == filename
@@ -179,8 +207,9 @@ def chunk_all(df, max_s=MAX_S):
     c['n_words']    = c.text.str.split().str.len()
     c['wpm']        = c.n_words / (c.duration_s / 60)
     # Keep every chunk regardless of `score` (see plan: filtering on alignment
-    # quality deletes the hard cases). wpm is model-independent, so it stays.
-    return c[c.wpm.between(*WPM_RANGE)].reset_index(drop=True)
+    # quality deletes the hard cases). Recording-level QC already ran in
+    # load_index; all that is left here is the interpolation-artifact guard.
+    return c[c.wpm <= MAX_CHUNK_WPM].reset_index(drop=True)
 
 # ---- split ----------------------------------------------------------------
 def make_splits(chunks, test_min, dev_min=15):
