@@ -53,8 +53,23 @@ train.train_cell(sp, 'audio/', 'runs/', speaker=11835, arm='B',
 
 `evaluate.like_for_like()` is a hard gate. Stage 1 measured **long-form** WER over whole
 recordings, so personal-test must be re-scored long-form with the base model and reproduce
-that speaker's Stage-1 `wer_B`. Comparing Stage-1 long-form against Stage-2 chunk-level WER
-would fail for reasons that have nothing to do with a bug.
+Stage 1 *on those same recordings*. Comparing Stage-1 long-form against Stage-2 chunk-level
+WER would fail for reasons that have nothing to do with a bug.
+
+The target is not the speaker's published `wer_B` — that covers all their recordings, and
+personal-test is only the latest sessions, so the two differ on set membership alone.
+`stage1_wer(index, filenames)` recomputes it over exactly the recordings being re-scored,
+off the dump's `model_transcription` column (which *is* Stage 1's arm-B output):
+
+```python
+test_files = sp[sp.part == 'test'].filename.unique()
+hyps = E.transcribe_long(model, proc, test_files, 'audio/')
+refs = idx.set_index('filename').reference_text.reindex(test_files)
+E.like_for_like(E.score(refs, hyps), idx, test_files)
+```
+
+What is left between the two numbers is runtime only — Stage 1 decoded through CTranslate2,
+this decodes through transformers — which is what `tol` absorbs.
 
 ## Deviations from the plan, and why
 
