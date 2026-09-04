@@ -25,12 +25,29 @@ SLOW_WPM          = 40            # generous; the corpus averages ~108
 SEC_PER_WORD      = 60 / SLOW_WPM
 MAX_UNEXPLAINED_S = 300
 
-# Chunk-level guard. NOT a speaking-rate filter: ~6 words/second is not humanly
-# plausible, so it flags spans where our own linear word-time interpolation
-# compressed too much text, not speech the model found hard. There is no lower
-# bound on purpose -- a 30 s chunk holding one word ("thank you", then a pause)
-# is legitimate speech, which is the case Stage 1 established.
-MAX_CHUNK_WPM = 350
+# Chunk-level guard. NOT a speaking-rate filter: it flags spans where our own
+# linear word-time interpolation compressed too much text, not speech the model
+# found hard. There is no lower bound on purpose -- a 30 s chunk holding one
+# word ("thank you", then a pause) is legitimate speech, which is the case
+# Stage 1 established.
+#
+# 250, not the 350 this started at. Over the 4-speaker panel's 17,998 chunks the
+# rate is p50 114, p99 181, max 340 -- so 350 removed nothing at all while
+# alignment fell off a cliff well below it:
+#
+#     <=150 wpm   16783 chunks (93.2%)   mean alignment 0.904
+#      >200 wpm      87 chunks ( 0.5%)   mean alignment 0.554
+#      >250 wpm      30 chunks ( 0.2%)   mean alignment 0.367
+#
+# One inspected case at 256 wpm carried a 128-word label over audio holding 69
+# words -- the reference slice was about twice too long for its window, which is
+# an interpolation artifact and not a fast speaker. 250 drops 0.17% of chunks.
+#
+# This does not contradict the never-filter-on-alignment rule below: that rule
+# protects audio the MODEL found hard, whereas this removes text the audio
+# cannot physically contain. The caveat is that chunk wpm derives from B's
+# timings, so it is less model-independent than Stage 1's recording-level wpm.
+MAX_CHUNK_WPM = 250
 SR = 16000
 REPO_B = 'Dolevabudi/voxknesset-whisper-large-v3-ct2-inference'
 

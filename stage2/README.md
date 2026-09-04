@@ -92,7 +92,11 @@ this decodes through transformers — which is what `tol` absorbs.
   large (speaker 11835 gets 39 min, not 15).
 - Alignment score is computed and stored but **never filtered on** — filtering it would
   delete exactly the hard cases and let arm B curate the test set both arms are judged on.
-  `wpm` (30–350) is model-independent, so that filter stays.
+  The chunk `wpm` cap stays, because it removes text the audio cannot physically contain
+  rather than audio the model found hard. It is **250**, not the 350 it started at: over
+  the panel's 17,998 chunks the rate is p50 114 / p99 181 / max 340, so 350 removed
+  nothing, while mean alignment falls from 0.904 (≤150 wpm) to 0.367 (>250 wpm). 250 drops
+  0.17% of chunks. There is no lower bound — one word in 30 s is ordinary plenum speech.
 
 ## Self-checks
 
