@@ -6,3 +6,4 @@ files_needed.csv
 __pycache__/
 outputs/
 runs/
+chunk_examples/
