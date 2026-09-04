@@ -29,6 +29,13 @@ SITES = {
     'all_linear':   r'.*\.(q_proj|k_proj|v_proj|out_proj|fc1|fc2)',
 }
 
+# D4's reference lr of 1e-3 is an ADAPTER learning rate. Applied to full
+# fine-tuning it is ~100x too high, and the failure is silent: the run completes
+# and reports a wrecked model rather than raising. ivrit-ai trained this very
+# checkpoint at 1e-5, so that is the full-FT default here. Passing lr explicitly
+# overrides these -- the optimization axis sweeps {3e-4, 1e-3, 3e-3} on adapters.
+DEFAULT_LR = {'lora': 1e-3, 'dora': 1e-3, 'ia3': 1e-3, 'full': 1e-5}
+
 
 class ChunkDataset(Dataset):
     """Chunks -> (log-mel features, label ids). Audio is sliced out of the
@@ -76,9 +83,22 @@ def cell_name(speaker, arm, site, method, budget, rank, lr, seed):
 
 
 def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
-               method='lora', budget=30, rank=8, lr=1e-3, seed=0,
+               method='lora', budget=30, rank=8, lr=None, seed=0,
                epochs=8, batch=8, grad_accum=1, timestamps=False):
-    """Train one cell. Returns the output dir; skips it if already finished."""
+    """Train one cell. Returns the output dir; skips it if already finished.
+
+    lr defaults per method (see DEFAULT_LR) because one value cannot serve both
+    adapters and full fine-tuning. Resolved before cell_name, so the directory
+    records the rate actually used.
+    """
+    if method not in DEFAULT_LR:
+        raise ValueError(f'unknown method {method}; expected one of '
+                         f'{sorted(DEFAULT_LR)}')
+    if site not in SITES:
+        raise ValueError(f'unknown site {site}; expected one of {sorted(SITES)}')
+    if lr is None:
+        lr = DEFAULT_LR[method]
+
     out = os.path.join(out_root, cell_name(speaker, arm, site, method,
                                            budget, rank, lr, seed))
     if os.path.exists(os.path.join(out, 'DONE')):
@@ -124,6 +144,15 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
         model.gradient_checkpointing_enable()
         model.enable_input_require_grads()       # else checkpointing yields no grads
 
+    # bf16 wherever the card has it (L4, A10G, A100 -- the plan's target VMs),
+    # fp16 only where it does not (T4, the PoC box). They are not
+    # interchangeable at this lr: fp16's narrow range is exactly where LoRA at
+    # 1e-3 trips the gradient scaler, and bf16 needs no scaler at all.
+    use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    use_fp16 = torch.cuda.is_available() and not use_bf16
+    print(f'precision: {"bf16" if use_bf16 else "fp16" if use_fp16 else "fp32 (cpu)"}'
+          f', lr {lr:g}, method {method}')
+
     args = Seq2SeqTrainingArguments(
         output_dir=out, per_device_train_batch_size=batch,
         gradient_accumulation_steps=grad_accum, learning_rate=lr,
@@ -131,7 +160,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
         eval_strategy='epoch', save_strategy='epoch', logging_steps=10,
         load_best_model_at_end=True, metric_for_best_model='eval_loss',
         greater_is_better=False, save_total_limit=3,
-        fp16=torch.cuda.is_available(), report_to=[], seed=seed,
+        bf16=use_bf16, fp16=use_fp16, report_to=[], seed=seed,
         remove_unused_columns=False, label_names=['labels'],
     )
     trainer = Seq2SeqTrainer(
