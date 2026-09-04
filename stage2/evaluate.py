@@ -127,17 +127,41 @@ def paired_bootstrap(base, tuned, n_boot=2000, seed=0):
                 p_wilcoxon=p_w, n_segments=len(w), n_words=int(w.sum()))
 
 
-def like_for_like(long_counts, stage1_wer_B, tol=0.02):
+def stage1_wer(index, filenames):
+    """Stage-1 arm-B long-form WER over EXACTLY these recordings.
+
+    The ct2 dump's `model_transcription` IS Stage 1's arm-B output, so the
+    Stage-1 number for any subset of recordings is recomputable from the index
+    and no Stage-1 artifact is needed. Restricting to the personal-test
+    recordings is what makes the gate below like-for-like: a speaker's
+    published wer_B covers ALL their recordings, most of which the gate never
+    re-scores, so comparing against it would fail on set difference alone.
+    """
+    want = set(filenames)
+    rows = index[index.filename.isin(want)]
+    missing = want - set(rows.filename)
+    assert not missing, f'{len(missing)} recording(s) absent from the index'
+    return wer(score(rows.reference_text.tolist(), rows.model_transcription.tolist()))
+
+
+def like_for_like(long_counts, index, filenames, tol=0.02):
     """Section 08 hard gate. Stage 1 measured LONG-form WER over whole
     recordings, so personal-test must be re-scored long-form with the base
-    model and reproduce that speaker's Stage-1 wer_B. Comparing Stage-1
+    model and reproduce Stage 1 ON THE SAME RECORDINGS. Comparing Stage-1
     long-form against Stage-2 chunk-level WER would fail for reasons that have
     nothing to do with a bug -- so this must pass before any tuned model is
     believed.
+
+    `long_counts` is score() over transcribe_long(..., filenames); the target
+    is recomputed from the index over that same file set. What is left between
+    the two is runtime only -- Stage 1 decoded through CTranslate2, this decodes
+    through transformers -- and that is what `tol` absorbs.
     """
+    target = stage1_wer(index, filenames)
     got = wer(long_counts)
-    ok = abs(got - stage1_wer_B) <= tol
-    print(f'like-for-like: stage1 {stage1_wer_B:.4f} vs long-form base {got:.4f} '
+    ok = abs(got - target) <= tol
+    print(f'like-for-like over {len(set(filenames))} recording(s): '
+          f'stage1 {target:.4f} vs long-form base {got:.4f} '
           f'-> {"OK" if ok else "FAIL"}')
     if not ok:
         raise AssertionError('chunking or normalization changed the metric; '
@@ -174,3 +198,23 @@ if __name__ == '__main__':
     assert abs(same['delta_abs']) < 1e-12 and same['p_boot'] > 0.9, same
     print(f"paired_bootstrap(): OK  (delta_rel {r['delta_rel']:.3f}, "
           f"p {r['p_boot']:.4f}; null p {same['p_boot']:.3f})")
+
+    # stage1_wer() must read its target off the SAME recordings the gate
+    # re-scores. Taking it from a speaker's whole corpus instead is the bug
+    # this exists to prevent, so the two must be visibly different here.
+    idx = pd.DataFrame({'filename': ['a.wav', 'b.wav', 'c.wav'],
+                        'reference_text': ['a b c d e'] * 3,
+                        'model_transcription': ['a x c d e', 'a x c d e',
+                                                'q q q q q']})
+    assert abs(stage1_wer(idx, ['a.wav', 'b.wav']) - 2 / 10) < 1e-12
+    assert abs(stage1_wer(idx, ['a.wav', 'b.wav', 'c.wav']) - 7 / 15) < 1e-12
+
+    lf = score(['a b c d e'] * 2, ['a x c d e'] * 2)      # a.wav + b.wav, rescored
+    assert abs(like_for_like(lf, idx, ['a.wav', 'b.wav']) - 0.2) < 1e-12
+    try:
+        like_for_like(lf, idx, ['a.wav', 'b.wav', 'c.wav'])   # wrong file set
+    except AssertionError:
+        pass
+    else:
+        raise SystemExit('like_for_like accepted a mismatched file set')
+    print('stage1_wer() / like_for_like(): OK')
