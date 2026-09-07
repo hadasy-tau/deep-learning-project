@@ -1,0 +1,11 @@
+cache/
+outputs/*.parquet
+outputs/parts/
+outputs/build_sessions.csv
+outputs/pilot_sessions.csv
+outputs/match_report_pilot.txt
+outputs/segments_pilot*.parquet
+outputs/holdout_words.parquet
+outputs/audio_check.parquet
+*.log
+__pycache__/
