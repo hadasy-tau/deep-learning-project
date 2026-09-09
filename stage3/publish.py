@@ -16,7 +16,7 @@ from roster import OUT, CACHE
 
 REPO   = 'Dolevabudi/knesset-committees-speakers'
 FILES  = ['segments.parquet', 'manifest.csv', 'mk_metadata.csv', 'mk_stints.csv', 'mk_name_variants.csv',
-          'alias_names.csv', 'alias_et.csv', 'match_report.txt', 'holdout_report.txt']
+          'alias_names.csv', 'alias_et.csv', 'build_sessions.csv', 'match_report.txt', 'holdout_report.txt']
 
 def write_token():
     t = os.environ.get('HF_TOKEN')
@@ -65,10 +65,13 @@ Two independent text sources had to agree before an id was written, and the pers
 had to hold a seat on the recording date (Knesset ODATA). Sessions with a Knesset
 Corpus protocol (through 2024-03-26) use text alignment between the corpus
 sentences and ivrit.ai's protocol text (`match_method = A`); later sessions use
-exact-string matching of the protocol's speaker line against seated MKs and an
-alias table learned from the aligned sessions (`B1`-`B3`). No fuzzy matching is
+exact-string matching of the protocol's speaker line against seated MKs (`B1`)
+or a pure, >=3-observation alias learned from the aligned sessions (`B2`); the
+editor's picker id is used only as a veto, never to assign. No fuzzy matching is
 used anywhere. Anything that did not pass is kept with `label = unresolved` and a
-`reason`; guests are `non_mk`; former MKs speaking as guests are `former_mk`.
+`reason`; guests are `non_mk`; former MKs speaking as guests are `former_mk`,
+unless the roster says they had died or were past 95 on the day -- then
+`unresolved` with `reason = deceased` / `implausible_age`.
 
 ## Contents
 
@@ -81,14 +84,16 @@ sessions {df.session_date.min()} to {df.session_date.max()}.
 
 Columns: `filename, speaker_id, session, start, end, duration_s, reference_text, quality,
 label, label_path, match_method, reason, raw_name, local_speaker_id, et_id,
-gold_speaker_id, knesset, committee_name, session_date, speaker_name, gender (0 f / 1 m),
+gold_speaker_id, is_chairman, knesset, committee_name, session_date, speaker_name, gender (0 f / 1 m),
 age, date_of_birth, place_of_birth, year_of_aliya, religion, nationality,
 religious_orientation`. `quality` is the median word alignment probability; it is
 stored, not filtered on.
 
 Side tables: `manifest.csv` (one row per session directory), `mk_metadata.csv`,
 `mk_stints.csv`, `mk_name_variants.csv`, `alias_names.csv`, `alias_et.csv`,
-`match_report.txt`, `holdout_report.txt`.
+`build_sessions.csv` (per-session placement, verification and any error -- the
+record of which sessions were excluded and why), `match_report.txt`,
+`holdout_report.txt`.
 
 ## Sources and licence
 

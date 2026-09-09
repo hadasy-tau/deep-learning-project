@@ -65,7 +65,10 @@ def cut(run):
         cur.append(w)
     if cur:
         pieces.append(cur)
-    return [p for p in pieces if p[-1]['t1'] - p[0]['t0'] >= MIN_S]
+    # >= MIN_S drops fragments; <= MAX_S drops the single word the aligner timed
+    # across a silence (118 s for one word in the full build).  cut() cannot split
+    # a word, so the only correct action is to drop it.
+    return [p for p in pieces if MIN_S <= p[-1]['t1'] - p[0]['t0'] <= MAX_S]
 
 def demographics(pid, roster, date):
     """From the K20-25 roster, else the corpus roster (former MKs)."""
@@ -88,15 +91,60 @@ def rows_for(session, rs, roster, label_path):
     for r in rs:
         for p in cut(r):
             t0, t1 = p[0]['t0'], p[-1]['t1']; pid = r['person_id']
+            text = ''.join(w['word'] for w in p).strip()
+            if not text:                              # whitespace-only words
+                continue
             out.append(dict(filename=f'{pid}_{sid}_{int(round(t0*1000))}_{int(round(t1*1000))}.wav',
                             speaker_id=pid, session=sid, start=t0, end=t1, duration_s=round(t1 - t0, 3),
-                            reference_text=''.join(w['word'] for w in p).strip(), quality=round(quality(p), 4),
+                            reference_text=text, quality=round(quality(p), 4),
                             label=r['label'], label_path=label_path, match_method=r['method'], reason=r['reason'],
                             raw_name=r['raw_name'], local_speaker_id=r['local_speaker_id'], et_id=r['et_id'],
                             gold_speaker_id=r['gold_id'], seg=r['seg'],
                             knesset=int(m['knesset_num']), committee_name=m['committee_name'], session_date=date,
                             **demographics(pid, roster, date) if pid else dict(speaker_name=None, age=None, **{c: None for c in DEMO})))
     return out
+
+def _demote(df, mask, reason):
+    """Turn identified rows into unresolved ones: reason set, identity fields
+    cleared, filename re-keyed to speaker 0."""
+    if not mask.any():
+        return df
+    df.loc[mask, 'label'] = 'unresolved'
+    df.loc[mask, 'reason'] = reason[mask] if hasattr(reason, '__len__') else reason
+    df.loc[mask, 'match_method'] = ''
+    df.loc[mask, 'speaker_id'] = 0
+    for c in ['speaker_name', 'age'] + DEMO:
+        df.loc[mask, c] = None
+    df.loc[mask, 'filename'] = [f'0_{s}_{int(round(a*1000))}_{int(round(b*1000))}.wav'
+                                for s, a, b in zip(df.loc[mask, 'session'], df.loc[mask, 'start'], df.loc[mask, 'end'])]
+    return df
+
+def finalize(df, roster, alias_et=None):
+    """Invariants enforced on the assembled index, whatever the parts hold:
+      * no piece over MAX_S, no empty text;
+      * no former_mk who was dead or past MAX_AGE on the day;
+      * no Path-B row whose editor id is a pure, usable alias for somebody else
+        (label.py applies this veto per word; here it is re-applied against the
+        final table so the index and alias_et.csv can never disagree).
+    Returns (df, dropped, demoted)."""
+    from label import implausible
+    n0 = len(df)
+    df = df[(df.duration_s <= MAX_S + 1e-6) & (df.reference_text.str.len() > 0)].copy()
+    fm = (df.label == 'former_mk').to_numpy()
+    why = {(int(p), d): implausible(roster, int(p), d)
+           for p, d in df.loc[fm, ['speaker_id', 'session_date']].drop_duplicates().itertuples(index=False)}
+    reason = pd.Series([why.get((int(p), d)) if f else None
+                        for p, d, f in zip(df.speaker_id, df.session_date, fm)], index=df.index, dtype=object)
+    demoted = reason.notna().to_numpy()
+    df = _demote(df, demoted, reason)
+    if alias_et is not None and len(alias_et):
+        ae = alias_et[alias_et.usable.astype(bool)].drop_duplicates('key').set_index('key').person_id
+        b = ((df.label == 'mk') & (df.label_path == 'B') & df.et_id.notna()).to_numpy()
+        mapped = df.loc[b, 'et_id'].astype(int).map(ae)
+        veto = pd.Series(False, index=df.index); veto[b] = (mapped.notna() & (mapped != df.loc[b, 'speaker_id'])).to_numpy()
+        df = _demote(df, veto.to_numpy(), 'et_conflict')
+        demoted = demoted | veto.to_numpy()
+    return coerce(df), n0 - len(df), int(demoted.sum())
 
 def process(session_id, manifest_row, roster, aliases=None, keep=False):
     """Label one session end to end.  Returns (rows, alias_pairs, stats)."""
@@ -112,6 +160,10 @@ def process(session_id, manifest_row, roster, aliases=None, keep=False):
         label_words(words, s, roster, placed=None, aliases=aliases)
     rs = runs(words)
     rows = rows_for(s, rs, roster, manifest_row.label_path)
+    if words and not rows:
+        # thousands of words but no piece survived: every word timed 0 s, so
+        # nothing reaches MIN_S.  Recorded as a failure, not a silent absence.
+        raise ValueError(f'produced 0 pieces from {len(words)} words')
     pairs = dict(names=[], et=[])
     if manifest_row.label_path == 'A':
         from names import clean

@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from roster import OUT
 from names import build_alias
 from label import Roster
-from segments import process, coerce
+from segments import process, coerce, add_is_chairman, finalize
 
 # 12 workers × 9 hub calls per session drew HTTP 429s within two batches; the small
 # files now go over resolve/main (5 calls per session) and the pool is smaller.
@@ -45,7 +45,12 @@ def run_path(path, session_ids, roster, man, aliases=None):
             if os.path.exists(ap):
                 a = pd.read_csv(ap)
                 pairs['names'] += list(a[a.kind == 'name'][['key', 'person_id']].itertuples(index=False, name=None))
-                pairs['et'] += list(a[a.kind == 'et'][['key', 'person_id']].itertuples(index=False, name=None))
+                # the alias CSV holds names and editor ids in one key column, so ids
+                # read back as strings; fresh batches add ints.  Without the cast the
+                # full build split 133 editor ids into two keys each and 55 of them
+                # lost `usable`, leaving Path B's veto blind on those ids.
+                e = a[a.kind == 'et']
+                pairs['et'] += list(zip(e.key.astype(int), e.person_id.astype(int)))
             done_rows += int(st.rows.fillna(0).sum())
             print(f'  [{path} {bi:04d}] resumed', flush=True)
             continue
@@ -76,15 +81,98 @@ def run_path(path, session_ids, roster, man, aliases=None):
               f'{el/60:.1f} min, eta {el/fresh*(len(session_ids)-n)/60:.0f} min', flush=True)
     return pairs, pd.concat(stats, ignore_index=True) if stats else pd.DataFrame()
 
-def assemble():
+def assemble(roster):
     parts = sorted(f for f in os.listdir(PARTS) if f.endswith('.parquet'))
     df = pd.concat([pd.read_parquet(os.path.join(PARTS, f)) for f in parts], ignore_index=True)
+    ae = os.path.join(OUT, 'alias_et.csv')
+    df, dropped, demoted = finalize(df, roster, pd.read_csv(ae) if os.path.exists(ae) else None)
+    df = add_is_chairman(df)             # a pure function of raw_name, so applied once here
+    assert df.filename.is_unique, 'duplicate filename across parts'
     df.to_parquet(os.path.join(OUT, 'segments.parquet'), index=False)
+    print(f'assembled {len(df):,} rows from {len(parts)} parts; finalize dropped {dropped}, demoted {demoted} former_mk', flush=True)
     return df
+
+def mark_zero_row_sessions():
+    """A session that ran without error but produced no rows is a data failure
+    (every word timed at 0 s), and must be recorded as one so the coverage
+    invariant complete - failed == present holds.  Idempotent."""
+    sp = os.path.join(OUT, 'build_sessions.csv'); st = pd.read_csv(sp)
+    z = st.error.isna() & (st.rows.fillna(0) == 0) & (st.words.fillna(0) > 0)
+    st.loc[z, 'error'] = ["ValueError('produced 0 pieces from %d words')" % w for w in st.loc[z, 'words'].astype(int)]
+    st.to_csv(sp, index=False)
+    return int(z.sum())
+
+def finish(roster):
+    """Assemble, reconcile the session log, write the report."""
+    df = assemble(roster)
+    n = mark_zero_row_sessions()
+    if n: print(f'marked {n} zero-row sessions as failures', flush=True)
+    st = pd.read_csv(os.path.join(OUT, 'build_sessions.csv'))
+    aliases = {k: pd.read_csv(os.path.join(OUT, f'alias_{k}.csv')) for k in ('names', 'et')}
+    from run_pilot import report
+    rep = report(df, st, aliases)
+    open(os.path.join(OUT, 'match_report.txt'), 'w', encoding='utf-8').write(rep)
+    print('\n' + rep); print(f'rows {len(df):,}')
+    return df
+
+# A session that failed because the hub rate-limited us holds perfectly good data;
+# one whose char map does not place its own text does not.  Only the first kind is
+# worth another attempt.
+TRANSIENT = r'HTTPError|ConnectionError|Timeout|RemoteDisconnected|IncompleteRead|ChunkedEncoding'
+
+def retry_failed(roster, man, aliases=None):
+    """Re-process sessions that failed transiently on an earlier run.
+
+    Batch resume keys on the part file existing, and those batches did complete --
+    the failures were individual sessions inside them -- so a plain re-run skips
+    these forever.  They get their own part file instead, which assemble() picks
+    up like any other.  Returns (rows recovered, alias pairs from them)."""
+    sp = os.path.join(OUT, 'build_sessions.csv')
+    if not os.path.exists(sp):
+        print('no build_sessions.csv; nothing to retry'); return 0, dict(names=[], et=[])
+    st = pd.read_csv(sp)
+    bad = st[st.error.notna() & st.error.str.contains(TRANSIENT, na=False, regex=True)]
+    hard = st[st.error.notna()].shape[0] - len(bad)
+    print(f'{len(bad)} transient failures to retry ({hard} data failures left alone)', flush=True)
+    if bad.empty:
+        return 0, dict(names=[], et=[])
+    rows, newstats, pairs = [], [], dict(names=[], et=[])
+    with ThreadPoolExecutor(WORKERS) as ex:
+        futs = {ex.submit(process, int(sid), man.loc[int(sid)], roster, aliases, False): int(sid)
+                for sid in bad.session_id}
+        for f in as_completed(futs):
+            sid = futs[f]
+            try:
+                r, p, s = f.result()
+            except Exception as e:
+                newstats.append(dict(session_id=sid, path=man.loc[sid].label_path, error=repr(e)[:200]))
+                print(f'  {sid}: still failing -- {repr(e)[:90]}', flush=True); continue
+            rows += r; newstats.append(s)
+            pairs['names'] += p['names']; pairs['et'] += p['et']
+    if rows:
+        coerce(pd.DataFrame(rows)).to_parquet(os.path.join(PARTS, 'retry.parquet'), index=False)
+    ns = pd.DataFrame(newstats)
+    keep = st[~st.session_id.isin(ns.session_id)]
+    pd.concat([keep, ns], ignore_index=True).sort_values('session_id').to_csv(sp, index=False)
+    ok = ns.error.isna().sum() if 'error' in ns else len(ns)
+    print(f'recovered {ok}/{len(bad)} sessions, {len(rows):,} rows', flush=True)
+    return len(rows), pairs
 
 if __name__ == '__main__':
     R = Roster()
     man = pd.read_csv(os.path.join(OUT, 'manifest.csv')).set_index('session_id')
+
+    if '--retry-failed' in sys.argv:
+        al = {k: pd.read_csv(os.path.join(OUT, f'alias_{k}.csv'))
+              for k in ('names', 'et') if os.path.exists(os.path.join(OUT, f'alias_{k}.csv'))}
+        n, pairs = retry_failed(R, man, al or None)
+        if n:
+            finish(R)
+        sys.exit(0)
+
+    if '--assemble' in sys.argv:          # re-run finalize + report over existing parts
+        finish(R); sys.exit(0)
+
     a_ids = sorted(man[man.label_path == 'A'].index)
     b_ids = sorted(man[man.label_path == 'B'].index)
     print(f'Path A: {len(a_ids):,} sessions   Path B: {len(b_ids):,} sessions', flush=True)
@@ -99,11 +187,6 @@ if __name__ == '__main__':
     _, stb = run_path('B', b_ids, R, man, aliases)
     st = pd.concat([sta, stb], ignore_index=True)
     st.to_csv(os.path.join(OUT, 'build_sessions.csv'), index=False)
-    df = assemble()
-
-    from run_pilot import report
-    rep = report(df, st, aliases)
-    open(os.path.join(OUT, 'match_report.txt'), 'w', encoding='utf-8').write(rep)
-    print('\n' + rep)
-    err = st.error.notna().sum() if 'error' in st else 0
-    print(f'sessions attempted {len(st):,}, failed {err}, rows {len(df):,}')
+    df = finish(R)
+    st = pd.read_csv(os.path.join(OUT, 'build_sessions.csv'))
+    print(f'sessions attempted {len(st):,}, failed {int(st.error.notna().sum())}, rows {len(df):,}')
