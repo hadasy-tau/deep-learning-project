@@ -20,14 +20,18 @@ speaker change.  Fine for a training corpus, fatal for per-speaker measurement.
 Here the turn boundary is a hard wall.
 
 Facts that shape this file (all measured 2026-09-08 against the live data):
-  * The index is 5,158,763 rows.  Assigned rows (`speaker_id > 0`, i.e. label in
-    {mk, former_mk}) are 2,295,972 / 3,397 h / 339 speakers / 10,889 sessions.
+  * Pinned to index revision 56b19714 (2026-09-09).  The index is actively
+    maintained -- a read four hours earlier had 4,361 fewer rows and 9 more
+    speakers -- so every read goes through `index_revision()` and a build cannot
+    straddle two revisions.
+  * The index is 5,163,124 rows.  Assigned rows (`speaker_id > 0`, i.e. label in
+    {mk, former_mk}) are 2,297,627 / 3,398 h / 330 speakers / 10,905 sessions.
   * A turn is a maximal run of one speaker -- same session, same
     `local_speaker_id`, same `speaker_id` -- and it MUST be derived over all
     rows.  An unresolved guest speaking between two of X's segments breaks X's
     turn; deriving runs from the assigned subset alone merges across them.
-  * 935,366 assigned runs -> ~1,190,302 chunks, ~4,109 h of emitted audio, over
-    339 speakers and 10,889 sessions.  No run holds two speakers (checked).
+  * 936,406 assigned runs -> ~1,191,395 chunks, ~4,111 h of emitted audio, over
+    330 speakers and 10,905 sessions.  No run holds two speakers (checked).
   * Segment durations are already within [1.0, 30.0] s, with exactly one
     exception among assigned rows (117.96 s at quality 0.0).  Nothing here needs
     to split a segment; the one outlier is skipped rather than truncated.
@@ -73,6 +77,7 @@ M4A_DIR = os.path.join(CACHE, 'm4a')
 
 INDEX_REPO = 'Dolevabudi/knesset-committees-speakers'
 AUDIO_REPO = 'ivrit-ai/knesset-committees'
+CHUNKS_REPO = 'Hadasy/knesset-committees-chunks'   # where a streaming build ships to
 
 SR = 16000                 # Whisper's input rate; the only rate this module emits
 MAX_S = 30.0               # Whisper's window, and ivrit.ai's slice_length
@@ -155,12 +160,26 @@ def coerce(df):
 
 
 # ---- the index ------------------------------------------------------------
+def index_revision():
+    """Pin the index to one revision for the life of a build.
+
+    The index is actively maintained: between two reads on 2026-09-09 it gained
+    4,361 rows, gained 16 sessions and LOST 9 speakers whose identity was
+    withdrawn.  A full build runs for ~40 h, so without a pin the shards written
+    at hour 2 and hour 30 would describe different corpora.  Resolved once and
+    cached; delete cache/index_revision.json to move to the current revision.
+    """
+    from huggingface_hub import HfApi
+    return _cached('index_revision.json',
+                   lambda: HfApi(token=get_token()).repo_info(INDEX_REPO, repo_type='dataset').sha)
+
+
 def index_path():
     """The published index, downloaded once (520 MB) and cached by huggingface_hub.
     Reading it locally beats streaming: the file has only 5 row groups, so a
     per-session `filters=` read would pull a ~100 MB row group each time."""
     return hf_hub_download(INDEX_REPO, 'segments.parquet', repo_type='dataset',
-                           token=get_token())
+                           revision=index_revision(), token=get_token())
 
 
 def load_index(columns=None, with_text=False):
@@ -264,9 +283,10 @@ def slice_turn(segs, max_s=MAX_S):
     hi = segs[-1]['end']
     out, i, seek = [], 0, segs[0]['start']
     while i < len(segs) and seek < hi:
-        # A segment longer than a whole window can never be packed.  Measured:
-        # exactly one assigned segment in the corpus needs this (117.96 s, at
-        # quality 0.0), so it is a live path -- rare, but not dead code.
+        # A segment longer than a whole window can never be packed.  No assigned
+        # segment in the pinned revision needs this -- an earlier one had a
+        # single 117.96 s segment at quality 0.0 -- so keep the guard: it is the
+        # difference between skipping such a segment and truncating it.
         if segs[i]['end'] - segs[i]['start'] > max_s:
             i += 1
             seek = segs[i]['start'] if i < len(segs) else hi
@@ -652,6 +672,127 @@ def _flush(buf, out_dir, shard):
     return path
 
 
+# ---- streaming build: upload each shard, then drop it ---------------------
+# The full corpus is ~259 GB of FLAC (4,109 emitted hours at 63 MB/h), which does
+# not fit on a machine with 168 GB free.  Building straight to the Hub keeps
+# local use flat at roughly one shard plus the sessions in flight, and puts the
+# corpus where Colab can stream it anyway.
+def hf_write_token():
+    """Uploads need a write-scoped token; reads do not.  Env first, so a
+    read-only cached login cannot silently fail halfway through a long run."""
+    return os.environ.get('HF_TOKEN') or get_token()
+
+
+def _ledger_path():
+    return os.path.join(OUT, 'uploaded.json')
+
+
+def uploaded_sessions():
+    """Sessions already shipped.  This is the resume token for a streaming
+    build: the part files it would otherwise check have been deleted."""
+    p = _ledger_path()
+    return set(json.load(open(p, encoding='utf-8'))) if os.path.exists(p) else set()
+
+
+def _mark_uploaded(ids):
+    os.makedirs(OUT, exist_ok=True)
+    done = uploaded_sessions() | {int(i) for i in ids}
+    json.dump(sorted(done), open(_ledger_path(), 'w', encoding='utf-8'))
+
+
+def flush_shard(repo, shard_idx, sessions, private=True):
+    """Concatenate the pending parts into one shard, upload it, delete them."""
+    from huggingface_hub import HfApi, create_repo
+    paths = [os.path.join(PARTS, f'{s}.parquet') for s in sessions]
+    paths = [p for p in paths if os.path.exists(p)]
+    if not paths:
+        return None
+    shard = os.path.join(PARTS, f'chunks-{shard_idx:05d}.parquet')
+    pd.concat([pd.read_parquet(p) for p in paths], ignore_index=True).to_parquet(shard, index=False)
+
+    token = hf_write_token()
+    create_repo(repo, repo_type='dataset', private=private, exist_ok=True, token=token)
+    HfApi(token=token).upload_file(path_or_fileobj=shard, repo_id=repo, repo_type='dataset',
+                                   path_in_repo=f'data/chunks-{shard_idx:05d}.parquet')
+    mb = os.path.getsize(shard) / 1e6
+    # Only after the upload returns: a failed upload must leave the parts in
+    # place so the next run rebuilds nothing and simply retries the shard.
+    _mark_uploaded(sessions)
+    for p in paths + [shard]:
+        os.remove(p)
+    print(f'  shard {shard_idx:05d}: {len(paths)} sessions, {mb:,.0f} MB uploaded, parts dropped',
+          flush=True)
+    return mb
+
+
+def next_shard_index(repo):
+    """Continue the numbering already on the Hub, so a resumed run cannot
+    overwrite a shard it pushed before being interrupted."""
+    from huggingface_hub import HfApi
+    try:
+        files = HfApi(token=hf_write_token()).list_repo_files(repo, repo_type='dataset')
+    except Exception:
+        return 0                      # repo does not exist yet
+    idx = [int(f.split('-')[-1].split('.')[0]) for f in files
+           if f.startswith('data/chunks-') and f.endswith('.parquet')]
+    return max(idx) + 1 if idx else 0
+
+
+def stream_build(turns_df, repo=CHUNKS_REPO, sessions=None, workers=WORKERS,
+                 shard_mb=500, private=True):
+    """Build the whole corpus without ever holding it on disk.
+
+    Sessions are built exactly as in `build`, but once the pending parts reach
+    `shard_mb` they are concatenated, pushed to `repo`, and deleted.  Peak local
+    use is one shard plus `workers` in-flight m4a.  Resume is the uploaded
+    ledger, so an interrupted run re-fetches at most the sessions of the shard
+    that had not yet been pushed.
+    """
+    os.makedirs(PARTS, exist_ok=True)
+    by_session = {int(s): g for s, g in turns_df.groupby('session', sort=True)}
+    todo = sorted(by_session) if sessions is None else [int(s) for s in sessions]
+    done = uploaded_sessions()
+    todo = [s for s in todo if s not in done]
+    print(f'{len(todo):,} sessions to build ({len(done):,} already uploaded)', flush=True)
+
+    shard_idx = next_shard_index(repo)
+    stats, pending, pending_mb, t0, fresh = [], [], 0.0, time.time(), 0
+    for k in range(0, len(todo), workers * 4):
+        batch = todo[k:k + workers * 4]
+        with ThreadPoolExecutor(workers) as ex:
+            futs = {ex.submit(build_session, s, by_session[s]): s for s in batch}
+            for f in as_completed(futs):
+                sid = futs[f]
+                try:
+                    df, st = f.result()
+                except Exception as e:
+                    stats.append({'session': sid, 'error': repr(e)[:200]})
+                    print(f'  [{sid}] FAILED {repr(e)[:120]}', flush=True)
+                    continue
+                pp = os.path.join(PARTS, f'{sid}.parquet')
+                df.to_parquet(pp, index=False)
+                json.dump(st, open(os.path.join(PARTS, f'{sid}_stats.json'), 'w', encoding='utf-8'))
+                stats.append(st)
+                pending.append(sid)
+                pending_mb += os.path.getsize(pp) / 1e6
+                fresh += 1
+        if pending_mb >= shard_mb:
+            flush_shard(repo, shard_idx, pending, private=private)
+            shard_idx += 1
+            pending, pending_mb = [], 0.0
+        el = time.time() - t0
+        n = min(k + len(batch), len(todo))
+        eta = el / max(fresh, 1) * (len(todo) - n) / 3600
+        print(f'  {n}/{len(todo)} sessions, {sum(s.get("n_chunks") or 0 for s in stats):,} chunks, '
+              f'{el/3600:.1f} h elapsed, eta {eta:.1f} h', flush=True)
+
+    if pending:
+        flush_shard(repo, shard_idx, pending, private=private)
+    sdf = pd.DataFrame(stats)
+    sdf.to_csv(os.path.join(OUT, 'build_sessions.csv'), index=False)
+    return sdf
+
+
 def verify_session(session, turns_df, n=3, out_dir=None):
     """Cut n chunks and write them where they can be listened to.
 
@@ -772,22 +913,20 @@ def _check_index(fetch=False):
             return None
         print('  downloading the index (520 MB) ...', flush=True)
         index_path()
+    # Pinned to revision 56b19714 of the index (2026-09-09 18:21 UTC).  An
+    # earlier revision had 5,158,763 rows, 339 speakers and one 117.96 s
+    # segment; that outlier is gone and 9 speakers were withdrawn.  If these
+    # fail, the pin moved -- re-measure before trusting anything downstream.
     df = add_turns(load_index())
-    assert len(df) == 5_158_763, len(df)
+    assert len(df) == 5_163_124, len(df)
     a = assigned(df)
-    assert len(a) == 2_295_972, len(a)
-    assert a.speaker_id.nunique() == 339, a.speaker_id.nunique()
-    assert a.session.nunique() == 10_889, a.session.nunique()
-    assert a.turn.nunique() == 935_366, a.turn.nunique()
-    assert abs(a.duration_s.sum() / 3600 - 3397) < 2
+    assert len(a) == 2_297_627, len(a)
+    assert a.speaker_id.nunique() == 330, a.speaker_id.nunique()
+    assert a.session.nunique() == 10_905, a.session.nunique()
+    assert a.turn.nunique() == 936_406, a.turn.nunique()
+    assert abs(a.duration_s.sum() / 3600 - 3398) < 2
     assert a.duration_s.min() >= MIN_S - 1e-9, a.duration_s.min()
-    # Exactly one assigned segment in 2,295,972 breaks the 30 s ceiling: speaker
-    # 30118 in session 2193222, 117.96 s, quality 0.0 -- an alignment that scored
-    # nothing.  slice_turn skips any segment too long to fit a window, so it is
-    # handled rather than truncated, but it is a live path and not a guard.
-    over = a[a.duration_s > MAX_S]
-    assert len(over) == 1 and over.iloc[0].quality == 0.0, over[['session', 'duration_s', 'quality']]
-    assert a[a.quality >= 0.7].duration_s.max() <= MAX_S + 1e-9
+    assert a.duration_s.max() <= MAX_S + 1e-9, a.duration_s.max()
 
     # The guarantee the whole module exists for: no run holds two speakers.
     g = a.groupby('turn', sort=False).speaker_id
