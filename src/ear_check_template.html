@@ -1,0 +1,424 @@
+<title>Committees Ear Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap">
+
+<style>
+  :root {
+    --ground:      #eef2f3;
+    --surface:     #ffffff;
+    --surface-2:   #e4eaec;
+    --ink:         #131e23;
+    --ink-2:       #43575f;
+    --ink-3:       #6e848d;
+    --rule:        #d0dade;
+    --rule-strong: #b0c1c6;
+    --accent:      #0d6a72;
+    --accent-2:    #0a4f56;
+    --accent-wash: #d9ecee;
+    --warn:        #8a5a12;
+    --warn-wash:   #f6ebd8;
+    --flag:        #9a3d2c;
+    --flag-wash:   #f7e2dd;
+
+    --serif: "IBM Plex Serif", Georgia, serif;
+    --sans:  "IBM Plex Sans", "IBM Plex Sans Hebrew", -apple-system, "Segoe UI", sans-serif;
+    --he:    "IBM Plex Sans Hebrew", "IBM Plex Sans", "Segoe UI", sans-serif;
+    --mono:  "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0b1216; --surface: #121d22; --surface-2: #1a282e;
+      --ink: #e2ebee; --ink-2: #a9bec5; --ink-3: #7e959d;
+      --rule: #253840; --rule-strong: #3a5159;
+      --accent: #4fb8c0; --accent-2: #86d6dc; --accent-wash: #103539;
+      --warn: #d3a052; --warn-wash: #322510;
+      --flag: #e2907c; --flag-wash: #3a1e18;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0b1216; --surface: #121d22; --surface-2: #1a282e;
+    --ink: #e2ebee; --ink-2: #a9bec5; --ink-3: #7e959d;
+    --rule: #253840; --rule-strong: #3a5159;
+    --accent: #4fb8c0; --accent-2: #86d6dc; --accent-wash: #103539;
+    --warn: #d3a052; --warn-wash: #322510;
+    --flag: #e2907c; --flag-wash: #3a1e18;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 22px 80px; }
+
+  /* ---- header ---- */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--ground);
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 20px 0 14px;
+  }
+  .titleline { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  h1 { font-family: var(--serif); font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .save { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+  .save.warn { color: var(--warn); }
+
+  .meters { display: flex; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 12px; flex-wrap: wrap; }
+  .meter { background: var(--surface); padding: 9px 14px; flex: 1 1 130px; }
+  .meter dt { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .meter dd { margin: 2px 0 0; font-family: var(--serif); font-size: 21px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .meter dd.bad { color: var(--flag); }
+  .meter dd.good { color: var(--accent); }
+
+  .bar { height: 5px; background: var(--surface-2); margin-top: 12px; display: flex; }
+  .bar i { display: block; height: 100%; }
+  .bar .ok { background: var(--accent); }
+  .bar .unsure { background: var(--warn); }
+  .bar .bad { background: var(--flag); }
+
+  /* ---- intro ---- */
+  .intro { padding: 24px 0 4px; max-width: 68ch; }
+  .intro p { margin: 0 0 11px; color: var(--ink-2); }
+  .intro strong { color: var(--ink); }
+  kbd {
+    font-family: var(--mono); font-size: 11px; background: var(--surface-2);
+    border: 1px solid var(--rule-strong); border-bottom-width: 2px;
+    border-radius: 3px; padding: 1px 5px;
+  }
+
+  /* ---- session groups ---- */
+  .sess { margin-top: 26px; }
+  .sesshead {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    padding: 0 0 7px; border-bottom: 1px solid var(--rule-strong);
+  }
+  .sessid { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+  .sessmeta { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+  .chip {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 2px; background: var(--warn-wash); color: var(--warn);
+  }
+  .chip.done { background: var(--accent-wash); color: var(--accent-2); }
+
+  /* ---- clip rows ---- */
+  .row {
+    display: grid; grid-template-columns: 210px 1fr; gap: 16px;
+    background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--rule-strong);
+    padding: 13px 15px; margin-top: 8px; align-items: start;
+  }
+  .row[data-v="ok"]     { border-left-color: var(--accent); }
+  .row[data-v="unsure"] { border-left-color: var(--warn); }
+  .row[data-v="bad"]    { border-left-color: var(--flag); background: var(--flag-wash); }
+
+  .play {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12.5px;
+    background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 3px;
+    padding: 6px 12px; cursor: pointer; width: 100%;
+  }
+  .play:hover { border-color: var(--accent); }
+  .play[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .play .tri { font-size: 11px; }
+
+  .cmeta { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); margin-top: 7px; line-height: 1.75; }
+  .cmeta b { color: var(--ink-2); font-weight: 500; }
+  .qdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; vertical-align: 1px; margin-right: 5px; }
+
+  .txt {
+    font-family: var(--he); direction: rtl; text-align: right;
+    font-size: 16px; line-height: 1.75;
+  }
+  .who { font-family: var(--he); direction: rtl; text-align: right; font-size: 12.5px; color: var(--ink-3); margin-bottom: 5px; }
+
+  .verdicts { display: flex; gap: 6px; margin-top: 11px; flex-wrap: wrap; }
+  .verdicts button {
+    font-family: var(--sans); font-size: 12.5px; font-weight: 500;
+    background: transparent; color: var(--ink-2);
+    border: 1px solid var(--rule-strong); border-radius: 3px;
+    padding: 5px 12px; cursor: pointer;
+  }
+  .verdicts button:hover { border-color: var(--ink-3); color: var(--ink); }
+  .verdicts button[aria-pressed="true"] { color: var(--surface); }
+  .verdicts button.ok[aria-pressed="true"]     { background: var(--accent); border-color: var(--accent); }
+  .verdicts button.unsure[aria-pressed="true"] { background: var(--warn);   border-color: var(--warn); }
+  .verdicts button.bad[aria-pressed="true"]    { background: var(--flag);   border-color: var(--flag); }
+
+  button:focus-visible, .play:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--ink-3); max-width: 72ch; }
+
+  @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="titleline">
+      <h1>Ear check — committees chunks</h1>
+      <span class="save" id="save">verdicts saved for everyone</span>
+    </div>
+    <dl class="meters">
+      <div class="meter"><dt>Judged</dt><dd id="m-judged">0 / 0</dd></div>
+      <div class="meter"><dt>Matches</dt><dd class="good" id="m-ok">0</dd></div>
+      <div class="meter"><dt>Mismatches</dt><dd class="bad" id="m-bad">0</dd></div>
+      <div class="meter"><dt>Sessions cleared</dt><dd id="m-sess">0 / 0</dd></div>
+    </dl>
+    <div class="bar" id="bar"><i class="ok" style="width:0"></i><i class="unsure" style="width:0"></i><i class="bad" style="width:0"></i></div>
+  </header>
+
+  <div class="intro">
+    <p>
+      35 chunks from the 20 pilot sessions, two per session where there were two — one from near
+      the start and one from near the end, because a constant timing offset shows in either but
+      <strong>drift only shows by comparing them</strong>.
+    </p>
+    <p>
+      Play each clip and decide one thing: <strong>do the words you hear match the text beside
+      it?</strong> You are not judging transcription quality or whether the protocol is verbatim —
+      only whether the audio was cut from the right place. A chunk of fluent Hebrew that has nothing
+      to do with its text means the m4a and the alignment disagree about where zero is, and that is
+      invisible to every automated check in the pipeline.
+    </p>
+    <p>
+      Clips were picked at quality ≥ 0.5 so a mismatch means a timing fault rather than an alignment
+      the score already flags. Verdicts save as you go and are shared with anyone who opens this page.
+    </p>
+  </div>
+
+  <div id="list"></div>
+
+  <footer>
+    Built from the 20-session pilot of <code>src/preprocessing.py</code>, 9 September 2026.
+    Audio is lossless FLAC, 16 kHz mono, cut by sample index from each session's <code>audio.m4a</code>.
+  </footer>
+</div>
+
+<script id="clipdata" type="application/json">__DATA__</script>
+<script>
+(function () {
+  var DATA = JSON.parse(document.getElementById('clipdata').textContent);
+  var clips = DATA.clips, sessions = DATA.sessions;
+  var sessById = {};
+  sessions.forEach(function (s) { sessById[s.session] = s; });
+
+  var verdicts = {};                 // chunk id (no extension) -> 'ok' | 'unsure' | 'bad'
+  var db = null;
+  var LS = 'earcheck.verdicts';
+
+  function key(id) { return id.replace(/\.flac$/, ''); }
+
+  // ---- local fallback, used until db answers and if it never does -------
+  function loadLocal() {
+    try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) { return {}; }
+  }
+  function saveLocal() {
+    try { localStorage.setItem(LS, JSON.stringify(verdicts)); } catch (e) { /* private window */ }
+  }
+
+  // ---- one audio element: an ear check wants one clip at a time --------
+  var audio = new Audio();
+  var playingId = null;
+  audio.addEventListener('ended', function () { setPlaying(null); });
+  audio.addEventListener('pause', function () { if (audio.ended) setPlaying(null); });
+
+  function setPlaying(id) {
+    playingId = id;
+    document.querySelectorAll('.play').forEach(function (b) {
+      var on = b.dataset.id === id;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.querySelector('.lbl').textContent = on ? 'playing' : 'play';
+      b.querySelector('.tri').textContent = on ? '■' : '▶';
+    });
+  }
+
+  function toggle(clip) {
+    if (playingId === clip.id) { audio.pause(); setPlaying(null); return; }
+    audio.src = 'data:audio/flac;base64,' + clip.audio;
+    audio.currentTime = 0;
+    audio.play().then(function () { setPlaying(clip.id); })
+                .catch(function () { setPlaying(null); });
+  }
+
+  // ---- render ----------------------------------------------------------
+  function qColor(q) { return q >= 0.9 ? 'var(--accent)' : q >= 0.7 ? 'var(--warn)' : 'var(--flag)'; }
+
+  function render() {
+    var list = document.getElementById('list');
+    list.textContent = '';
+    var order = sessions.map(function (s) { return s.session; });
+    order.forEach(function (sid) {
+      var mine = clips.filter(function (c) { return c.session === sid; });
+      if (!mine.length) return;
+      var s = sessById[sid] || {};
+      var wrap = document.createElement('section');
+      wrap.className = 'sess';
+
+      var head = document.createElement('div');
+      head.className = 'sesshead';
+      var idEl = document.createElement('span');
+      idEl.className = 'sessid';
+      idEl.textContent = 'session ' + sid;
+      head.appendChild(idEl);
+
+      var meta = document.createElement('span');
+      meta.className = 'sessmeta';
+      var bits = [s.chunks + ' chunks in build'];
+      if (s.decoded_s) {
+        bits.push('audio ' + (s.decoded_s / 60).toFixed(0) + ' min');
+        if (s.decoded_s < s.aligned_s - 0.05) bits.push('m4a SHORTER than alignment');
+        if (s.dropped) bits.push(s.dropped + ' dropped past EOF');
+      }
+      meta.textContent = bits.join('  ·  ');
+      head.appendChild(meta);
+
+      var chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.dataset.sess = sid;
+      head.appendChild(chip);
+      wrap.appendChild(head);
+
+      mine.forEach(function (c) {
+        var row = document.createElement('div');
+        row.className = 'row';
+        row.dataset.id = c.id;
+
+        var left = document.createElement('div');
+        var btn = document.createElement('button');
+        btn.className = 'play';
+        btn.dataset.id = c.id;
+        btn.setAttribute('aria-pressed', 'false');
+        btn.innerHTML = '<span class="tri">▶</span><span class="lbl">play</span>';
+        btn.setAttribute('aria-label', 'Play ' + c.dur + ' second clip from session ' + c.session);
+        btn.addEventListener('click', function () { toggle(c); });
+        left.appendChild(btn);
+
+        var cm = document.createElement('div');
+        cm.className = 'cmeta';
+        cm.innerHTML =
+          '<b>' + c.dur.toFixed(2) + ' s</b> &middot; at ' +
+          Math.floor(c.at / 60) + 'm' + String(Math.floor(c.at % 60)).padStart(2, '0') + 's<br>' +
+          '<span class="qdot" style="background:' + qColor(c.q) + '"></span>quality ' + c.q.toFixed(3);
+        left.appendChild(cm);
+        row.appendChild(left);
+
+        var right = document.createElement('div');
+        var who = document.createElement('div');
+        who.className = 'who';
+        who.textContent = c.speaker;
+        right.appendChild(who);
+
+        var tx = document.createElement('div');
+        tx.className = 'txt';
+        tx.textContent = c.text;
+        right.appendChild(tx);
+
+        var vs = document.createElement('div');
+        vs.className = 'verdicts';
+        [['ok', 'Matches'], ['unsure', 'Unsure'], ['bad', 'Does not match']].forEach(function (p) {
+          var b = document.createElement('button');
+          b.className = p[0];
+          b.textContent = p[1];
+          b.dataset.id = c.id;
+          b.dataset.v = p[0];
+          b.setAttribute('aria-pressed', 'false');
+          b.addEventListener('click', function () { setVerdict(c.id, p[0]); });
+          vs.appendChild(b);
+        });
+        right.appendChild(vs);
+        row.appendChild(right);
+        wrap.appendChild(row);
+      });
+      list.appendChild(wrap);
+    });
+    paint();
+  }
+
+  function paint() {
+    document.querySelectorAll('.row').forEach(function (r) {
+      var v = verdicts[key(r.dataset.id)];
+      if (v) { r.dataset.v = v; } else { delete r.dataset.v; }
+    });
+    document.querySelectorAll('.verdicts button').forEach(function (b) {
+      b.setAttribute('aria-pressed', verdicts[key(b.dataset.id)] === b.dataset.v ? 'true' : 'false');
+    });
+
+    var n = clips.length, judged = 0, ok = 0, bad = 0, unsure = 0;
+    clips.forEach(function (c) {
+      var v = verdicts[key(c.id)];
+      if (!v) return;
+      judged++;
+      if (v === 'ok') ok++; else if (v === 'bad') bad++; else unsure++;
+    });
+    document.getElementById('m-judged').textContent = judged + ' / ' + n;
+    document.getElementById('m-ok').textContent = ok;
+    document.getElementById('m-bad').textContent = bad;
+
+    var cleared = 0;
+    sessions.forEach(function (s) {
+      var mine = clips.filter(function (c) { return c.session === s.session; });
+      if (!mine.length) return;
+      var judgedAll = mine.every(function (c) { return verdicts[key(c.id)]; });
+      var anyBad = mine.some(function (c) { return verdicts[key(c.id)] === 'bad'; });
+      if (judgedAll && !anyBad) cleared++;
+      var chip = document.querySelector('.chip[data-sess="' + s.session + '"]');
+      if (chip) {
+        chip.textContent = anyBad ? 'mismatch' : judgedAll ? 'cleared' : 'not judged';
+        chip.className = 'chip' + (judgedAll && !anyBad ? ' done' : '');
+        chip.style.display = '';
+      }
+    });
+    document.getElementById('m-sess').textContent = cleared + ' / ' + sessions.length;
+
+    var bar = document.getElementById('bar');
+    bar.children[0].style.width = (100 * ok / n) + '%';
+    bar.children[1].style.width = (100 * unsure / n) + '%';
+    bar.children[2].style.width = (100 * bad / n) + '%';
+  }
+
+  function setVerdict(id, v) {
+    var k = key(id);
+    if (verdicts[k] === v) { delete verdicts[k]; } else { verdicts[k] = v; }
+    paint();
+    saveLocal();
+    if (db) {
+      var body = verdicts[k]
+        ? { verdict: verdicts[k], at: new Date().toISOString() }
+        : { verdict: null, at: new Date().toISOString() };
+      db.doc('verdicts/' + k).set(body).catch(function (e) {
+        note('not saved: ' + (e && e.code ? e.code : 'error'), true);
+      });
+    }
+  }
+
+  function note(text, warn) {
+    var el = document.getElementById('save');
+    el.textContent = text;
+    el.className = warn ? 'save warn' : 'save';
+  }
+
+  // ---- boot: render immediately, light db up when it answers -----------
+  verdicts = loadLocal();
+  render();
+  note('saving to this browser only', true);
+
+  if (window.claude && typeof window.claude.use === 'function') {
+    window.claude.use('db').then(function (d) {
+      if (!d) return;                       // not granted / unavailable: keep local
+      db = d;
+      note('verdicts shared with everyone who opens this page');
+      db.collection('verdicts').onSnapshot(function (snap) {
+        var next = {};
+        snap.docs.forEach(function (doc) {
+          var body = doc.data() || {};
+          if (body.verdict) next[doc.id] = body.verdict;
+        });
+        verdicts = next;
+        saveLocal();
+        paint();
+      }, function (e) {
+        note('sync stopped (' + e.code + '); saving to this browser only', true);
+        db = null;
+      });
+    }).catch(function () { /* keep the local fallback */ });
+  }
+})();
+</script>
