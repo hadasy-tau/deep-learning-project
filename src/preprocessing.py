@@ -789,7 +789,12 @@ def stream_build(turns_df, repo=CHUNKS_REPO, sessions=None, workers=WORKERS,
     if pending:
         flush_shard(repo, shard_idx, pending, private=private)
     sdf = pd.DataFrame(stats)
-    sdf.to_csv(os.path.join(OUT, 'build_sessions.csv'), index=False)
+    # Append, never overwrite: run_build.py calls this once per block, and a
+    # plain to_csv here threw away every earlier block's stats -- including the
+    # record of which sessions failed, which is the one thing a long run needs
+    # to keep.  Header only when the file is new.
+    csv = os.path.join(OUT, 'build_sessions.csv')
+    sdf.to_csv(csv, mode='a', header=not os.path.exists(csv), index=False)
     return sdf
 
 
