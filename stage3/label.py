@@ -12,7 +12,7 @@ Two paths (stage3/plan.md):
 Every other word is non_mk (gold says guest) or unresolved (any disagreement),
 kept with its reason.  There is no similarity score anywhere in this file.
 """
-import json, os
+import datetime as dt, json, os
 import pandas as pd
 
 from roster import OUT, active_on, load_corpus_roster, name_variants
@@ -20,6 +20,29 @@ from names import clean, agree, match_exact
 from protocol import gold_at
 
 SYNTH_ID = 10_000_000                     # ivrit.ai ids >= this are per-session; below: editor ids
+MAX_AGE  = 95                             # older than anyone who has addressed a committee
+
+def implausible(roster, pid, date):
+    """Why a numerically matched but unseated MK cannot be the speaker: dead before
+    the session, or older than MAX_AGE on the day.  Returns the reason or None.
+
+    This exists because the name check cannot catch a guest who shares a name
+    with a long-dead MK -- the spelling agrees exactly.  The full build labelled
+    nine such speakers former_mk before this gate: חיים משה שפירא (d. 1970) at
+    121, מאיר כהנא (d. 1990) at 90, דוד אזולאי two weeks after his death.  An age
+    threshold alone misses the last two; the death date is the hard rule."""
+    src = roster.mk if pid in roster.mk.index else roster.corpus if pid in roster.corpus.index else None
+    if src is None:
+        return None
+    r = src.loc[pid]
+    dod, dob = r.get('date_of_death'), r.get('date_of_birth')
+    if isinstance(dod, str) and dod and dod[:10] < date:
+        return 'deceased'
+    if isinstance(dob, str) and dob:
+        age = (dt.date.fromisoformat(date) - dt.date.fromisoformat(dob[:10])).days / 365.25
+        if age > MAX_AGE:
+            return 'implausible_age'
+    return None
 
 class Roster:
     """K20-K25 MKs with stints and spellings, plus the full corpus roster for
@@ -89,8 +112,13 @@ def label_words(words, session, roster, placed=None, aliases=None):
                 w['reason'] = 'unknown_id'; continue
             if not agree(rc, sp):
                 w['reason'] = 'name_disagree'; continue
-            w['person_id'], w['method'] = pid, 'A'
-            w['label'] = 'mk' if pid in active else 'former_mk'
+            if pid in active:
+                w['person_id'], w['method'], w['label'] = pid, 'A', 'mk'
+            else:
+                why = implausible(roster, pid, date)
+                if why:
+                    w['reason'] = why; continue
+                w['person_id'], w['method'], w['label'] = pid, 'A', 'former_mk'
         else:                                                      # ---- Path B
             if rc is None:
                 w['reason'] = 'raw_garbage'; continue

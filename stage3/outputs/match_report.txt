@@ -1,31 +1,32 @@
 hours by path and label
 label       former_mk       mk   non_mk  unresolved
 label_path                                         
-A               51.83  2020.79  2257.62      746.02
-B                0.00  1324.13     0.00     1941.12
+A                50.7  2023.58  2259.52      747.99
+B                 0.0  1324.13     0.00     1941.12
 
 unresolved hours by reason
 label_path  reason       
 A           bad_offset          0.14
-            name_disagree     205.35
-            no_gold           535.62
-            raw_garbage         4.91
+            deceased            1.14
+            name_disagree     205.36
+            no_gold           536.42
+            raw_garbage         4.94
 B           et_conflict         0.76
             no_match         1935.44
             raw_garbage         4.92
 
 mk hours by match method
 label_path  match_method
-A           A               2020.79
+A           A               2023.58
 B           B1              1323.01
             B2                 1.12
 
-mk speakers: 268  former_mk speakers: 165
+mk speakers: 268  former_mk speakers: 156
 
 sessions
-         n  errors placed_median
-path                            
-A     6996      56      0.963316
-B     4131       1           NaN
+         n  errors  placed_median
+path                             
+A     6996      84       0.963251
+B     4131      18            NaN
 
-alias_names: 592 keys, 554 usable; alias_et: 723 keys, 639 usable, 50 impure
+alias_names: 592 keys, 554 usable; alias_et: 590 keys, 515 usable, 47 impure
