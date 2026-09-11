@@ -1,6 +1,6 @@
 """Full build driver: stream the whole committees corpus to the Hub.
 
-    python run_build.py                 # start, or resume where it stopped
+    python src/preprocessing/run_build.py                 # start, or resume where it stopped
 
 Resumable at session granularity via the uploaded ledger, so an interrupt costs
 at most the sessions of the shard that had not yet been pushed.  Safe to kill

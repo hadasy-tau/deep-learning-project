@@ -374,7 +374,7 @@
     <div class="kicker">Preprocessing build record &middot; 9 September 2026</div>
     <h1>One speaker per chunk: a 30-second corpus from the Knesset committees</h1>
     <p class="standfirst">
-      <code>src/preprocessing.py</code> turns the committees speaker index into audio — chunks of at
+      <code>src/preprocessing/preprocessing.py</code> turns the committees speaker index into audio — chunks of at
       most 30&nbsp;seconds, each holding exactly one speaker, over the whole corpus. It has now been
       built: <strong>410 shards, 274.5&nbsp;GB of lossless FLAC, all 10,905 sessions</strong>, at
       <code>Hadasy/knesset-committees-chunks</code>.
@@ -622,9 +622,9 @@
         cut and FLAC-encode its chunks, write that session's parquet part, delete the m4a.
       </p>
       <p>
-        Peak transient disk is therefore four files, not a corpus — the median session is 86&nbsp;MB and
-        the largest 411&nbsp;MB. The 612&nbsp;GB figure below is cumulative bytes moved across the whole
-        run; it is never resident.
+        Peak transient disk is therefore three files, not a corpus — the median recording is
+        58&nbsp;MB and the largest 524&nbsp;MB. The 672.7&nbsp;GB figure below is cumulative bytes moved
+        across the whole run; it was never resident.
       </p>
     </div>
 
@@ -652,22 +652,31 @@ delete                the m4a
         <table>
           <thead><tr><th>Resource</th><th class="num">Amount</th><th>Basis</th></tr></thead>
           <tbody>
-            <tr><td>Bytes transferred</td><td class="num">~612 GB</td><td>10,905 sessions at the 100 kbps modal encode <span class="tag m">measured</span></td></tr>
+            <tr><td>Bytes transferred</td><td class="num">672.7 GB</td><td>all 10,905 recordings, each sized by HEAD request (~110 kbps mean) <span class="tag m">measured</span></td></tr>
             <tr><td>Local disk held</td><td class="num">&lt; 1.6 GB</td><td>3 workers × one m4a, shards deleted after upload <span class="tag m">measured</span></td></tr>
             <tr><td>Output</td><td class="num">274.5 GB</td><td>410 shards of lossless FLAC <span class="tag m">measured</span></td></tr>
             <tr><td>Wall clock</td><td class="num">36.6 h</td><td>33.0 h + 3.6 h to finish after a Hub outage <span class="tag m">measured</span></td></tr>
-            <tr><td>Workers</td><td class="num">3</td><td>capped by RAM, not network: a decoded session is up to 333 MB and ffmpeg's captured stdout doubles it <span class="tag m">measured</span></td></tr>
+            <tr><td>Workers</td><td class="num">3</td><td>capped by RAM, not network: under the 8&nbsp;h decode guard a session is up to ~920 MB of PCM, briefly doubled by ffmpeg's captured stdout <span class="tag m">measured</span></td></tr>
           </tbody>
         </table>
       </div>
       <figcaption>
-        <strong>70% of the transfer was waste, and still is.</strong> Only 30.2% of the session audio
-        fetched and decoded ends up inside a chunk; the rest is unresolved speakers, gaps outside any
-        turn, and stretches the alignment never covered. The worst 1,931 sessions cost 103&nbsp;GB and
-        2,297 audio-hours to yield 68&nbsp;h — 1.7% of the output — and the worst 807 of them cost
-        48&nbsp;GB for three hours. Decoding those spans by HTTP range instead of fetching whole
-        sessions would cut a rebuild by about a sixth, or a third at a 25% density threshold. It was
-        not worth restarting a healthy run to save six hours of thirty-three.
+        <strong>Where the bytes went.</strong> The build downloaded 672.7&nbsp;GB of recordings and kept
+        audio worth about 208&nbsp;GB of it (30.9% by bytes). The other 464.8&nbsp;GB was decoded and
+        discarded: speech by guests and unresolved speakers, silence between turns, and stretches the
+        alignment never covered. What was kept then grew, because it was re-encoded from ~110&nbsp;kbps
+        lossy AAC to lossless FLAC — 49.4&nbsp;MB per hour of audio in, 66.8&nbsp;MB per hour out —
+        which is how 208&nbsp;GB became the 274.5&nbsp;GB corpus. The source repository is larger still:
+        its transcript, alignment and protocol files were never downloaded, because speaker turns came
+        from the speaker index instead.
+      </figcaption>
+      <figcaption>
+        <strong>Most of the waste sat in a minority of sessions.</strong> The 1,934 sessions under 10%
+        useful cost 127.0&nbsp;GB to yield 68&nbsp;h (1.7% of the output), and the 809 under 1% cost
+        63.9&nbsp;GB for three hours. Fetching only the needed spans of those recordings would cut a
+        rebuild's transfer by about a fifth, or about a third at a 25% threshold. That was never
+        built: it was proposed before the run and not taken up. The build was restarted once, and not
+        to save time — a HuggingFace outage stopped it at 88%.
       </figcaption>
     </div>
   </section>
@@ -758,7 +767,7 @@ delete                the m4a
       </li>
       <li>
         <div class="what">Corpus self-checks — passing</div>
-        <div class="how">python src/preprocessing.py --fetch</div>
+        <div class="how">python src/preprocessing/preprocessing.py --fetch</div>
         <div class="why">The flag pulls the 520&nbsp;MB index; without it the corpus checks skip, so a
           routine run never starts a download nobody asked for.</div>
       </li>
@@ -779,13 +788,13 @@ delete                the m4a
       </li>
       <li>
         <div class="what">Build and ship — done</div>
-        <div class="how">python run_build.py &nbsp;·&nbsp; 410 shards, 274.5 GB, 36.6 h</div>
+        <div class="how">python src/preprocessing/run_build.py &nbsp;·&nbsp; 410 shards, 274.5 GB, 36.6 h</div>
         <div class="why">Streamed straight to the Hub, one shard at a time, so local disk never held
           more than a shard plus the sessions in flight.</div>
       </li>
       <li>
         <div class="what">Recover the oversized sessions — done</div>
-        <div class="how">python recover_long.py &nbsp;·&nbsp; 7 sessions, 3,094 chunks, shard 00409</div>
+        <div class="how">python src/preprocessing/recover_long.py &nbsp;·&nbsp; 7 sessions, 3,094 chunks, shard 00409</div>
         <div class="why">Per-turn ranged decode, so memory follows the longest turn rather than the
           recording.</div>
       </li>

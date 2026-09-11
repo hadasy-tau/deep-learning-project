@@ -14,7 +14,7 @@ them.
 The page it writes is ~7 MB, almost all base64 audio, and is gitignored: this
 script and `ear_check_template.html` are the committed artefacts.
 
-    python make_ear_check.py            # -> src/ear_check.html
+    python src/preprocessing/make_ear_check.py   # -> src/preprocessing/ear_check.html
 """
 import base64
 import json

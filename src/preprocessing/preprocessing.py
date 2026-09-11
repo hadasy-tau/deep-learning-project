@@ -933,7 +933,7 @@ def _check_index(fetch=False):
 
     Skipped unless the index is already cached, because it is 520 MB and a
     self-check should not start a download nobody asked for.  Run
-    `python preprocessing.py --fetch` to pull it and check for real."""
+    `python src/preprocessing/preprocessing.py --fetch` to pull it and check for real."""
     from huggingface_hub import try_to_load_from_cache
     hit = try_to_load_from_cache(INDEX_REPO, 'segments.parquet', repo_type='dataset')
     if not isinstance(hit, str):

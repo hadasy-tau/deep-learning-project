@@ -11,7 +11,7 @@ rather than by the recording.  Same technique as stage3/validate_audio.py, which
 is the right tool for a handful of outliers and the wrong one for 10,905
 sessions -- it costs one ffmpeg process per turn instead of one per session.
 
-    python recover_long.py           # builds and ships them as one more shard
+    python src/preprocessing/recover_long.py           # builds and ships them as one more shard
 """
 import json
 import os
