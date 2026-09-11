@@ -1,0 +1,842 @@
+<title>Committees Chunk Corpus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Hebrew:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #f2f5f6;
+    --surface:     #ffffff;
+    --surface-2:   #e9eef0;
+    --ink:         #131e23;
+    --ink-2:       #40545d;
+    --ink-3:       #6b818b;
+    --rule:        #d2dcdf;
+    --rule-strong: #b3c3c8;
+    --accent:      #0d6a72;
+    --accent-2:    #0a4f56;
+    --accent-wash: #dceef0;
+    --second:      #8a5a12;
+    --second-wash: #f6ebd8;
+    --flag:        #9a3d2c;
+    --flag-wash:   #f7e4df;
+
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --sans:  "IBM Plex Sans", "IBM Plex Sans Hebrew", -apple-system, "Segoe UI", sans-serif;
+    --he:    "IBM Plex Sans Hebrew", "IBM Plex Sans", "Segoe UI", sans-serif;
+    --mono:  "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0c1418;
+      --surface:     #131e23;
+      --surface-2:   #1b2a30;
+      --ink:         #e2ebee;
+      --ink-2:       #a7bcc3;
+      --ink-3:       #7c939b;
+      --rule:        #26383f;
+      --rule-strong: #3a5159;
+      --accent:      #4fb8c0;
+      --accent-2:    #7fd2d8;
+      --accent-wash: #10353a;
+      --second:      #d3a052;
+      --second-wash: #33260f;
+      --flag:        #e08d7a;
+      --flag-wash:   #3a1f19;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0c1418;
+    --surface:     #131e23;
+    --surface-2:   #1b2a30;
+    --ink:         #e2ebee;
+    --ink-2:       #a7bcc3;
+    --ink-3:       #7c939b;
+    --rule:        #26383f;
+    --rule-strong: #3a5159;
+    --accent:      #4fb8c0;
+    --accent-2:    #7fd2d8;
+    --accent-wash: #10353a;
+    --second:      #d3a052;
+    --second-wash: #33260f;
+    --flag:        #e08d7a;
+    --flag-wash:   #3a1f19;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1020px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  .col { max-width: 68ch; }
+
+  /* ---- masthead ---- */
+  header.masthead {
+    padding: 56px 0 30px;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(30px, 4.4vw, 44px);
+    line-height: 1.14;
+    letter-spacing: -.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 18px;
+    line-height: 1.58;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .statusbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 26px;
+    align-items: baseline;
+    padding-top: 4px;
+  }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .02em;
+    color: var(--ink-2);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot.done    { background: var(--accent); }
+  .dot.pending { background: var(--second); }
+
+  /* ---- sections ---- */
+  section { padding-top: 52px; }
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .sectionlabel {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: .005em;
+    margin: 30px 0 8px;
+  }
+  p { margin: 0 0 15px; }
+  .col p:last-child { margin-bottom: 0; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: .875em;
+    background: var(--surface-2);
+    padding: .1em .34em;
+    border-radius: 3px;
+  }
+  .he { font-family: var(--he); direction: rtl; unicode-bidi: isolate; }
+
+  /* ---- measured / projected tagging ---- */
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+    white-space: nowrap;
+    vertical-align: 2px;
+  }
+  .tag.m { background: var(--accent-wash); color: var(--accent-2); }
+  .tag.p { background: var(--second-wash); color: var(--second); }
+
+  /* ---- figures / slabs ---- */
+  .slab {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    margin-top: 22px;
+  }
+  .slab-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .slab-body { padding: 20px; overflow-x: auto; }
+  figure { margin: 0; }
+  figcaption {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    padding: 0 20px 18px;
+    max-width: 76ch;
+  }
+
+  /* ---- tables ---- */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 11.5px;
+    font-family: var(--mono);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 0 16px 9px 0;
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 16px 9px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; padding-right: 0; }
+  td.num { font-family: var(--mono); font-size: 13.5px; }
+  td.name { font-family: var(--mono); font-size: 13px; white-space: nowrap; color: var(--ink); }
+  td.type { font-family: var(--mono); font-size: 12.5px; color: var(--accent); white-space: nowrap; }
+
+  /* ---- scale strip ---- */
+  .scale {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin-top: 22px;
+  }
+  .scale div { background: var(--surface); padding: 16px 18px; }
+  .scale dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 5px;
+  }
+  .scale dd {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 25px;
+    font-weight: 500;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+  }
+  .scale dd small {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ink-3);
+    letter-spacing: 0;
+    display: block;
+    margin-top: 3px;
+  }
+
+  /* ---- run sequence ---- */
+  ol.run {
+    list-style: none;
+    counter-reset: step;
+    padding: 0;
+    margin: 22px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  ol.run li {
+    counter-increment: step;
+    background: var(--surface);
+    padding: 15px 20px 15px 54px;
+    position: relative;
+  }
+  ol.run li::before {
+    content: counter(step);
+    position: absolute;
+    left: 20px;
+    top: 15px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  ol.run li.pending { border-left: 3px solid var(--second); padding-left: 51px; }
+  ol.run .what { font-weight: 600; font-size: 14.5px; }
+  ol.run .how {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-2);
+    margin-top: 4px;
+    word-break: break-word;
+  }
+  ol.run .why { font-size: 13.5px; color: var(--ink-2); margin-top: 5px; max-width: 72ch; }
+
+  /* SVG takes its colors from classes: var() does not resolve inside a
+     presentation attribute, only inside a CSS declaration. */
+  .dia { display: block; max-width: 100%; height: auto; }
+  .dia text     { font-family: var(--sans); fill: var(--ink); }
+  .dia .mono    { font-family: var(--mono); }
+  .dia .muted   { fill: var(--ink-3); }
+  .dia .segA    { fill: var(--accent); }
+  .dia .segB    { fill: var(--second); }
+  .dia .boxA    { fill: var(--accent-wash); stroke: var(--accent);  stroke-width: 1; }
+  .dia .boxB    { fill: var(--second-wash); stroke: var(--second);  stroke-width: 1; }
+  .dia .boxBad  { fill: var(--flag-wash);   stroke: var(--flag);    stroke-width: 1; stroke-dasharray: 4 2; }
+  .dia .inA     { fill: var(--accent-2); }
+  .dia .inB     { fill: var(--second); }
+  .dia .bad     { fill: var(--flag); }
+  .dia .wall    { stroke: var(--ink);  stroke-width: 1.5; }
+  .dia .wallbad { stroke: var(--flag); stroke-width: 1.5; }
+  .dia .axis    { stroke: var(--rule-strong); stroke-width: 1; }
+
+  pre {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.62;
+    margin: 0;
+    white-space: pre;
+  }
+
+  ul.plain { padding-left: 20px; margin: 0 0 15px; }
+  ul.plain li { margin-bottom: 7px; }
+
+  footer {
+    margin-top: 62px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--ink-3);
+    max-width: 72ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="kicker">Preprocessing build record &middot; 9 September 2026</div>
+    <h1>One speaker per chunk: a 30-second corpus from the Knesset committees</h1>
+    <p class="standfirst">
+      <code>src/preprocessing/preprocessing.py</code> turns the committees speaker index into audio — chunks of at
+      most 30&nbsp;seconds, each holding exactly one speaker, over the whole corpus. It has now been
+      built: <strong>410 shards, 274.5&nbsp;GB of lossless FLAC, all 10,905 sessions</strong>, at
+      <code>Hadasy/knesset-committees-chunks</code>.
+    </p>
+    <div class="statusbar">
+      <span class="status"><span class="dot done"></span>Built: 10,905 / 10,905 sessions</span>
+      <span class="status"><span class="dot done"></span>410 shards, no gaps or duplicates</span>
+      <span class="status"><span class="dot pending"></span>Ear check spot-checked only</span>
+      <span class="status"><span class="dot pending"></span>Speaker-embedding gate not run</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sectionlabel">Why</div>
+    <div class="col">
+      <h2>The plenum corpus can't measure the plenum model</h2>
+      <p>
+        <code>ivrit-ai/whisper-large-v3</code> was fine-tuned on <code>knesset-plenums-whisper-training</code>,
+        about 4,700 hours of plenum audio, interleaved 0.15:0.8:0.05 with crowd-transcribed and
+        crowd-recital data. Scoring that model on VoxKnesset — also derived from the plenums — measures
+        train-on-test as much as it measures adaptation. The committees corpus is not in that mixture,
+        so it is genuinely held out for both <code>openai/whisper-large-v3</code> and the ivrit.ai
+        fine-tune.
+      </p>
+      <p>
+        The identity work was already done. <code>Dolevabudi/knesset-committees-speakers</code> resolves
+        every aligned segment to an official Knesset <code>PersonID</code> with demographics — but it
+        publishes an <em>index only</em>. Its <code>filename</code> column names files that do not
+        exist, and nothing in the repository could turn those names into audio. This module is that
+        missing step.
+      </p>
+      <p>
+        It is deliberately blind to what consumes it: no speaker selection, no hours budget, no
+        train/dev/test split, no column named for a downstream notebook. Those are filters over a
+        corpus, not properties of one.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sectionlabel">The rule</div>
+    <div class="col">
+      <h2>Windows stop at the speaker change</h2>
+      <p>
+        The chunker follows ivrit.ai's own
+        <a href="https://github.com/ivrit-ai/asr-training/blob/master/create_dataset.py">create_dataset.py</a>
+        — the same 30-second packing, the same 0.3&nbsp;s gap merging, the same restart-on-overflow
+        semantics, so windows tile a speaker's turn back to back with no gaps and no overlap. One rule
+        is added: a window may never cross a turn boundary.
+      </p>
+      <p>
+        Their slicer packs whatever segments fall inside the next 30&nbsp;seconds regardless of who is
+        speaking. That is correct for a training corpus and fatal here — a chunk containing two people
+        has no well-defined <code>speaker_id</code>, and every per-speaker number computed from it is
+        contaminated.
+      </p>
+    </div>
+
+    <div class="slab">
+      <div class="slab-head"><span>Same segments, two slicers</span><span>seconds</span></div>
+      <div class="slab-body">
+        <figure>
+          <svg class="dia" viewBox="0 0 720 292" role="img" width="720"
+               aria-label="A timeline of one speaker's six segments followed by a second speaker's three segments. ivrit-ai's fixed 30-second windows produce a second chunk that spans the speaker change and contains both people. The rule used here closes the window at the turn boundary, producing a separate chunk for each speaker.">
+            <!-- legend -->
+            <rect class="segA" x="50" y="10" width="11" height="11"/>
+            <text x="67" y="20" font-size="12">speaker A</text>
+            <rect class="segB" x="146" y="10" width="11" height="11"/>
+            <text x="163" y="20" font-size="12">speaker B</text>
+            <text class="muted" x="243" y="20" font-size="12">outlined bars are the chunks each slicer emits</text>
+
+            <!-- ROW 1 : ivrit-ai -->
+            <text class="mono muted" x="50" y="52" font-size="11.5" letter-spacing="1">IVRIT.AI — FIXED 30 S WINDOWS</text>
+
+            <rect class="segA" x="50"  y="62" width="46" height="17"/>
+            <rect class="segA" x="113" y="62" width="40" height="17"/>
+            <rect class="segA" x="165" y="62" width="46" height="17"/>
+            <rect class="segA" x="234" y="62" width="57" height="17"/>
+            <rect class="segA" x="303" y="62" width="46" height="17"/>
+            <rect class="segA" x="372" y="62" width="63" height="17"/>
+            <rect class="segB" x="464" y="62" width="46" height="17"/>
+            <rect class="segB" x="522" y="62" width="57" height="17"/>
+            <rect class="segB" x="591" y="62" width="57" height="17"/>
+
+            <rect class="boxA"   x="50"  y="88" width="349" height="14"/>
+            <text class="mono inA" x="224" y="98.5" text-anchor="middle" font-size="10.5">chunk 1</text>
+            <rect class="boxBad" x="349" y="88" width="299" height="14"/>
+            <text class="mono bad" x="498" y="98.5" text-anchor="middle" font-size="10.5">chunk 2 — two speakers</text>
+
+            <line class="wallbad" x1="452" y1="56" x2="452" y2="108"/>
+            <text class="bad" x="458" y="119" font-size="11.5">window runs straight through the speaker change</text>
+
+            <!-- ROW 2 : ours -->
+            <text class="mono muted" x="50" y="162" font-size="11.5" letter-spacing="1">HERE — THE TURN IS A WALL</text>
+
+            <rect class="segA" x="50"  y="172" width="46" height="17"/>
+            <rect class="segA" x="113" y="172" width="40" height="17"/>
+            <rect class="segA" x="165" y="172" width="46" height="17"/>
+            <rect class="segA" x="234" y="172" width="57" height="17"/>
+            <rect class="segA" x="303" y="172" width="46" height="17"/>
+            <rect class="segA" x="372" y="172" width="63" height="17"/>
+            <rect class="segB" x="464" y="172" width="46" height="17"/>
+            <rect class="segB" x="522" y="172" width="57" height="17"/>
+            <rect class="segB" x="591" y="172" width="57" height="17"/>
+
+            <rect class="boxA" x="50"  y="198" width="349" height="14"/>
+            <text class="mono inA" x="224" y="208.5" text-anchor="middle" font-size="10.5">chunk 1</text>
+            <rect class="boxA" x="349" y="198" width="86" height="14"/>
+            <text class="mono inA" x="392" y="208.5" text-anchor="middle" font-size="10.5">chunk 2</text>
+            <rect class="boxB" x="464" y="198" width="184" height="14"/>
+            <text class="mono inB" x="556" y="208.5" text-anchor="middle" font-size="10.5">chunk 3</text>
+
+            <line class="wall" x1="452" y1="166" x2="452" y2="218"/>
+            <text x="458" y="229" font-size="11.5">turn boundary — no chunk crosses it</text>
+
+            <!-- shared axis -->
+            <line class="axis" x1="50" y1="252" x2="694" y2="252"/>
+            <g class="mono muted" font-size="10.5" text-anchor="middle">
+              <line class="axis" x1="50"  y1="252" x2="50"  y2="257"/><text x="50"  y="270">0</text>
+              <line class="axis" x1="165" y1="252" x2="165" y2="257"/><text x="165" y="270">10</text>
+              <line class="axis" x1="280" y1="252" x2="280" y2="257"/><text x="280" y="270">20</text>
+              <line class="axis" x1="395" y1="252" x2="395" y2="257"/><text x="395" y="270">30</text>
+              <line class="axis" x1="510" y1="252" x2="510" y2="257"/><text x="510" y="270">40</text>
+              <line class="axis" x1="625" y1="252" x2="625" y2="257"/><text x="625" y="270">50</text>
+            </g>
+            <text class="muted" x="694" y="270" text-anchor="end" font-size="11">seconds</text>
+          </svg>
+          <figcaption>
+            Both slicers close chunk&nbsp;1 at the same place, because the next segment would cross the
+            30&nbsp;second edge. They diverge on the second window: ivrit.ai's runs the full 30&nbsp;s
+            and swallows the start of speaker&nbsp;B, while ours ends the chunk at the turn and starts
+            a fresh one for B.
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3>A turn is defined over every row, not the assigned ones</h3>
+      <p>
+        A turn is a maximal run of one speaker — same session, same
+        <code>local_speaker_id</code>, same <code>speaker_id</code> — and it has to be derived over the
+        <em>whole</em> index, not over the rows that resolved to a person. Two ways of getting this
+        wrong were caught by measurement rather than by reasoning:
+      </p>
+      <ul class="plain">
+        <li>
+          <strong>Deriving runs from the assigned subset alone.</strong> An unresolved guest speaking
+          between two of a member's segments ends that member's turn; filtering first merges straight
+          across them. It reported a mean turn span of 67.4&nbsp;s against a true 15.8&nbsp;s, and would
+          have produced chunks containing the guest.
+        </li>
+        <li>
+          <strong>Not breaking the run when <code>speaker_id</code> changes.</strong> 49,679 turns
+          contain a mix of assigned and unassigned segments from the <em>same</em> local speaker,
+          because the identity pass labels per word and only assigns where the protocol's gold speaker,
+          the name and the seat all agree — a <code>name_disagree</code> segment stays unresolved
+          mid-turn. Tiling across that gap puts speech into a chunk whose attribution was deliberately
+          refused, with no reference text covering it. Breaking the run there excludes
+          <strong>205 hours</strong> of exactly that audio.
+        </li>
+      </ul>
+      <p>
+        With both fixed, no run in the corpus holds more than one speaker — asserted over all 936,406 of
+        them, not sampled.
+      </p>
+      <h3>A chunk ends at its last segment, not at seek + 30</h3>
+      <p>
+        ivrit.ai always grab a full window of audio. Here that would read past the turn boundary into
+        the next speaker, so the chunk's audio stops at the last segment packed into it.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sectionlabel">Scale</div>
+    <div class="col">
+      <h2>What a full build produces</h2>
+      <p>
+        Every figure below tagged <span class="tag m">measured</span> comes from the live index;
+        <span class="tag p">projected</span> figures are derived from those measurements and will only
+        be confirmed by a run.
+      </p>
+      <p>
+        All of them are read at <strong>index revision <code>56b19714</code></strong>, and the build
+        pins that revision rather than tracking the branch. The index is actively maintained — between
+        two reads four hours apart on 9 September it gained 4,361 rows and 16 sessions and lost 9
+        speakers whose identity was withdrawn. A run lasting a day and a half would otherwise write
+        early shards and late shards describing different corpora.
+      </p>
+    </div>
+
+    <dl class="scale">
+      <div><dt>Index rows</dt><dd>5,158,763<small>the published segment index</small></dd></div>
+      <div><dt>Assigned segments</dt><dd>2,295,972<small>label mk or former_mk</small></dd></div>
+      <div><dt>Turns</dt><dd>936,406<small>one speaker each</small></dd></div>
+      <div><dt>Speakers</dt><dd>330<small>Knesset PersonIDs</small></dd></div>
+      <div><dt>Sessions</dt><dd>10,905<small>with assigned audio</small></dd></div>
+      <div><dt>Chunks built</dt><dd>1,202,046<small>≤ 30 s, one speaker each</small></dd></div>
+    </dl>
+
+    <div class="slab">
+      <div class="slab-head"><span>The corpus, whole and at ivrit.ai's quality floor</span></div>
+      <div class="slab-body">
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="num">All assigned</th>
+              <th class="num">Run median quality ≥ 0.7</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Turns</td><td class="num">936,406</td><td class="num">721,222</td><td><span class="tag m">measured</span></td></tr>
+            <tr><td>Speakers</td><td class="num">330</td><td class="num">324</td><td><span class="tag m">measured</span></td></tr>
+            <tr><td>Sessions</td><td class="num">10,905</td><td class="num">8,853</td><td><span class="tag m">measured</span></td></tr>
+            <tr><td>Turn span — median</td><td class="num">5.3 s</td><td class="num">6.3 s</td><td><span class="tag m">measured</span></td></tr>
+            <tr><td>Turn span — mean</td><td class="num">15.8 s</td><td class="num">17.4 s</td><td><span class="tag m">measured</span></td></tr>
+            <tr><td>Turn span — p90</td><td class="num">36 s</td><td class="num">41 s</td><td><span class="tag m">measured</span></td></tr>
+            <tr><td>Speech hours</td><td class="num">3,398 h</td><td class="num">3,092 h</td><td><span class="tag m">measured</span></td></tr>
+            <tr><td>Chunks emitted</td><td class="num">1,202,046</td><td class="num">—</td><td><span class="tag m">measured</span></td></tr>
+            <tr><td>Audio emitted</td><td class="num">4,111 h</td><td class="num">3,483 h</td><td><span class="tag p">projected</span></td></tr>
+            <tr><td>Silence inside turns</td><td class="num">17%</td><td class="num">11%</td><td><span class="tag m">measured</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption>
+        Nothing is filtered at build time. The right column shows what a consumer would get by keeping
+        only turns whose median segment quality clears ivrit.ai's own 0.7 floor — it costs 6 speakers,
+        2,052 sessions and 15% of the audio. Every chunk carries its alignment confidence so that
+        choice, and its cost, stay visible. Measured over the whole assigned set, 11.3% of the audio
+        sits below 0.7.
+      </figcaption>
+    </div>
+  </section>
+
+  <section>
+    <div class="sectionlabel">Transfer</div>
+    <div class="col">
+      <h2>One session in flight, then deleted</h2>
+      <p>
+        There is no bulk download. The build walks sessions one at a time: stream that session's
+        <code>audio.m4a</code>, verify the transfer completed, decode it once to 16&nbsp;kHz mono PCM,
+        cut and FLAC-encode its chunks, write that session's parquet part, delete the m4a.
+      </p>
+      <p>
+        Peak transient disk is therefore three files, not a corpus — the median recording is
+        58&nbsp;MB and the largest 524&nbsp;MB. The 672.7&nbsp;GB figure below is cumulative bytes moved
+        across the whole run; it was never resident.
+      </p>
+    </div>
+
+    <div class="slab">
+      <div class="slab-head"><span>Per session</span><span>resume token = the part file exists</span></div>
+      <div class="slab-body">
+<pre>stream audio.m4a  ->  temp file        verify Content-Length before rename
+decode                ffmpeg -f s16le  one call, whole session, in memory
+cut + encode          FLAC, lossless   int(round(t * 16000)) sample indices
+write                 parts/{id}.parquet
+delete                the m4a
+</pre>
+      </div>
+      <figcaption>
+        Content-Length is verified because a stalled connection yields a <em>short but successful</em>
+        download, and ffmpeg decodes a truncated m4a happily — every chunk after the cut would be
+        silence or the wrong audio, with nothing to signal it. Verifying turns a silent correctness bug
+        into a loud, retryable one.
+      </figcaption>
+    </div>
+
+    <div class="slab">
+      <div class="slab-head"><span>Cost and runtime</span></div>
+      <div class="slab-body">
+        <table>
+          <thead><tr><th>Resource</th><th class="num">Amount</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td>Bytes transferred</td><td class="num">672.7 GB</td><td>all 10,905 recordings, each sized by HEAD request (~110 kbps mean) <span class="tag m">measured</span></td></tr>
+            <tr><td>Local disk held</td><td class="num">&lt; 1.6 GB</td><td>3 workers × one m4a, shards deleted after upload <span class="tag m">measured</span></td></tr>
+            <tr><td>Output</td><td class="num">274.5 GB</td><td>410 shards of lossless FLAC <span class="tag m">measured</span></td></tr>
+            <tr><td>Wall clock</td><td class="num">36.6 h</td><td>33.0 h + 3.6 h to finish after a Hub outage <span class="tag m">measured</span></td></tr>
+            <tr><td>Workers</td><td class="num">3</td><td>capped by RAM, not network: under the 8&nbsp;h decode guard a session is up to ~920 MB of PCM, briefly doubled by ffmpeg's captured stdout <span class="tag m">measured</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption>
+        <strong>Where the bytes went.</strong> The build downloaded 672.7&nbsp;GB of recordings and kept
+        audio worth about 208&nbsp;GB of it (30.9% by bytes). The other 464.8&nbsp;GB was decoded and
+        discarded: speech by guests and unresolved speakers, silence between turns, and stretches the
+        alignment never covered. What was kept then grew, because it was re-encoded from ~110&nbsp;kbps
+        lossy AAC to lossless FLAC — 49.4&nbsp;MB per hour of audio in, 66.8&nbsp;MB per hour out —
+        which is how 208&nbsp;GB became the 274.5&nbsp;GB corpus. The source repository is larger still:
+        its transcript, alignment and protocol files were never downloaded, because speaker turns came
+        from the speaker index instead.
+      </figcaption>
+      <figcaption>
+        <strong>Most of the waste sat in a minority of sessions.</strong> The 1,934 sessions under 10%
+        useful cost 127.0&nbsp;GB to yield 68&nbsp;h (1.7% of the output), and the 809 under 1% cost
+        63.9&nbsp;GB for three hours. Fetching only the needed spans of those recordings would cut a
+        rebuild's transfer by about a fifth, or about a third at a 25% threshold. That was never
+        built: it was proposed before the run and not taken up. The build was restarted once, and not
+        to save time — a HuggingFace outage stopped it at 88%.
+      </figcaption>
+    </div>
+  </section>
+
+  <section>
+    <div class="sectionlabel">Output</div>
+    <div class="col">
+      <h2>One row per chunk</h2>
+      <p>
+        A HuggingFace dataset with an <code>Audio</code> column holding lossless FLAC. Column names are
+        the index's own. Demographics ride on every row so any consumer can group without a join.
+      </p>
+    </div>
+
+    <div class="slab">
+      <div class="slab-head"><span>Schema</span><span>28 columns + audio</span></div>
+      <div class="slab-body">
+        <table>
+          <thead><tr><th>Column</th><th>Type</th><th>Holds</th></tr></thead>
+          <tbody>
+            <tr><td class="name">audio</td><td class="type">Audio()</td><td>FLAC bytes, 16 kHz mono</td></tr>
+            <tr><td class="name">transcript</td><td class="type">string</td><td>ivrit.ai format with Whisper timestamp tokens, chunk-relative on the 0.02 s grid: <code>&lt;|0.00|&gt;…&lt;|4.16|&gt;</code></td></tr>
+            <tr><td class="name">prev_transcript</td><td class="type">string</td><td>the previous chunk in the same turn; empty at a turn boundary, because the previous turn is a different person</td></tr>
+            <tr><td class="name">text</td><td class="type">string</td><td>the protocol text, raw, concatenated from the chunk's segments</td></tr>
+            <tr><td class="name">chunk_id</td><td class="type">string</td><td><code>{speaker_id}_{session}_{start_ms}_{end_ms}.flac</code></td></tr>
+            <tr><td class="name">speaker_id</td><td class="type">int64</td><td>official Knesset PersonID — e.g. 4405 is <span class="he">שלי יחימוביץ׳</span></td></tr>
+            <tr><td class="name">quality</td><td class="type">float64</td><td>duration-weighted median of its segments' alignment confidence</td></tr>
+            <tr><td class="name">seek, duration_s<br>abs_start, abs_end</td><td class="type">float64</td><td>position in the chunk and in the parent <code>audio.m4a</code></td></tr>
+            <tr><td class="name">session, session_date<br>knesset, committee_name</td><td class="type">mixed</td><td>provenance — which sitting this came from</td></tr>
+            <tr><td class="name">gender, age<br>place_of_birth, religion<br>nationality, …</td><td class="type">mixed</td><td>speaker demographics, from the index</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption>
+        <code>speaker_id</code> and <code>session</code> are plain <code>int64</code> — they identify the
+        row and cannot be absent. Every other integer is nullable <code>Int64</code>, and every string is
+        pinned, so an all-null column in one part cannot infer a different type and refuse to concatenate
+        with the next.
+      </figcaption>
+    </div>
+  </section>
+
+  <section>
+    <div class="sectionlabel">Status</div>
+    <div class="col">
+      <h2>Built, verified, and two gates still open</h2>
+      <p>
+        The corpus is complete: 10,905 of 10,905 sessions, 410 shards with no gaps and no duplicate
+        indices, verified three independent ways — the repo listing, the uploaded-session ledger, and
+        the run log's own per-shard counts, which agree exactly.
+      </p>
+      <h3>What went wrong, and what it cost</h3>
+      <p>
+        <strong>A Hub outage killed the run at 88%.</strong> HuggingFace returned 503 on the commit
+        endpoint after 29&nbsp;hours. That was their failure, but the consequence was a gap in this
+        code: the download path retried with jittered backoff and the upload path had none, so one
+        transient error was fatal. Uploads now retry the same way, and the fix proved necessary within
+        a minute — re-flushing the stranded shard hit another 503 and succeeded on the second attempt.
+        Nothing was lost: the 36 part files stranded mid-upload were complete, and shipping them beat
+        rebuilding them.
+      </p>
+      <p>
+        <strong>Seven sessions of 10,905 were too long to decode whole.</strong> A 12&nbsp;h recording
+        is 1.35&nbsp;GB of PCM in one worker, doubled transiently by ffmpeg's captured stdout, against
+        ~4&nbsp;GB free — so <code>MAX_SESSION_S</code> refused them rather than risking an OOM at hour
+        thirty. They were recovered afterwards by a second decoder that asks ffmpeg for one turn's span
+        at a time, bounding memory by the longest turn instead of the recording: 3,094 chunks across 55
+        speakers, and all thirteen chunk invariants hold on them.
+      </p>
+      <h3>What is still not verified</h3>
+      <p>
+        Speaker attribution comes from the written protocol, which records who held the floor rather
+        than who was audible. The ear check was spot-checked on a handful of clips, not swept across
+        all 35. And the ECAPA speaker-embedding check — the only test that compares a chunk against its
+        speaker's voice rather than against the protocol — needs a GPU and has never been run. Until it
+        does, this corpus's speaker labels are as good as the protocol, which is not the same as being
+        as good as the tape.
+      </p>
+    </div>
+
+    <ol class="run">
+      <li>
+        <div class="what">Install ffmpeg and soundfile — done</div>
+        <div class="how">ffmpeg 9.0.1 (Gyan build) &nbsp;·&nbsp; soundfile 0.14.0 / libsndfile 1.2.2</div>
+        <div class="why"><code>soundfile</code> is not optional in practice: without it every chunk
+          shells out to ffmpeg, which is 1.19M subprocess spawns on a full build. Note that winget's
+          PATH change needs a fresh terminal, or set <code>$FFMPEG</code> to the binary.</div>
+      </li>
+      <li>
+        <div class="what">Corpus self-checks — passing</div>
+        <div class="how">python src/preprocessing/preprocessing.py --fetch</div>
+        <div class="why">The flag pulls the 520&nbsp;MB index; without it the corpus checks skip, so a
+          routine run never starts a download nobody asked for.</div>
+      </li>
+      <li>
+        <div class="what">Pilot on twenty sessions — passed</div>
+        <div class="how">1,333 runs → 1,729 chunks, 5.77 h, in 4.7 min at 4 workers</div>
+        <div class="why">All thirteen chunk invariants hold, including that two speakers never overlap
+          in time within a session. Both predicted edge cases appeared and were handled: one m4a
+          shorter than its alignment (2 chunks dropped past EOF) and one carrying 3 h of audio for a
+          single chunk.</div>
+      </li>
+      <li class="pending">
+        <div class="what">Listen — spot-checked, not swept</div>
+        <div class="how">ear check page, 35 clips across the 20 pilot sessions</div>
+        <div class="why">A few clips were played and matched their text. That is real evidence, but
+          about the sessions that happened to be heard: a time-origin offset is a per-session fault, so
+          the ones not listened to are not covered.</div>
+      </li>
+      <li>
+        <div class="what">Build and ship — done</div>
+        <div class="how">python src/preprocessing/run_build.py &nbsp;·&nbsp; 410 shards, 274.5 GB, 36.6 h</div>
+        <div class="why">Streamed straight to the Hub, one shard at a time, so local disk never held
+          more than a shard plus the sessions in flight.</div>
+      </li>
+      <li>
+        <div class="what">Recover the oversized sessions — done</div>
+        <div class="how">python src/preprocessing/recover_long.py &nbsp;·&nbsp; 7 sessions, 3,094 chunks, shard 00409</div>
+        <div class="why">Per-turn ranged decode, so memory follows the longest turn rather than the
+          recording.</div>
+      </li>
+      <li class="pending">
+        <div class="what">Run the speaker-embedding gate</div>
+        <div class="how">ECAPA centroids per speaker, flag outliers</div>
+        <div class="why">Needs a GPU. The one check that tests the labels against the voice rather than
+          against the protocol — and the one failure mode both text sources share.</div>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sectionlabel">Open</div>
+    <div class="col">
+      <h2>What this cannot check</h2>
+      <p>
+        Speaker attribution comes from the written protocol, which records who <em>held the floor</em> —
+        not who was audible. Committee sittings have heavy cross-talk, and a chunk labelled for one
+        member may carry another voice over it. The per-chunk <code>quality</code> score catches some of
+        that, since overlap degrades alignment confidence, but not all of it.
+      </p>
+      <p>
+        The real gate is Step&nbsp;4.2 of the identity plan — the ECAPA speaker-embedding check that
+        compares each chunk against its speaker's centroid. It needs a GPU and has never been run. Until
+        it does, the corpus's precision figure of 1.000 means <em>against the protocol</em>, not against
+        the voice on the tape. It should run on the finished corpus.
+      </p>
+      <p>
+        One smaller item, for whoever does the subgroup analysis: three <code>place_of_birth</code>
+        values in this corpus — <span class="he">אוסטריה</span>, <span class="he">דנמרק</span> and
+        <span class="he">האימפריה האוסטרו־הונגרית</span>, one speaker each — are not covered by the
+        existing origin mapping, and unmapped values become <code>Unknown</code> and drop out silently.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    Built against <code>Dolevabudi/knesset-committees-speakers</code> and
+    <code>ivrit-ai/knesset-committees</code>. Chunking adapted from ivrit.ai's
+    <code>asr-training/create_dataset.py</code>. All measured figures taken from the live index on
+    9&nbsp;September&nbsp;2026, through the module's own code path.
+  </footer>
+
+</div>
