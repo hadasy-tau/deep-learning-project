@@ -375,14 +375,15 @@
     <h1>One speaker per chunk: a 30-second corpus from the Knesset committees</h1>
     <p class="standfirst">
       <code>src/preprocessing.py</code> turns the committees speaker index into audio — chunks of at
-      most 30&nbsp;seconds, each holding exactly one speaker, over the whole corpus. This page records
-      what it does and what it will produce. It has not been run.
+      most 30&nbsp;seconds, each holding exactly one speaker, over the whole corpus. It has now been
+      built: <strong>410 shards, 274.5&nbsp;GB of lossless FLAC, all 10,905 sessions</strong>, at
+      <code>Hadasy/knesset-committees-chunks</code>.
     </p>
     <div class="statusbar">
-      <span class="status"><span class="dot done"></span>Module written</span>
-      <span class="status"><span class="dot done"></span>Self-checks pass, corpus included</span>
-      <span class="status"><span class="dot done"></span>Pilot: 20 sessions, 1,729 chunks</span>
-      <span class="status"><span class="dot pending"></span>Ear check outstanding</span>
+      <span class="status"><span class="dot done"></span>Built: 10,905 / 10,905 sessions</span>
+      <span class="status"><span class="dot done"></span>410 shards, no gaps or duplicates</span>
+      <span class="status"><span class="dot pending"></span>Ear check spot-checked only</span>
+      <span class="status"><span class="dot pending"></span>Speaker-embedding gate not run</span>
     </div>
   </header>
 
@@ -572,7 +573,7 @@
       <div><dt>Turns</dt><dd>936,406<small>one speaker each</small></dd></div>
       <div><dt>Speakers</dt><dd>330<small>Knesset PersonIDs</small></dd></div>
       <div><dt>Sessions</dt><dd>10,905<small>with assigned audio</small></dd></div>
-      <div><dt>Chunks</dt><dd>~1.19M<small>projected, ≤ 30 s each</small></dd></div>
+      <div><dt>Chunks built</dt><dd>1,202,046<small>≤ 30 s, one speaker each</small></dd></div>
     </dl>
 
     <div class="slab">
@@ -595,7 +596,7 @@
             <tr><td>Turn span — mean</td><td class="num">15.8 s</td><td class="num">17.4 s</td><td><span class="tag m">measured</span></td></tr>
             <tr><td>Turn span — p90</td><td class="num">36 s</td><td class="num">41 s</td><td><span class="tag m">measured</span></td></tr>
             <tr><td>Speech hours</td><td class="num">3,398 h</td><td class="num">3,092 h</td><td><span class="tag m">measured</span></td></tr>
-            <tr><td>Chunks emitted</td><td class="num">1,191,395</td><td class="num">939,159</td><td><span class="tag p">projected</span></td></tr>
+            <tr><td>Chunks emitted</td><td class="num">1,202,046</td><td class="num">—</td><td><span class="tag m">measured</span></td></tr>
             <tr><td>Audio emitted</td><td class="num">4,111 h</td><td class="num">3,483 h</td><td><span class="tag p">projected</span></td></tr>
             <tr><td>Silence inside turns</td><td class="num">17%</td><td class="num">11%</td><td><span class="tag m">measured</span></td></tr>
           </tbody>
@@ -651,27 +652,22 @@ delete                the m4a
         <table>
           <thead><tr><th>Resource</th><th class="num">Amount</th><th>Basis</th></tr></thead>
           <tbody>
-            <tr><td>Bytes transferred</td><td class="num">~612 GB</td><td>100 kbps modal encode, measured by HEAD <span class="tag p">projected</span></td></tr>
-            <tr><td>Transient disk</td><td class="num">&lt; 1.6 GB</td><td>4 workers × one m4a <span class="tag m">measured</span></td></tr>
-            <tr><td>Decode</td><td class="num">14–27 core-h</td><td>13,593 audio-h at 500–1000× realtime <span class="tag p">projected</span></td></tr>
-            <tr><td>FLAC encode</td><td class="num">14–40 core-h</td><td>4,111 h of output, via libsndfile <span class="tag p">projected</span></td></tr>
-            <tr><td>Output on disk</td><td class="num">~235–285 GB</td><td>FLAC at 0.5–0.6 of PCM <span class="tag p">projected</span></td></tr>
-            <tr><td>Wall clock</td><td class="num">~43 h</td><td>pilot throughput of 4.0 MB/s at 4 workers <span class="tag m">measured</span></td></tr>
+            <tr><td>Bytes transferred</td><td class="num">~612 GB</td><td>10,905 sessions at the 100 kbps modal encode <span class="tag m">measured</span></td></tr>
+            <tr><td>Local disk held</td><td class="num">&lt; 1.6 GB</td><td>3 workers × one m4a, shards deleted after upload <span class="tag m">measured</span></td></tr>
+            <tr><td>Output</td><td class="num">274.5 GB</td><td>410 shards of lossless FLAC <span class="tag m">measured</span></td></tr>
+            <tr><td>Wall clock</td><td class="num">36.6 h</td><td>33.0 h + 3.6 h to finish after a Hub outage <span class="tag m">measured</span></td></tr>
+            <tr><td>Workers</td><td class="num">3</td><td>capped by RAM, not network: a decoded session is up to 333 MB and ffmpeg's captured stdout doubles it <span class="tag m">measured</span></td></tr>
           </tbody>
         </table>
       </div>
       <figcaption>
-        The wall-clock figure is no longer a guess: the pilot consumed 1,117&nbsp;MB of m4a in
-        282&nbsp;seconds at 4 workers — 84× realtime per worker for fetch, decode, cut and encode
-        combined — which puts the full run at roughly 43 hours.
-      </figcaption>
-      <figcaption>
-        <strong>But 70% of that is wasted.</strong> Only 30.2% of the session audio being fetched and
-        decoded ends up in a chunk. The worst 1,931 sessions cost 103&nbsp;GB of transfer and 2,297
-        audio-hours of decode to yield 68&nbsp;h — 1.7% of the output; the worst 807 of them cost
-        48&nbsp;GB for 3&nbsp;h. Decoding those spans from the remote m4a by HTTP range instead of
-        fetching whole sessions would cut the run by about a sixth, and a threshold at 25% density
-        would cut roughly a third.
+        <strong>70% of the transfer was waste, and still is.</strong> Only 30.2% of the session audio
+        fetched and decoded ends up inside a chunk; the rest is unresolved speakers, gaps outside any
+        turn, and stretches the alignment never covered. The worst 1,931 sessions cost 103&nbsp;GB and
+        2,297 audio-hours to yield 68&nbsp;h — 1.7% of the output — and the worst 807 of them cost
+        48&nbsp;GB for three hours. Decoding those spans by HTTP range instead of fetching whole
+        sessions would cut a rebuild by about a sixth, or a third at a 25% density threshold. It was
+        not worth restarting a healthy run to save six hours of thirty-three.
       </figcaption>
     </div>
   </section>
@@ -717,20 +713,38 @@ delete                the m4a
   <section>
     <div class="sectionlabel">Status</div>
     <div class="col">
-      <h2>Checked against the live index; no audio fetched yet</h2>
+      <h2>Built, verified, and two gates still open</h2>
       <p>
-        Every self-check passes, corpus-level ones included: window tiling and turn containment,
-        timestamp tokens, the <code>chunk_id</code> round-trip, the schema's dtype pinning, a
-        sample-exact FLAC round-trip, and the row, run, speaker and session counts on this page —
-        including the assertion that no run holds two speakers.
+        The corpus is complete: 10,905 of 10,905 sessions, 410 shards with no gaps and no duplicate
+        indices, verified three independent ways — the repo listing, the uploaded-session ledger, and
+        the run log's own per-shard counts, which agree exactly.
+      </p>
+      <h3>What went wrong, and what it cost</h3>
+      <p>
+        <strong>A Hub outage killed the run at 88%.</strong> HuggingFace returned 503 on the commit
+        endpoint after 29&nbsp;hours. That was their failure, but the consequence was a gap in this
+        code: the download path retried with jittered backoff and the upload path had none, so one
+        transient error was fatal. Uploads now retry the same way, and the fix proved necessary within
+        a minute — re-flushing the stranded shard hit another 503 and succeeded on the second attempt.
+        Nothing was lost: the 36 part files stranded mid-upload were complete, and shipping them beat
+        rebuilding them.
       </p>
       <p>
-        Two things the checks turned up and the code now handles. A row missing any integer column
-        used to crash the whole session's part file at cast time; only <code>speaker_id</code> and
-        <code>session</code> are non-nullable now. And exactly one assigned segment in 2,295,972 breaks
-        the 30&nbsp;second ceiling — 117.96&nbsp;s at quality 0.0, an alignment that scored nothing.
-        It is skipped rather than truncated, which makes that branch a live path rather than the dead
-        guard it was written as.
+        <strong>Seven sessions of 10,905 were too long to decode whole.</strong> A 12&nbsp;h recording
+        is 1.35&nbsp;GB of PCM in one worker, doubled transiently by ffmpeg's captured stdout, against
+        ~4&nbsp;GB free — so <code>MAX_SESSION_S</code> refused them rather than risking an OOM at hour
+        thirty. They were recovered afterwards by a second decoder that asks ffmpeg for one turn's span
+        at a time, bounding memory by the longest turn instead of the recording: 3,094 chunks across 55
+        speakers, and all thirteen chunk invariants hold on them.
+      </p>
+      <h3>What is still not verified</h3>
+      <p>
+        Speaker attribution comes from the written protocol, which records who held the floor rather
+        than who was audible. The ear check was spot-checked on a handful of clips, not swept across
+        all 35. And the ECAPA speaker-embedding check — the only test that compares a chunk against its
+        speaker's voice rather than against the protocol — needs a GPU and has never been run. Until it
+        does, this corpus's speaker labels are as good as the protocol, which is not the same as being
+        as good as the tape.
       </p>
     </div>
 
@@ -757,17 +771,29 @@ delete                the m4a
           single chunk.</div>
       </li>
       <li class="pending">
-        <div class="what">Listen to ten sessions</div>
-        <div class="how">verify_session(session, turns, n=3)</div>
-        <div class="why">The only check that catches a time-origin offset between the m4a and the
-          alignment. Plausible-looking chunks of the wrong words satisfy every assertion in the module.
-          Do this before spending 612&nbsp;GB.</div>
+        <div class="what">Listen — spot-checked, not swept</div>
+        <div class="how">ear check page, 35 clips across the 20 pilot sessions</div>
+        <div class="why">A few clips were played and matched their text. That is real evidence, but
+          about the sessions that happened to be heard: a time-origin offset is a per-session fault, so
+          the ones not listened to are not covered.</div>
+      </li>
+      <li>
+        <div class="what">Build and ship — done</div>
+        <div class="how">python run_build.py &nbsp;·&nbsp; 410 shards, 274.5 GB, 36.6 h</div>
+        <div class="why">Streamed straight to the Hub, one shard at a time, so local disk never held
+          more than a shard plus the sessions in flight.</div>
+      </li>
+      <li>
+        <div class="what">Recover the oversized sessions — done</div>
+        <div class="how">python recover_long.py &nbsp;·&nbsp; 7 sessions, 3,094 chunks, shard 00409</div>
+        <div class="why">Per-turn ranged decode, so memory follows the longest turn rather than the
+          recording.</div>
       </li>
       <li class="pending">
-        <div class="what">Build, then assemble</div>
-        <div class="how">build(turns) &nbsp;→&nbsp; assemble(shard_mb=500)</div>
-        <div class="why">Resumable at session granularity. A partial run is a valid corpus of the
-          sessions it finished.</div>
+        <div class="what">Run the speaker-embedding gate</div>
+        <div class="how">ECAPA centroids per speaker, flag outliers</div>
+        <div class="why">Needs a GPU. The one check that tests the labels against the voice rather than
+          against the protocol — and the one failure mode both text sources share.</div>
       </li>
     </ol>
   </section>
