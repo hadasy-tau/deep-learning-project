@@ -712,8 +712,33 @@ def flush_shard(repo, shard_idx, sessions, private=True):
 
     token = hf_write_token()
     create_repo(repo, repo_type='dataset', private=private, exist_ok=True, token=token)
-    HfApi(token=token).upload_file(path_or_fileobj=shard, repo_id=repo, repo_type='dataset',
-                                   path_in_repo=f'data/chunks-{shard_idx:05d}.parquet')
+
+    # Retry the upload the way _get retries downloads.  Without this a single
+    # transient server error ends the whole run: a 503 on the commit endpoint
+    # killed a 29 h build at 88% on 2026-09-11.  Retrying an upload is safe --
+    # the Hub deduplicates by content hash, so a re-sent shard costs bandwidth
+    # and nothing else.  4xx (auth, quota, bad request) fails fast: retrying
+    # cannot fix it.
+    last = None
+    for i in range(6):
+        try:
+            HfApi(token=token).upload_file(
+                path_or_fileobj=shard, repo_id=repo, repo_type='dataset',
+                path_in_repo=f'data/chunks-{shard_idx:05d}.parquet')
+            last = None
+            break
+        except Exception as e:
+            status = getattr(getattr(e, 'response', None), 'status_code', None)
+            if status is not None and 400 <= status < 500 and status != 429:
+                raise
+            last = e
+            print(f'  shard {shard_idx:05d}: upload attempt {i+1}/6 failed '
+                  f'({status or type(e).__name__}), retrying', flush=True)
+            if i < 5:
+                time.sleep(min(2 ** i, 60) * (1 + random.random()))
+    if last is not None:
+        raise last
+
     mb = os.path.getsize(shard) / 1e6
     # Only after the upload returns: a failed upload must leave the parts in
     # place so the next run rebuilds nothing and simply retries the shard.
