@@ -1,0 +1,407 @@
+<title>Personalized Hebrew ASR</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:      #eef0f4;
+    --surface:    #ffffff;
+    --surface-2:  #f6f7fa;
+    --ink:        #151b26;
+    --slate:      #4c5a6e;
+    --slate-soft: #7b879a;
+    --rule:       #d6dae2;
+    --rule-soft:  #e4e7ed;
+    --brass:      #8f6418;
+    --brass-soft: #f0e6d2;
+    --teal:       #1b615e;
+
+    --display: "Frank Ruhl Libre", "Times New Roman", serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #10151d;
+      --surface:    #191f2a;
+      --surface-2:  #1e2531;
+      --ink:        #e6e9ef;
+      --slate:      #a6b1c2;
+      --slate-soft: #7d8899;
+      --rule:       #2c3542;
+      --rule-soft:  #232b37;
+      --brass:      #d2a44f;
+      --brass-soft: #33291a;
+      --teal:       #56a8a2;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #10151d;
+    --surface:    #191f2a;
+    --surface-2:  #1e2531;
+    --ink:        #e6e9ef;
+    --slate:      #a6b1c2;
+    --slate-soft: #7d8899;
+    --rule:       #2c3542;
+    --rule-soft:  #232b37;
+    --brass:      #d2a44f;
+    --brass-soft: #33291a;
+    --teal:       #56a8a2;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 800px; margin: 0 auto; padding: 56px 24px 88px; }
+
+  /* ---- masthead ---- */
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--brass);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 700; font-size: 42px;
+    line-height: 1.08; letter-spacing: -.01em; text-wrap: balance;
+    margin: 0 0 16px;
+  }
+  .standfirst { font-size: 17px; line-height: 1.62; color: var(--slate); max-width: 60ch; margin: 0; }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  .arms { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+          margin: 32px 0 0; grid-template-columns: 1fr 1fr; }
+  .arm { background: var(--surface); padding: 16px 18px; }
+  .arm .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+              text-transform: uppercase; color: var(--slate-soft); }
+  .arm .ckpt { font-family: var(--mono); font-size: 13px; margin: 6px 0 6px;
+               word-break: break-all; color: var(--ink); }
+  .arm .role { font-size: 13px; line-height: 1.5; color: var(--slate); }
+  .arm.b { box-shadow: inset 3px 0 0 var(--brass); }
+
+  /* ---- sections ---- */
+  h2 { font-family: var(--display); font-weight: 700; font-size: 24px;
+       letter-spacing: -.005em; margin: 56px 0 6px; }
+  .sub { color: var(--slate); font-size: 14.5px; margin: 0 0 26px; max-width: 62ch; }
+  p { max-width: 64ch; }
+  code { font-family: var(--mono); font-size: .875em; color: var(--ink);
+         background: var(--surface-2); padding: .1em .35em; border-radius: 2px; }
+  a { color: var(--brass); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  /* ---- the pipeline ---- */
+  .flow { display: flex; flex-direction: column; }
+  .step { display: grid; grid-template-columns: 132px 1px 1fr; }
+  .mag {
+    text-align: right; padding: 18px 18px 18px 0;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.45; color: var(--brass);
+    font-variant-numeric: tabular-nums;
+  }
+  .mag span { display: block; color: var(--slate-soft); font-size: 11px; letter-spacing: .04em; }
+  .spine { background: var(--rule); position: relative; }
+  .spine::before {
+    content: ""; position: absolute; left: -3.5px; top: 26px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--paper); border: 2px solid var(--brass);
+  }
+  .step.src .spine::before { border-color: var(--slate-soft); }
+  .step:last-child .spine { background: linear-gradient(var(--rule) 26px, transparent 26px); }
+  .body { padding: 18px 0 18px 22px; }
+  .body h3 { font-family: var(--body); font-size: 15px; font-weight: 600; margin: 0 0 2px;
+             letter-spacing: -.005em; }
+  .body .path { font-family: var(--mono); font-size: 12px; color: var(--slate-soft); }
+  .body p { margin: 8px 0 0; font-size: 14px; line-height: 1.58; color: var(--slate); max-width: 58ch; }
+
+  /* ---- notes ---- */
+  .note {
+    background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--teal);
+    padding: 16px 20px; margin: 28px 0 0; font-size: 14px; line-height: 1.6; color: var(--slate);
+  }
+  .note.warn { border-left-color: var(--brass); }
+  .note b { color: var(--ink); font-weight: 600; }
+  .note :first-child { margin-top: 0; }
+  .note :last-child { margin-bottom: 0; }
+
+  /* ---- diagram ---- */
+  figure { margin: 28px 0 0; }
+  .scroller { overflow-x: auto; }
+  svg { display: block; min-width: 680px; width: 100%; height: auto; }
+  .d-group { fill: var(--surface-2); stroke: var(--rule); }
+  .d-box { fill: var(--surface); stroke: var(--rule); }
+  .d-core { fill: var(--surface); stroke: var(--brass); stroke-width: 1.5; }
+  .d-title { fill: var(--ink); font-family: var(--body); font-size: 12.5px; font-weight: 600; }
+  .d-mono { fill: var(--brass); font-family: var(--mono); font-size: 11px; }
+  .d-note { fill: var(--slate); font-family: var(--body); font-size: 11px; }
+  .d-line { stroke: var(--slate-soft); fill: none; }
+  .d-feed { stroke: var(--teal); fill: none; stroke-dasharray: 4 3; }
+  .d-feedlabel { fill: var(--teal); font-family: var(--mono); font-size: 10.5px; }
+  .d-panel { fill: var(--slate-soft); font-family: var(--mono); font-size: 10px;
+             letter-spacing: .1em; }
+  figcaption { font-size: 13px; color: var(--slate-soft); margin-top: 14px; max-width: 64ch; }
+
+  ul.tight { margin: 24px 0 0; padding-left: 20px; max-width: 64ch; }
+  ul.tight li { margin-bottom: 10px; font-size: 14.5px; color: var(--slate); }
+  ul.tight li b { color: var(--ink); font-weight: 600; }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule);
+           font-size: 13px; color: var(--slate-soft); }
+  footer a { color: var(--slate); }
+
+  @media (max-width: 620px) {
+    h1 { font-size: 32px; }
+    .arms { grid-template-columns: 1fr; }
+    .step { grid-template-columns: 96px 1px 1fr; }
+    .mag { font-size: 11.5px; padding-right: 12px; }
+    .body { padding-left: 16px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Project design &middot; Knesset committees</p>
+  <h1>Personalized Hebrew ASR</h1>
+  <p class="standfirst">
+    Does adapting an ASR model to <em>one speaker</em> help, and for whom? The corpus is
+    ~15,500 h of Knesset <strong>committee</strong> audio with the official protocol
+    force-aligned to it &mdash; recordings no Hebrew Whisper checkpoint has trained on.
+    Seven stages turn that into one answer per speaker, then an adapter for the speakers
+    the general Hebrew model failed, then a verdict on it.
+  </p>
+
+  <div class="arms">
+    <div class="arm">
+      <div class="tag">Arm A &middot; control</div>
+      <div class="ckpt">openai/whisper-large-v3</div>
+      <div class="role">General multilingual. Makes a null result on B interpretable.</div>
+    </div>
+    <div class="arm b">
+      <div class="tag">Arm B &middot; target</div>
+      <div class="ckpt">ivrit-ai/whisper-large-v3</div>
+      <div class="role">Hebrew fine-tune, trained on <em>plenum</em> audio only &mdash; so committees are held out.</div>
+    </div>
+  </div>
+
+  <h2>The flow</h2>
+  <p class="sub">
+    The left rail is what survives each stage. The narrowing is deliberate: stage&nbsp;5
+    needs to <em>rank</em> speakers, not transcribe a corpus.
+  </p>
+
+  <div class="flow">
+
+    <div class="step src">
+      <div class="mag">~15,500 h<span>source audio</span></div>
+      <div class="spine"></div>
+      <div class="body">
+        <h3>Data</h3>
+        <div class="path">ivrit-ai/knesset-committees &middot; gated</div>
+        <p>One <code>audio.m4a</code> per committee session, the protocol force-aligned to
+        it, and speaker names as <em>strings</em>. ~10,900 sessions carry usable audio.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="mag">5.16 M spans<span>3,345 h identified</span></div>
+      <div class="spine"></div>
+      <div class="body">
+        <h3>1 &middot; Speaker name &rarr; unique id</h3>
+        <div class="path">src/preprocessing/speaker_index/</div>
+        <p>The protocol says who holds the floor by name. That name is joined to the
+        Knesset's own <code>PersonID</code>, from the parliament's public ODATA API, and the
+        id is what travels downstream &mdash; attached to every
+        <code>(session, start, end)</code> span.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="mag">1.2 M chunks<span>~3,840 h &middot; 330 speakers</span></div>
+      <div class="spine"></div>
+      <div class="body">
+        <h3>2 &middot; Index &times; audio &rarr; chunks</h3>
+        <div class="path">src/preprocessing/chunk_corpus/</div>
+        <p>Every chunk is &le;30 s and holds <em>exactly one speaker</em>; chunks tile a turn
+        back to back and never cross a speaker change. FLAC inline, 410 parquet shards.
+        Nothing filtered at build time &mdash; filtering is the consumer's call, on
+        <code>quality</code>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="mag">65,990 chunks<span>230 h &middot; &times;2 arms</span></div>
+      <div class="spine"></div>
+      <div class="body">
+        <h3>3 &middot; Inference, both arms</h3>
+        <div class="path">src/inference/run.py</div>
+        <p>1 h per speaker, drawn round-robin over sessions so it spans a tenure:
+        267 speakers, 8,217 sessions. Arm A through HF Inference Providers, arm B on RunPod
+        serverless. One JSONL row per (chunk, arm), hypothesis beside the protocol
+        reference.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="mag">267 WER pairs<span>per speaker</span></div>
+      <div class="spine"></div>
+      <div class="body">
+        <h3>4 &middot; Per-speaker performance</h3>
+        <div class="path">src/evaluation/evaluate.py</div>
+        <p>Hebrew normalisation, then word- and character-level Levenshtein. Error
+        <em>counts</em> are stored, never rates, so a speaker's WER stays
+        &Sigma;errors&thinsp;/&thinsp;&Sigma;words however the rows are later grouped.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="mag">a shortlist<span>lowest gain</span></div>
+      <div class="spine"></div>
+      <div class="body">
+        <h3>5 &middot; Choose who to adapt</h3>
+        <div class="path">gain = WER<sub>A</sub> &minus; WER<sub>B</sub></div>
+        <p><em>Low</em> gain is the signal: the Hebrew fine-tune did nothing for this voice,
+        so that is where personalization has headroom. High-gain speakers are already
+        served.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="mag">1 adapter<span>per cell</span></div>
+      <div class="spine"></div>
+      <div class="body">
+        <h3>6 &middot; Fine-tune them</h3>
+        <div class="path">src/training/train.py</div>
+        <p>More of the chosen speaker's audio &rarr; session-disjoint splits, latest sessions
+        held out &rarr; one adapter per <em>cell</em>
+        <code>(speaker, arm, site, method, budget, rank, lr, seed)</code>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="mag">a verdict<span>per speaker</span></div>
+      <div class="spine"></div>
+      <div class="body">
+        <h3>7 &middot; Evaluate the adapters</h3>
+        <div class="path">src/evaluation/evaluate.py</div>
+        <p>Base and tuned scored down the <em>identical</em> path, on the speaker's held-out
+        sessions, with a paired bootstrap over chunks. Did adaptation help, where did it act,
+        and how many minutes did it take?</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <p><b>Why 1 h per speaker.</b> The per-speaker CI half-width reaches ~0.04 WER at
+    45 min &mdash; enough to rank by gain. 230 h cost under $20 and under two hours of wall
+    time; the full 3,840 h would run ~$104 (A) + ~$150 (B) and buy stage 5 nothing.</p>
+  </div>
+
+  <h2>One id, one inference path</h2>
+  <p class="sub">
+    Two decisions hold the whole pipeline together. A speaker's identity is resolved
+    <em>once</em>, to an id the Knesset already assigns; and the audio that id selects goes
+    through <em>one</em> inference path, called twice &mdash; wide and shallow to rank every
+    speaker, then deep on the few that are chosen.
+  </p>
+
+  <figure>
+    <div class="scroller">
+      <svg viewBox="0 0 760 312" role="img" aria-label="Preprocessing resolves names to a PersonID and cuts the audio into chunks; it feeds one inference block, which branches to per-speaker analysis and to personalization. A dashed line carries the chosen speakers from analysis to personalization.">
+
+        <text class="d-panel" x="6" y="26">PREPROCESSING</text>
+        <rect class="d-group" x="6" y="34" width="250" height="186" rx="3"></rect>
+
+        <rect class="d-box" x="20" y="48" width="222" height="70" rx="2"></rect>
+        <text class="d-title" x="36" y="72">Speaker name &rarr; PersonID</text>
+        <text class="d-note" x="36" y="90">the Knesset's own id, from their</text>
+        <text class="d-note" x="36" y="105">public ODATA service</text>
+
+        <path class="d-line" d="M131 118 V 130"></path>
+        <path class="d-line" d="M126 129 l 5 7 5 -7"></path>
+
+        <rect class="d-box" x="20" y="140" width="222" height="66" rx="2"></rect>
+        <text class="d-title" x="36" y="164">Audio &rarr; chunks</text>
+        <text class="d-note" x="36" y="182">&le;30 s, exactly one speaker each,</text>
+        <text class="d-note" x="36" y="197">the reference text alongside</text>
+
+        <path class="d-line" d="M256 127 H 282"></path>
+        <path class="d-line" d="M276 122 l 7 5 -7 5"></path>
+
+        <text class="d-panel" x="288" y="26">INFERENCE</text>
+        <rect class="d-group" x="288" y="34" width="186" height="186" rx="3"></rect>
+
+        <rect class="d-core" x="302" y="84" width="158" height="86" rx="2"></rect>
+        <text class="d-title" x="381" y="112" text-anchor="middle" style="font-size:15px">run.py</text>
+        <text class="d-mono" x="381" y="136" text-anchor="middle">arm A &middot; arm B</text>
+        <text class="d-note" x="381" y="158" text-anchor="middle">one code path, called twice</text>
+
+        <path class="d-line" d="M474 110 H 504 V 86 H 532"></path>
+        <path class="d-line" d="M526 81 l 7 5 -7 5"></path>
+        <path class="d-line" d="M474 144 H 504 V 246 H 532"></path>
+        <path class="d-line" d="M526 241 l 7 5 -7 5"></path>
+
+        <text class="d-panel" x="540" y="26">4&ndash;5 &middot; ANALYSIS &middot; 1 H PER SPEAKER</text>
+        <rect class="d-box" x="540" y="34" width="214" height="104" rx="2"></rect>
+        <text class="d-title" x="558" y="60">WER per speaker, both arms</text>
+        <text class="d-mono" x="558" y="84">gain = WER_A &minus; WER_B</text>
+        <text class="d-note" x="558" y="106">pick the lowest-gain speakers &mdash;</text>
+        <text class="d-note" x="558" y="121">where adaptation has headroom</text>
+
+        <path class="d-feed" d="M700 138 V 182"></path>
+        <path class="d-feed" d="M695 176 l 5 7 5 -7"></path>
+        <text class="d-feedlabel" x="690" y="166" text-anchor="end">the chosen speakers</text>
+
+        <text class="d-panel" x="540" y="186">6&ndash;7 &middot; PERSONALIZATION &middot; MORE AUDIO</text>
+        <rect class="d-box" x="540" y="194" width="214" height="104" rx="2"></rect>
+        <text class="d-title" x="558" y="220">Fine-tune an adapter</text>
+        <text class="d-note" x="558" y="238">on more of that speaker's audio</text>
+        <text class="d-title" x="558" y="266">Evaluate base vs tuned</text>
+        <text class="d-note" x="558" y="284">on held-out later sessions</text>
+      </svg>
+    </div>
+    <figcaption>
+      Preprocessing mints the key and cuts the audio; inference is a single code path, and
+      the two branches out of it are the only difference &mdash; a shallow pass over everyone,
+      then a deep one over the few. The dashed line is the handoff: analysis names the
+      speakers, personalization acts on them.
+    </figcaption>
+  </figure>
+
+  <ul class="tight">
+    <li><b>The id is not ours.</b> <code>PersonID</code> is the Knesset's own key, read from
+      the parliament's public ODATA service, which also supplies each member's name variants
+      and service dates. It is the <em>same id space</em> as
+      <code>HaifaCLGroup/KnessetCorpus</code>, so the roster, the demographics and the
+      protocols all join directly &mdash; and the session key joins the same way: ivrit's
+      <code>session_id</code> <em>is</em> ODATA's <code>CommitteeSessionID</code>.</li>
+    <li><b>Accuracy over coverage.</b> A match must be exact and must fall inside the
+      person's service dates. A name that cannot be resolved is dropped, not guessed: a
+      wrong id is far worse than no id.</li>
+    <li><b>The id is also the selector</b>, which is what makes screening and personalization
+      the same program rather than two. Only the filter changes: 1 h of every speaker, or
+      everything left of one chosen speaker.</li>
+    <li><b>One seam is unavoidable.</b> A trained adapter is not served by the providers, so
+      stage 7 runs locally. Comparisons therefore stay inside one engine &mdash; A vs B over
+      the providers, base vs tuned locally &mdash; while the <em>scoring</em> is shared:
+      <code>normalize_he</code> from <code>src/common.py</code>, error counts not rates,
+      micro-aggregated.</li>
+  </ul>
+
+  <div class="note warn">
+    <p><b>The caveat that outlives every stage.</b> Speaker labels are verified against the
+    protocol, not against the voice. The protocol records who held the floor, not who was
+    audible, and committee cross-talk is heavy. If one speaker's WER looks anomalous, suspect
+    the labels before the model.</p>
+  </div>
+
+  <footer>
+    Read next: <a href="committees_handoff.md">committees_handoff.md</a> for the corpus
+    itself, <a href="speaker_index_plan.md">speaker_index_plan.md</a> for stage 1,
+    <a href="chunk_corpus_build.html">chunk_corpus_build.html</a> for stage 2,
+    <a href="inference.md">inference.md</a> for stage 3 and the measured costs.
+  </footer>
+
+</div>

@@ -43,8 +43,10 @@ src/
   evaluation/outputs/          speaker_performance.csv -- the Stage 1 per-speaker error map
 
 notebooks/                     explore_committees.ipynb, speaker_error_map.ipynb
-docs/                          the design and build records: committees_handoff.md,
-                               speaker_index_plan.md, chunk_corpus_build.html, inference.md
+docs/                          design.md + design.html are the one-page overview: the
+                               whole flow, end to end. Then the build records:
+                               committees_handoff.md, speaker_index_plan.md,
+                               chunk_corpus_build.html, inference.md
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
