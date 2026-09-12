@@ -17,3 +17,13 @@ __pycache__/
 
 # stray dataset shards downloaded to the repo root
 /*.parquet
+
+# Shared secrets, mode 600.  Read by src/inference/providers.py and
+# src/preprocessing/speaker_index/publish.py.  Must stay ignored: this is where
+# the RunPod key and the HuggingFace tokens live.
+/cache/
+
+# Training runs and adapters.  src/evaluation/outputs/ is NOT ignored -- it
+# carries the per-speaker results table, which is evidence, not build product.
+/src/training/runs/
+/src/training/outputs/

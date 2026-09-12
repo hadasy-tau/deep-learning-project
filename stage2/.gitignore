@@ -1,9 +1,0 @@
-audio/
-shard_index.csv
-files_needed.csv
-*.log
-*.wav
-__pycache__/
-outputs/
-runs/
-chunk_examples/
