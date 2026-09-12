@@ -221,9 +221,50 @@ Two things still push the real bill above $42:
    pause. Raising it to 60–120 s in the RunPod console costs a few idle
    seconds per pause and removes the reloads.
 
-**Working estimate for Arm B: $45–60**, not $240. The account balance at
-verification time was $4.41 with an $80 spend limit, so a top-up is still
-needed, but a much smaller one.
+**Measured on the live run (2026-09-12).** Two things the 10-chunk sample could
+not show:
+
+*Arm B is dispatch-bound, then quota-bound.* Each worker runs a chunk in ~0.6 s
+of GPU time, yet a single endpoint fed 80 in-flight jobs kept only 3–7 running
+with 70 queued: RunPod's dispatcher hands work to a few workers at a time
+regardless of queue depth. A second endpoint (its own dispatcher) helps — but
+the account's **worker quota is 10 across all endpoints** (`saveEndpoint`
+refuses more), so two endpoints split the same ten GPUs, they do not add any.
+Throughput per worker ~7–8× realtime under dispatch overhead → ~75× for ten.
+
+*Arm A is client-bound, not provider-bound.* deepinfra answered a 6 s chunk in
+1.45 s at every concurrency tried and never returned a 429. Throughput scaled
+with in-flight requests — 8 → 47×, 64 → 128×, 128 → 200× realtime — and the only
+failures were local: a socket limit (`ulimit -n 4096`) and two dropped
+connections, retried by `--retry-failed`.
+
+*The corpus reader was the third bottleneck.* A 600 MB shard downloads in
+~30 s; the request pool drained a shard's rows in ~9 s and then sat idle. Fixed
+by prefetching the next two shards on a background thread. A **scattered**
+selection (1 h per speaker drawn across all 410 shards) still pulls 26 MB per
+audio-minute against 1.1 MB for shard-sequential reading — 24× read
+amplification — and three runs each pull every shard. Acceptable for a 230 h
+subset; for anything larger, select whole shards or share one download across
+arms.
+
+### Stage-1 subset (what was actually run)
+
+Stage 1 needs a per-speaker WER with a tight CI, on every speaker — not every
+hour each speaker ever spoke. stage0's power analysis puts the per-speaker CI
+half-width near 0.04 WER at 45 min. The subset takes **1 h per MK** (quality
+≥ 0.5) drawn round-robin over sessions so it spans the speaker's tenure:
+**65,990 chunks, 230 h, 267 speakers, 8,217 sessions**, 238 speakers with ≥ 8
+sessions for Stage 2's session-disjoint splits. 6 % of the corpus; the rest is
+untouched and selectable later via `coverage.parquet`.
+
+Measured on the subset: Arm A ~170× realtime → ~1.1 h, ~$5; Arm B ~130×
+combined → ~1.5 h, ~$15 at $8.70/h. **Both arms in under two hours, under $20.**
+
+*Arm A is client-bound, not provider-bound.* deepinfra answered a 6 s chunk in
+1.45 s at every concurrency tried and never returned a 429. Throughput scaled
+almost linearly with in-flight requests — 8 → 47×, 64 → 128×, 128 → 142×
+realtime — and the first failure at 128 was a local socket limit (`Bad file
+descriptor`), fixed with `ulimit -n 4096`. **128 in flight: ~24 h, $94–104.**
 
 ### Short chunks
 
