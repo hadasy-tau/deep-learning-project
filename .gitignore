@@ -8,3 +8,9 @@
 # Python
 __pycache__/
 *.pyc
+
+# local virtualenv
+.venv/
+
+# macOS
+.DS_Store

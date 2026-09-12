@@ -1,0 +1,12 @@
+cache/
+__pycache__/
+*.log
+
+# outputs/ is build product. Every file here is regenerable from the scripts and
+# is published to the HF dataset (which is itself versioned), so git carries only
+# the small reports the commit messages cite as evidence -- not the roster, the
+# alias tables, the 13k-row manifest, the 521 MB parquet, or the batch parts.
+outputs/*
+!outputs/match_report.txt
+!outputs/holdout_report.txt
+!outputs/audio_report.txt
