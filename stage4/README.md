@@ -72,3 +72,5 @@ chunk_id, arm, provider, model, speaker_id, session, session_date, knesset,
 duration_s, quality, reference, hypothesis, latency_s, error, ts, raw
 ```
 `raw` carries provider extras (RunPod `exec_ms`, `delay_ms`, `job_id`, word timings).
+
+`run_lean.py` reads shards with DuckDB (`pip install duckdb`); without it, it falls back to Arrow at roughly twice the peak memory.

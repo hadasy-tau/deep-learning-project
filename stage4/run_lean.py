@@ -20,7 +20,7 @@ Here:
     python stage4/run_lean.py --max-shards 1            # smoke
     python stage4/run_lean.py                           # everything left
 """
-import argparse, glob, json, os, shutil, sys, threading, time
+import argparse, gc, glob, json, os, shutil, sys, threading, time
 from concurrent.futures import ThreadPoolExecutor
 import pandas as pd, pyarrow as pa, pyarrow.compute as pc, pyarrow.parquet as pq
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +29,10 @@ from run import Runner, OUT, log, _wait_some
 from huggingface_hub import hf_hub_download
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Arrow's default pool (jemalloc/mimalloc) keeps freed shard memory around; the
+# runner's floor crept from 0.9 to 2.7 GB in an hour and spiked to 4.7 GB per
+# read.  The system pool plus an explicit release after each shard hands it back.
+pa.set_memory_pool(pa.system_memory_pool())
 DL = os.path.join(D.CACHE, 'lean_dl')                      # transient shard downloads, deleted after use
 
 def slim_index(subset_ids):
@@ -68,7 +72,27 @@ def fetch(shard):
     raise RuntimeError(f'{shard}: download failed 6 times')
 
 def shard_rows(path, want, batch=48):
-    """{chunk_id: flac bytes} for `want`, streaming the file in small batches."""
+    """{chunk_id: flac bytes} for `want`.
+
+    DuckDB first: it streams the single 770 MB row group under a memory cap
+    (measured 1.75 GB peak, 1 s).  Arrow's iter_batches on the same file peaks
+    at ~4x the file size whatever the pre-buffer/mmap settings (3 GB, 25 s),
+    so it is only the fallback."""
+    try:
+        import duckdb
+        con = duckdb.connect()
+        con.execute("SET memory_limit='2500MB'; SET threads=1; SET preserve_insertion_order=false")
+        con.register('want', pd.DataFrame({'chunk_id': sorted(want)}))
+        cur = con.execute("SELECT p.chunk_id, p.audio['bytes'] FROM read_parquet(?) p "
+                          "WHERE p.chunk_id IN (SELECT chunk_id FROM want)", [path])
+        out = {}
+        while True:
+            rows = cur.fetchmany(64)
+            if not rows: break
+            for cid, b in rows: out[cid] = bytes(b)
+        con.close(); return out
+    except Exception as e:
+        log(f'  duckdb read failed ({e!r}'[:120] + '); falling back to arrow')
     pf = pq.ParquetFile(path); out = {}
     for b in pf.iter_batches(batch_size=batch, columns=['chunk_id', 'audio']):
         ids = b.column('chunk_id').to_pylist()
@@ -123,7 +147,7 @@ class Lean:
                 if r.chunk_id in blob: self.submit(self.A, r, blob[r.chunk_id])
             for j, r in enumerate(rb.itertuples(index=False)):
                 if r.chunk_id in blob: self.submit(self.Bs[j % len(self.Bs)], r, blob[r.chunk_id])
-            del blob
+            del blob; gc.collect(); pa.default_memory_pool().release_unused()
             ga += len(ra); gb += len(rb)
             if k % 5 == 0 or k == len(shards):
                 el = time.time() - t0; b_exec = sum(x.stats.get('exec_s', 0.0) for x in self.Bs)
