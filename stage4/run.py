@@ -21,7 +21,14 @@ The record written per chunk:
 plus provider-specific extras under `raw` (RunPod exec/delay ms, job id).
 """
 import argparse, json, os, sys, threading, time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait, FIRST_COMPLETED
+
+def _wait_some(futs, k):
+    """Block until at least k of `futs` finish; return (count finished, remaining)."""
+    finished = 0
+    while finished < k and futs:
+        done, futs = wait(futs, return_when=FIRST_COMPLETED); finished += len(done)
+    return finished, set(futs)
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -84,30 +91,47 @@ class Runner:
         with self.lock:
             self.fh.write(json.dumps(rec, ensure_ascii=False) + '\n'); self.fh.flush()
             self.stats['ok' if err is None else 'failed'] += 1
-            if err is None: self.stats['audio_s'] += float(row.duration_s)
+            if err is None:
+                self.stats['audio_s'] += float(row.duration_s)
+                self.stats['exec_s'] = self.stats.get('exec_s', 0.0) + ((raw or {}).get('exec_ms') or 0) / 1000
         return rec
 
-    def run(self, rows, log_every=25):
+    def run(self, rows, log_every=500):
         self.out.parent.mkdir(parents=True, exist_ok=True)
         self.fh = self.out.open('a', encoding='utf-8')
-        n = len(rows); done = 0
+        n = len(rows); last_logged = 0
         with ThreadPoolExecutor(self.workers) as ex:
-            futs = []
+            futs = set()
             for row, audio in D.audio_iter(rows):
                 if self.stop.is_set(): break
-                futs.append(ex.submit(self.one, row, audio))
+                futs.add(ex.submit(self.one, row, audio))
                 if len(futs) >= self.workers * 4:          # bound in-flight audio in RAM
-                    for f in as_completed(futs[:self.workers]):
-                        done += 1
-                    futs = [f for f in futs if not f.done()]
-                if done and done % log_every == 0: self.progress(done, n)
-            for f in as_completed(futs): done += 1
-        self.fh.close(); self.progress(done, n, final=True)
+                    done_now, futs = _wait_some(futs, self.workers)
+                # progress is counted from rows actually WRITTEN (stats), not from
+                # futures collected: the two drift by a full in-flight window, and a
+                # check on the collected count re-fired on every loop iteration
+                written = self.stats['ok'] + self.stats['failed']
+                if written - last_logged >= log_every:
+                    last_logged = written - (written % log_every); self.progress(written, n)
+            for f in as_completed(futs): pass
+        self.fh.close(); self.progress(self.stats['ok'] + self.stats['failed'], n, final=True)
+
+    # Live cost, from what each provider actually bills (docs/stage4-inference.md):
+    #   A  deepinfra   $0.00045 per audio-minute, no per-call fee
+    #   B  RunPod      GPU worker-seconds; exec_s is the provider's own figure per job,
+    #                  priced at the AMPERE_16 pool's A4000 rate; idle is not visible here
+    PRICE = {'A': ('audio', 0.00045 / 60), 'B': ('exec', 0.25 / 3600)}
 
     def progress(self, done, n, final=False):
         s = self.stats; el = time.time() - s['t0']; rate = s['audio_s'] / el if el else 0
-        log(f'{"done" if final else "progress"}: {done}/{n} sent, ok {s["ok"]}, failed {s["failed"]}, '
-            f'{s["audio_s"]/60:.1f} audio-min in {el/60:.1f} min ({rate:.1f}x realtime)')
+        basis, unit = self.PRICE[self.prov.arm]
+        spent = (s['audio_s'] if basis == 'audio' else s.get('exec_s', 0.0)) * unit
+        frac = done / n if n else 0
+        eta_h = (el / frac - el) / 3600 if frac else float('nan')
+        proj = spent / frac if frac else float('nan')
+        log(f'{"done" if final else "progress"}: {done:,}/{n:,} sent ({frac:.1%}), ok {s["ok"]:,}, failed {s["failed"]:,} | '
+            f'{s["audio_s"]/3600:.2f} audio-h in {el/3600:.2f} h ({rate:.1f}x realtime) | '
+            f'spent ~${spent:.2f}, projected ~${proj:.0f} total, eta {eta_h:.1f} h')
 
 def upload(repo, files, token):
     from huggingface_hub import HfApi
@@ -119,6 +143,9 @@ def upload(repo, files, token):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--arm', required=True, choices=['A', 'B'])
+    ap.add_argument('--endpoint', default=None, help='Arm B: RunPod endpoint id (default: RUNPOD_ENDPOINT_ID / cache)')
+    ap.add_argument('--shard-mod', type=int, nargs=2, metavar=('K', 'N'), default=None,
+                    help='take only chunks whose stable hash %% N == K, to split one corpus across N runners')
     ap.add_argument('--run', default=None, help='run name; default <arm>_<model short>')
     ap.add_argument('--speakers', type=int, nargs='*'); ap.add_argument('--sessions', type=int, nargs='*')
     ap.add_argument('--chunk-ids', type=str, default=None, help='file with one chunk_id per line')
@@ -130,7 +157,7 @@ def main():
     ap.add_argument('--upload-every-min', type=float, default=15)
     a = ap.parse_args()
 
-    prov = P.make(a.arm)
+    prov = P.make(a.arm, **({'endpoint_id': a.endpoint} if a.endpoint else {}))
     # Concurrency = requests in flight, not GPUs.  Arm B's endpoint has 3 GPU
     # workers doing ~0.8 s per chunk; a queue of ~12 keeps them busy while the
     # other 9 requests sit in submit/poll/transfer.  Arm A: 8 gave 8.5x realtime.
@@ -145,6 +172,10 @@ def main():
     ids = [l.strip() for l in open(a.chunk_ids) if l.strip()] if a.chunk_ids else None
     rows = D.select(df, speakers=a.speakers, sessions=a.sessions, min_quality=a.min_quality,
                     min_s=a.min_s, max_s=a.max_s, limit=a.limit, seed=a.seed, chunk_ids=ids)
+    if a.shard_mod:
+        import zlib
+        k, n_ = a.shard_mod
+        rows = rows[rows.chunk_id.map(lambda c: zlib.crc32(c.encode()) % n_) == k]
     done = load_done(out, include_failed=not a.retry_failed)
     rows = rows[~rows.chunk_id.isin(done)]
     log(f'{len(rows):,} chunks to send ({len(done):,} already done), {rows.duration_s.sum()/3600:.2f} h of audio, '

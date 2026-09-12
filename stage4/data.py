@@ -150,18 +150,38 @@ def select(df, speakers=None, sessions=None, min_quality=None, min_s=None, max_s
         out = out.sample(limit, random_state=seed)
     return out.sort_values(['shard', 'chunk_id'])
 
-def audio_iter(rows, fs=None):
-    """Yield (row, flac_bytes) for the selected rows, one shard read at a time,
-    in shard order.  rows must carry `shard` and `chunk_id`."""
+def _read_shard_audio(path, want, fs):
+    with fs.open(path) as fh:
+        t = pq.ParquetFile(fh).read(columns=['chunk_id', 'audio'])
+    ids = t.column('chunk_id').to_pylist(); aud = t.column('audio').to_pylist()
+    return {i: a['bytes'] for i, a in zip(ids, aud) if i in want}
+
+def audio_iter(rows, fs=None, prefetch=2):
+    """Yield (row, flac_bytes) for the selected rows, one shard at a time, in
+    shard order.  rows must carry `shard` and `chunk_id`.
+
+    The next `prefetch` shards are fetched on a background thread while the
+    current one is being consumed.  Without this, a 128-thread request pool sat
+    idle for up to 20 s at every shard boundary waiting on a 600 MB download --
+    measured as 18 rows/s against a 22 rows/s ceiling on the live Arm A run."""
+    import queue, threading
     fs = fs or HfFileSystem(token=get_token())
-    for shard, g in rows.groupby('shard', sort=True):
-        want = set(g.chunk_id)
-        path = f'datasets/{REPO}@{revision()}/data/{shard}'
-        with fs.open(path) as fh:
-            pf = pq.ParquetFile(fh)
-            t = pf.read(columns=['chunk_id', 'audio'])
-        ids = t.column('chunk_id').to_pylist(); aud = t.column('audio').to_pylist()
-        blob = {i: a['bytes'] for i, a in zip(ids, aud) if i in want}
+    groups = [(shard, g) for shard, g in rows.groupby('shard', sort=True)]
+    q = queue.Queue(maxsize=prefetch)
+    def producer():
+        for shard, g in groups:
+            try:
+                q.put((shard, g, _read_shard_audio(f'datasets/{REPO}@{revision()}/data/{shard}', set(g.chunk_id), fs), None))
+            except Exception as e:
+                q.put((shard, g, None, e))
+        q.put(None)
+    threading.Thread(target=producer, daemon=True).start()
+    while True:
+        item = q.get()
+        if item is None: return
+        shard, g, blob, err = item
+        if err is not None:
+            raise err
         for r in g.itertuples(index=False):
             b = blob.get(r.chunk_id)
             if b is None:

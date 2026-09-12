@@ -57,8 +57,8 @@ Derived in `docs/stage4-inference.md` § Cost; summary:
 
 - **Arm A**, deepinfra: $0.00045 / audio-minute, no per-call fee, no HF markup → **~$104**.
 - **Arm B**, RunPod: bills GPU worker-seconds, not calls. Warm, the GPU runs 23× realtime
-  (0.044 GPU-s per audio-s) → 169 GPU-h ≈ **$42–60** on an A4000 incl. idle and cold
-  starts. An earlier estimate of ~$240 assumed every call was cold; it was not steady state.
+  GPU-bound: speed = worker count (~14× realtime each). 10 workers: $5.80/h × ~26 h ≈ **$150**.
+  Fewer workers cost the same and take longer. See the doc.
   Raise the endpoint's `idleTimeout` (5 s → 60–120 s) so workers stay warm between bursts.
 
 Neither provider charges per call, so the median 7.8 s chunk does not inflate cost — it
