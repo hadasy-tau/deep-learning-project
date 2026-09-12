@@ -2,8 +2,8 @@
 
 Goal, unchanged: give every speaker occurrence in `ivrit-ai/knesset-committees` a stable
 `person_id` in the KnessetCorpus / VoxKnesset id space, and through it verified
-demographics, so the committees audio can be used the way VoxKnesset is used in
-`stage1/` and `stage2/`. Accuracy over coverage: a wrong id is far worse than no id.
+demographics, so the committees audio can carry the same per-speaker analysis
+VoxKnesset carried before the project moved off it. Accuracy over coverage: a wrong id is far worse than no id.
 
 This revision replaces the fuzzy-matching design. Everything below is grounded in
 measurements taken on the live data (scripts in the session scratchpad:
@@ -24,7 +24,7 @@ measurements taken on the live data (scripts in the session scratchpad:
 Kept from the previous plan: the id space (KnessetCorpus/VoxKnesset), the garbage-name
 rejection rules, the alias table (promoted from fallback to primary), `match_method`
 exposed per row, quality score stored not filtered, no audio cut at index time, the
-`stage2/pipeline.py` normalisation and house style, and the target of cross-person
+`src/common.py` normalisation and house style, and the target of cross-person
 error < 0.5%.
 
 ## Evidence in numbers
@@ -96,7 +96,7 @@ MKs the corpus lacks (7 as of Sep 2026) rather than imputing.
 
 **Name variants**, generated deterministically per person: `first last`, `last first`,
 nickname form when the roster has `first (nick) last`, hyphen↔space, geresh/quote
-stripping, NFKC — through `stage2/pipeline.py:normalize_he()`. Hard-fail if two MKs
+stripping, NFKC — through `src/common.py:normalize_he()`. Hard-fail if two MKs
 active on the same date share a variant (homonyms, e.g. two ישראל כץ in different terms
 are fine; same term is not).
 
@@ -162,7 +162,7 @@ gender, age, date_of_birth, place_of_birth, year_of_aliya, religion, nationality
 religious_orientation, is_chairman
 ```
 
-Names follow VoxKnesset and `stage2/pipeline.py` rather than this plan's first draft:
+Names follow VoxKnesset and `src/common.py` rather than this plan's first draft:
 `session_id → session`, `duration → duration_s`, `text → reference_text`,
 `person_id → speaker_id`, plus `filename` = `{speaker_id}_{session}_{start_ms}_{end_ms}.wav`
 so Stage 2's regex parses the index unchanged. `label`, `reason`, `speaker_name` and
@@ -172,7 +172,7 @@ Path A. Types are pinned by an explicit `SCHEMA`: `year_of_aliya` is `'1950'` fo
 and empty for others, so per-batch inference produced parts that would not concatenate.
 
 `age = (session_date − date_of_birth) / 365.25` as in VoxKnesset. No audio is cut;
-`materialize()` in `stage2/pipeline.py` already knows how to slice from
+`materialize()` in `src/common.py` already knows how to slice from
 `session/start/end`.
 
 ### Step 4 — Validation, independent of both text sources
@@ -187,7 +187,7 @@ and empty for others, so per-batch inference produced parts that would not conca
    also in VoxKnesset, compare committee centroid to the plenum centroid of the same
    `person_id`. This catches the one failure both text sources share: both copying the
    same wrong header.
-3. **Ear check.** ~10 segments per path via `stage0/explore.ipynb`.
+3. **Ear check.** ~10 segments per path via `notebooks/explore_committees.ipynb`.
 4. **Consistency.** `person_id` and derived `age` agree with VoxKnesset columns for
    overlapping people and dates.
 
@@ -215,21 +215,21 @@ it — it is the only check that catches both sources copying the same wrong hea
 
 ## Files
 
-New `stage3/`, house style (plain functions, driven from a notebook, self-checks):
+New `src/preprocessing/speaker_index/`, house style (plain functions, driven from a notebook, self-checks):
 
 | File | Holds |
 |---|---|
-| `stage3/roster.py` | ODATA pull (paged, ordered, cached), `active_on(date)`, demographics join, name variants |
-| `stage3/manifest.py` | session inventory, the `.doc` → shard join, `label_path` per session |
-| `stage3/names.py` | cleaning rules, strict `agree()`, `match_exact()`, alias tables — imports `normalize_he` |
-| `stage3/protocol.py` | session and shard fetch, monotonic placement, verified word offsets |
-| `stage3/label.py` | Path A and Path B word labelling |
-| `stage3/segments.py` | turn-aware cutting, quality, `SCHEMA`, `segments.parquet` |
-| `stage3/validate.py` | holdout simulation, regression, report |
-| `stage3/run_pilot.py` | 200 Path-A + 50 Path-B sessions, learns the alias tables |
-| `stage3/run_full.py` | full build: threaded, batched, resumable |
-| `stage3/publish.py` | dataset card and upload — dry-run by default |
-| `stage3/outputs/` | `manifest.csv`, `mk_metadata.csv`, `mk_stints.csv`, `mk_name_variants.csv`, `alias_names.csv`, `alias_et.csv`, `segments.parquet`, `match_report.txt`, `holdout_report.txt` |
+| `src/preprocessing/speaker_index/roster.py` | ODATA pull (paged, ordered, cached), `active_on(date)`, demographics join, name variants |
+| `src/preprocessing/speaker_index/manifest.py` | session inventory, the `.doc` → shard join, `label_path` per session |
+| `src/preprocessing/speaker_index/names.py` | cleaning rules, strict `agree()`, `match_exact()`, alias tables — imports `normalize_he` |
+| `src/preprocessing/speaker_index/protocol.py` | session and shard fetch, monotonic placement, verified word offsets |
+| `src/preprocessing/speaker_index/label.py` | Path A and Path B word labelling |
+| `src/preprocessing/speaker_index/segments.py` | turn-aware cutting, quality, `SCHEMA`, `segments.parquet` |
+| `src/preprocessing/speaker_index/validate.py` | holdout simulation, regression, report |
+| `src/preprocessing/speaker_index/run_pilot.py` | 200 Path-A + 50 Path-B sessions, learns the alias tables |
+| `src/preprocessing/speaker_index/run_full.py` | full build: threaded, batched, resumable |
+| `src/preprocessing/speaker_index/publish.py` | dataset card and upload — dry-run by default |
+| `src/preprocessing/speaker_index/outputs/` | `manifest.csv`, `mk_metadata.csv`, `mk_stints.csv`, `mk_name_variants.csv`, `alias_names.csv`, `alias_et.csv`, `segments.parquet`, `match_report.txt`, `holdout_report.txt` |
 
 Data volume: per-session small files only (`refined.json` ≈ 3 MB × 11.1k ≈ 33 GB; streamed
 and discarded — only the pilot's sessions are cached, for `validate.py` to re-read);
@@ -301,7 +301,7 @@ alias tables from all ~7,000 Path-A sessions) → audio check.
 - **Runs on the local Mac** in `.venv` (pandas, pyarrow, huggingface_hub, requests,
   rapidfuzz). No GPU except the optional Step 4 embedding check.
 - `speaker_id = 0` for `non_mk`/`unresolved` rows so `filename` stays parseable by
-  `stage2/pipeline.py`'s regex.
+  `src/common.py`'s regex.
 
 ## Note
 

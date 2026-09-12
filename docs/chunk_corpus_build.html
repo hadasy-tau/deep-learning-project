@@ -374,7 +374,7 @@
     <div class="kicker">Preprocessing build record &middot; 9 September 2026</div>
     <h1>One speaker per chunk: a 30-second corpus from the Knesset committees</h1>
     <p class="standfirst">
-      <code>src/preprocessing/preprocessing.py</code> turns the committees speaker index into audio — chunks of at
+      <code>src/preprocessing/chunk_corpus/chunk_corpus/chunks.py</code> turns the committees speaker index into audio — chunks of at
       most 30&nbsp;seconds, each holding exactly one speaker, over the whole corpus. It has now been
       built: <strong>410 shards, 274.5&nbsp;GB of lossless FLAC, all 10,905 sessions</strong>, at
       <code>Hadasy/knesset-committees-chunks</code>.
@@ -767,7 +767,7 @@ delete                the m4a
       </li>
       <li>
         <div class="what">Corpus self-checks — passing</div>
-        <div class="how">python src/preprocessing/preprocessing.py --fetch</div>
+        <div class="how">python src/preprocessing/chunk_corpus/chunk_corpus/chunks.py --fetch</div>
         <div class="why">The flag pulls the 520&nbsp;MB index; without it the corpus checks skip, so a
           routine run never starts a download nobody asked for.</div>
       </li>
@@ -788,13 +788,13 @@ delete                the m4a
       </li>
       <li>
         <div class="what">Build and ship — done</div>
-        <div class="how">python src/preprocessing/run_build.py &nbsp;·&nbsp; 410 shards, 274.5 GB, 36.6 h</div>
+        <div class="how">python src/preprocessing/chunk_corpus/chunk_corpus/run_build.py &nbsp;·&nbsp; 410 shards, 274.5 GB, 36.6 h</div>
         <div class="why">Streamed straight to the Hub, one shard at a time, so local disk never held
           more than a shard plus the sessions in flight.</div>
       </li>
       <li>
         <div class="what">Recover the oversized sessions — done</div>
-        <div class="how">python src/preprocessing/recover_long.py &nbsp;·&nbsp; 7 sessions, 3,094 chunks, shard 00409</div>
+        <div class="how">python src/preprocessing/chunk_corpus/chunk_corpus/recover_long.py &nbsp;·&nbsp; 7 sessions, 3,094 chunks, shard 00409</div>
         <div class="why">Per-turn ranged decode, so memory follows the longest turn rather than the
           recording.</div>
       </li>

@@ -53,7 +53,7 @@ Filters: `--speakers`, `--sessions`, `--min-quality`, `--min-s`, `--max-s`, `--l
 
 ## Cost and time, full corpus (3,840 h)
 
-Derived in `docs/stage4-inference.md` § Cost; summary:
+Derived in `docs/inference.md` § Cost; summary:
 
 - **Arm A**, deepinfra: $0.00045 / audio-minute, no per-call fee, no HF markup → **~$104**.
 - **Arm B**, RunPod: bills GPU worker-seconds, not calls. Warm, the GPU runs 23× realtime

@@ -1,7 +1,7 @@
 # Stage 4 — inference over the committees chunk corpus
 
 How the two ASR arms are run over `Hadasy/knesset-committees-chunks`, what each
-piece of `stage4/` does, what was verified, and what it costs. Written after the
+piece of `src/inference/` does, what was verified, and what it costs. Written after the
 pipeline was built and verified live (2026-09-11); every number below was
 measured, and the section on cost corrects an earlier estimate.
 
@@ -25,7 +25,7 @@ arms on it.
 | `Dolevabudi/knesset-committees-speakers` (`segments.parquet`) | the Stage 3 index the chunks were cut from; carries `label` (`mk` / `former_mk`) | optional join to keep only sitting MKs — not needed for Stage 1's error map |
 
 The chunk corpus is pinned to one dataset revision for the life of a run
-(`stage4/cache/revision.json`), so a re-upload cannot change the data under a
+(`src/inference/cache/revision.json`), so a re-upload cannot change the data under a
 running job.
 
 ## Architecture
@@ -106,7 +106,7 @@ made this take 23 s per shard and stall outright under 8 threads. Range requests
 
 ### `run.py` — the runner
 
-Inherited from `stage1/inference_openai_whisper_large_v3/full_run.py`:
+Inherited from `the VoxKnesset arm-A driver that preceded it (since removed)`:
 
 - one JSONL per `(arm, run)`, appended and flushed per row; a torn last line
   from a crash is skipped on resume
@@ -123,7 +123,7 @@ Filters: `--speakers`, `--sessions`, `--chunk-ids FILE`, `--min-quality`,
 
 ### `verify.py` — scoring and invariants
 
-Stage 1's scoring, unchanged: `normalize_he()` from `stage2/pipeline.py`, then
+Stage 1's scoring, unchanged: `normalize_he()` from `src/common.py`, then
 word- and character-level Levenshtein (rapidfuzz); corpus WER = Σerrors /
 Σreference words. Invariants: no errors, unique `chunk_id`, non-empty and Hebrew
 hypotheses, reference present, exactly the requested chunk set, and — with two
@@ -145,7 +145,7 @@ error, ts, raw (provider extras: job id, worker, word timings)
 
 ## Verification
 
-Ten fixed chunks (`stage4/verify_chunks.txt`: one per speaker, 5–25 s,
+Ten fixed chunks (`src/inference/verify_chunks.txt`: one per speaker, 5–25 s,
 alignment quality ≥ 0.7), sent through the real pipeline to both arms:
 
 | | Arm A | Arm B |
@@ -292,16 +292,16 @@ throughput and the real idle share before either full run is committed.
 ## Run
 
 ```bash
-python stage4/providers.py                                     # offline self-checks
-python stage4/data.py                                          # build/refresh the index; 3 real fetches
-python stage4/run.py --arm A --chunk-ids stage4/verify_chunks.txt
-python stage4/run.py --arm B --chunk-ids stage4/verify_chunks.txt
-python stage4/verify.py stage4/outputs/A_*.jsonl stage4/outputs/B_*.jsonl --expect stage4/verify_chunks.txt
+python src/inference/providers.py                                     # offline self-checks
+python src/inference/data.py                                          # build/refresh the index; 3 real fetches
+python src/inference/run.py --arm A --chunk-ids src/inference/verify_chunks.txt
+python src/inference/run.py --arm B --chunk-ids src/inference/verify_chunks.txt
+python src/inference/verify.py src/inference/outputs/A_*.jsonl src/inference/outputs/B_*.jsonl --expect src/inference/verify_chunks.txt
 
-python stage4/run.py --arm A --upload-repo Dolevabudi/knesset-committees-inference   # full
-python stage4/run.py --arm B --upload-repo Dolevabudi/knesset-committees-inference
+python src/inference/run.py --arm A --upload-repo Dolevabudi/knesset-committees-inference   # full
+python src/inference/run.py --arm B --upload-repo Dolevabudi/knesset-committees-inference
 ```
 
 Secrets: `HF_INFERENCE_TOKEN`, `RUNPOD_API_KEY`, `RUNPOD_ENDPOINT_ID`, and
-`HF_WRITE_TOKEN` (mirror only) from the environment, else `stage3/cache/`
+`HF_WRITE_TOKEN` (mirror only) from the environment, else `the repo-level cache/`
 (mode 600, git-ignored). Nothing here writes a key to any file.
