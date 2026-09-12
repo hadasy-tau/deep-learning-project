@@ -150,42 +150,128 @@ def select(df, speakers=None, sessions=None, min_quality=None, min_s=None, max_s
         out = out.sample(limit, random_state=seed)
     return out.sort_values(['shard', 'chunk_id'])
 
-def _read_shard_audio(path, want, fs):
-    with fs.open(path) as fh:
-        t = pq.ParquetFile(fh).read(columns=['chunk_id', 'audio'])
-    ids = t.column('chunk_id').to_pylist(); aud = t.column('audio').to_pylist()
-    return {i: a['bytes'] for i, a in zip(ids, aud) if i in want}
+AUDIO_CACHE = os.path.join(CACHE, 'audio')     # one small parquet per shard: only the chunks we need
 
-def audio_iter(rows, fs=None, prefetch=2):
+def _cache_path(shard, tag):
+    return os.path.join(AUDIO_CACHE, tag, shard)
+
+def extract_shard(shard, want, tag, fs=None):
+    """Download `shard` once and keep only the FLAC bytes of `want` chunk ids
+    under cache/audio/<tag>/<shard>.  Idempotent: if the file exists and
+    holds every wanted id, nothing is fetched.
+
+    Three runners each pulling the same 600 MB shard for ~50 rows apiece was the
+    binding constraint of the subset run (A fell from 220x to 15x realtime as
+    the B runners started).  The subset's audio is ~1.4 GB of FLAC out of
+    266 GB of shards; extracted once, every arm reads it from disk."""
+    import pyarrow as pa
+    p = _cache_path(shard, tag); want = set(want)
+    if os.path.exists(p):
+        have = set(pq.read_table(p, columns=['chunk_id']).column('chunk_id').to_pylist())
+        if want <= have:
+            return p
+    fs = fs or HfFileSystem(token=get_token())
+    import time as _t
+    last = None
+    for attempt in range(8):                       # the CDN drops ~600 MB bodies mid-stream under load
+        try:
+            with fs.open(f'datasets/{REPO}@{revision()}/data/{shard}') as fh:
+                t = pq.ParquetFile(fh).read(columns=['chunk_id', 'audio'])
+            break
+        except Exception as e:
+            last = e; _t.sleep(min(5 * 2 ** attempt, 120))
+    else:
+        raise RuntimeError(f'{shard}: gave up after 8 attempts: {last!r}'[:300])
+    ids = t.column('chunk_id').to_pylist(); aud = t.column('audio').to_pylist()
+    keep = [(i, a['bytes']) for i, a in zip(ids, aud) if i in want]
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + '.tmp'
+    pq.write_table(pa.table({'chunk_id': [k for k, _ in keep], 'audio': [v for _, v in keep]}), tmp)
+    os.replace(tmp, p)
+    return p
+
+def build_audio_cache(rows, tag, workers=1, passes=3):
+    """Extract every shard `rows` touch, `workers` at a time, in sorted order so
+    consumers walking the same order find the cache ahead of them.  A shard that
+    fails is logged and retried in a later pass; one failure never sinks the run.
+    Eight concurrent 600 MB streams made the CDN drop bodies mid-transfer on six
+    of them, and each extraction holds ~1.3 GB (download + arrow table), so the
+    default is ONE at a time on a memory-constrained machine.  Atomic writes."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    fs = HfFileSystem(token=get_token())
+    groups = {sh: set(g.chunk_id) for sh, g in rows.groupby('shard', sort=True)}
+    todo = sorted(groups); done = sum(os.path.exists(_cache_path(sh, tag)) for sh in todo)
+    failed = []
+    for p in range(passes):
+        failed = []
+        with ThreadPoolExecutor(workers) as ex:
+            futs = {ex.submit(extract_shard, sh, groups[sh], tag, fs): sh for sh in todo}
+            for f in as_completed(futs):
+                sh = futs[f]
+                try:
+                    f.result(); done += 1
+                    if done % 10 == 0: print(f'  audio cache: {done}/{len(groups)} shards', flush=True)
+                except Exception as e:
+                    failed.append(sh); print(f'  FAILED {sh}: {e!r}'[:200], flush=True)
+        if not failed: break
+        print(f'  pass {p+1}: {len(failed)} shard(s) failed, retrying', flush=True); todo = sorted(failed)
+    if failed:
+        raise RuntimeError(f'{len(failed)} shard(s) never extracted: {failed[:5]}')
+    return sorted(groups)
+
+def audio_iter(rows, fs=None, prefetch=2, tag=None, wait_s=1800):
     """Yield (row, flac_bytes) for the selected rows, one shard at a time, in
     shard order.  rows must carry `shard` and `chunk_id`.
 
-    The next `prefetch` shards are fetched on a background thread while the
-    current one is being consumed.  Without this, a 128-thread request pool sat
-    idle for up to 20 s at every shard boundary waiting on a 600 MB download --
-    measured as 18 rows/s against a 22 rows/s ceiling on the live Arm A run."""
+    With `tag`, audio comes from cache/audio/<tag>/ (see extract_shard); a shard
+    not yet cached is extracted on the fly.  Without it, shards stream from the
+    Hub with the next `prefetch` fetched on a background thread."""
     import queue, threading
     fs = fs or HfFileSystem(token=get_token())
     groups = [(shard, g) for shard, g in rows.groupby('shard', sort=True)]
+    def load(shard, g):
+        want = set(g.chunk_id)
+        if tag is not None:
+            # Wait for the extractor rather than fetch ourselves: runners racing
+            # past the cache frontier became extra downloaders fighting the CDN
+            # for the same bytes.  Fall back to fetching only after `wait_s`.
+            # Runners NEVER extract.  A runner that extracted with only its own
+            # chunk list wrote a shard the other runners then found incomplete
+            # (shards 32/33 held 210 and 40 of 420 and 345 wanted).  Only the
+            # extractor, which knows the whole subset, writes the cache; a
+            # runner waits for the file, and a file that lacks a wanted id is a
+            # hard error rather than a silent partial read.
+            import time as _t
+            p = _cache_path(shard, tag); t0 = _t.time()
+            while not os.path.exists(p):
+                if _t.time() - t0 > wait_s:
+                    raise TimeoutError(f'{shard}: not in cache/audio/{tag} after {wait_s}s -- is the extractor running?')
+                _t.sleep(5)
+            t = pq.read_table(p)
+            have = set(t.column('chunk_id').to_pylist())
+            if not want <= have:
+                raise KeyError(f'{shard}: cache lacks {len(want - have)} wanted chunk(s); delete it and re-extract')
+            ids = t.column('chunk_id').to_pylist(); aud = t.column('audio').to_pylist()
+            return {i: a for i, a in zip(ids, aud) if i in want}
+        with fs.open(f'datasets/{REPO}@{revision()}/data/{shard}') as fh:
+            t = pq.ParquetFile(fh).read(columns=['chunk_id', 'audio'])
+        ids = t.column('chunk_id').to_pylist(); aud = t.column('audio').to_pylist()
+        return {i: a['bytes'] for i, a in zip(ids, aud) if i in want}
     q = queue.Queue(maxsize=prefetch)
     def producer():
         for shard, g in groups:
-            try:
-                q.put((shard, g, _read_shard_audio(f'datasets/{REPO}@{revision()}/data/{shard}', set(g.chunk_id), fs), None))
-            except Exception as e:
-                q.put((shard, g, None, e))
+            try: q.put((shard, g, load(shard, g), None))
+            except Exception as e: q.put((shard, g, None, e))
         q.put(None)
     threading.Thread(target=producer, daemon=True).start()
     while True:
         item = q.get()
         if item is None: return
         shard, g, blob, err = item
-        if err is not None:
-            raise err
+        if err is not None: raise err
         for r in g.itertuples(index=False):
             b = blob.get(r.chunk_id)
-            if b is None:
-                raise KeyError(f'{r.chunk_id} not found in {shard}')
+            if b is None: raise KeyError(f'{r.chunk_id} not found in {shard}')
             yield r, b
 
 def flac_duration(b):

@@ -53,8 +53,8 @@ def load_done(path, include_failed):
     return done
 
 class Runner:
-    def __init__(self, prov, out_path, workers=8, max_attempts=4):
-        self.prov, self.out, self.workers, self.max_attempts = prov, out_path, workers, max_attempts
+    def __init__(self, prov, out_path, workers=8, max_attempts=4, tag=None):
+        self.prov, self.out, self.workers, self.max_attempts, self.tag = prov, out_path, workers, max_attempts, tag
         self.lock = threading.Lock(); self.gate = threading.Event(); self.gate.set()
         self.stop = threading.Event(); self.stats = dict(ok=0, failed=0, audio_s=0.0, t0=time.time())
         self.fh = None
@@ -102,7 +102,7 @@ class Runner:
         n = len(rows); last_logged = 0
         with ThreadPoolExecutor(self.workers) as ex:
             futs = set()
-            for row, audio in D.audio_iter(rows):
+            for row, audio in D.audio_iter(rows, tag=self.tag):
                 if self.stop.is_set(): break
                 futs.add(ex.submit(self.one, row, audio))
                 if len(futs) >= self.workers * 4:          # bound in-flight audio in RAM
@@ -143,6 +143,7 @@ def upload(repo, files, token):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--arm', required=True, choices=['A', 'B'])
+    ap.add_argument('--audio-cache', default=None, metavar='TAG', help='read audio from cache/audio/TAG (built by data.build_audio_cache); extract on the fly if missing')
     ap.add_argument('--endpoint', default=None, help='Arm B: RunPod endpoint id (default: RUNPOD_ENDPOINT_ID / cache)')
     ap.add_argument('--shard-mod', type=int, nargs=2, metavar=('K', 'N'), default=None,
                     help='take only chunks whose stable hash %% N == K, to split one corpus across N runners')
@@ -191,7 +192,7 @@ def main():
                 except Exception as e: log(f'upload failed: {e}')
         threading.Thread(target=loop, daemon=True).start()
 
-    Runner(prov, out, workers=workers).run(rows)
+    Runner(prov, out, workers=workers, tag=a.audio_cache).run(rows)
     stop_upl.set()
     if a.upload_repo:
         upload(a.upload_repo, [out], tok)
