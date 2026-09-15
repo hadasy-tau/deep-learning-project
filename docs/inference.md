@@ -2,7 +2,8 @@
 
 How the two ASR arms are run over `Hadasy/knesset-committees-chunks`, what each
 piece of `src/inference/` does, what was verified, and what it costs. Written after the
-pipeline was built and verified live (2026-09-11); every number below was
+pipeline was built and verified live (2026-09-11) and extended as the subset run was
+finished (§ The subset run, § Language, § Result); every number below was
 measured, and the section on cost corrects an earlier estimate.
 
 ## Why this stage exists
@@ -139,6 +140,36 @@ Inherited from `the VoxKnesset arm-A driver that preceded it (since removed)`:
 
 Filters: `--speakers`, `--sessions`, `--chunk-ids FILE`, `--min-quality`,
 `--min-s`, `--max-s`, `--limit` (seeded uniform sample).
+
+### The subset run — `run_lean.py`, `merge.py`, `coverage.py`, `validate_final.py`, `finish.sh`
+
+`run.py` is the runner as designed; the subset was finished by a second runner and a
+pipeline around it, because of what a 17 GB laptop and a 770 MB-per-shard corpus did to
+the design above (see § Wall time and § Result).
+
+```
+   subset_stage1.parquet ─┐
+   cache/index.parquet ───┴─► run_lean.py   one process, one shard at a time:
+                                            download to disk → DuckDB streams the shard
+                                            (1.75 GB peak; Arrow needed 3 GB) → both arms'
+                                            pools fed from the same bytes → shard deleted.
+                                            Resumes by chunk_id; only forced-Hebrew rows
+                                            count as Arm A done.
+                                  │
+                                  ▼        outputs/full_A.jsonl, full_B.jsonl, full_B2.jsonl
+   finish.sh  (after the runner exits)
+     1. run_lean again        the retry pass: whatever has no successful row is re-sent
+     2. merge.py              JSONLs → inference_long.parquet (one row per chunk × arm;
+                              A_auto kept apart) and inference.parquet (wide: hypothesis_A,
+                              hypothesis_B, hypothesis_A_auto beside the reference)
+     3. coverage.py           one row per corpus chunk: in_subset, done_A, done_B,
+                              done_A_auto, pending errors — what ran and what did not
+     4. validate_final.py     22 checks: coverage, identity against the index, hypotheses
+                              (Hebrew, non-empty, not the reference leaked back), sampled
+                              FLAC durations, WER sane and B < A. Exits non-zero on any failure
+     5. merge.py --upload     only if 4 passed: the three parquets and a dataset card to
+                              Dolevabudi/knesset-committees-inference
+```
 
 ### `verify.py` — scoring and invariants
 

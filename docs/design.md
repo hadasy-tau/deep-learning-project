@@ -83,6 +83,8 @@ per *cell* — a combination of speaker, arm, where in the network the adapter i
 which adaptation method, how many minutes of audio, and the usual hyperparameters — so the
 experiment can ask not just whether adaptation works but where in the model it acts and how
 much audio it needs.
+The decisions behind this — two arms, session-disjoint splits, the cross-speaker control, the
+recipe axes, the evaluation protocol — are `adaptation_plan.md`.
 
 **7 · Evaluate the adapters.** The base model and the tuned model are scored down the
 identical path, on that speaker's held-out sessions, with a paired bootstrap over chunks to
@@ -107,4 +109,5 @@ before the model.
 | [`chunk_corpus_build.html`](chunk_corpus_build.html) | stage 2: the build record |
 | [`inference.md`](inference.md) | stage 3: provider contracts, the three bottlenecks, measured cost |
 | [`error_map.md`](error_map.md) | stages 4–5: the per-speaker error map, subgroup rules, who to adapt |
+| [`adaptation_plan.md`](adaptation_plan.md) | stages 6–7: the design the training and evaluation code implement (D1–D7), the panel rules, what is written and what is not |
 | [`design.html`](design.html) | the same design as a page, with diagrams — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |
