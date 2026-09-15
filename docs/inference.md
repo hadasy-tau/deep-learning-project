@@ -82,7 +82,26 @@ API suggest:
   endpoint's queue at once (see *throughput*).
 - **HF** is `InferenceClient(provider='deepinfra').automatic_speech_recognition`,
   which for this model returns text only (`chunks=None`). Same provider and
-  price Stage 1 used, so Arm A is comparable across corpora.
+  price Stage 1 used, so Arm A is comparable across corpora. The call passes
+  `extra_body={'language': 'he'}` -- see *Language* below.
+
+### Language — forced on both arms
+
+Arm B is always called with `language='he'`. The first full Arm A run let
+Whisper auto-detect, and the final validation caught it: 6.7% of A's
+hypotheses were not Hebrew at all (Portuguese, Polish, Arabic, Russian) and
+207 were empty. The failures sit on the short chunks -- 25% of chunks under
+3 s, 0.3% over 20 s -- where a second of audio is not enough to detect the
+language. A 1.0 s chunk whose reference is `נכון.` came back as ` نحن`; with
+the language forced it is ` נכון`. Scoring that against a Hebrew fine-tune
+would charge the general model for language detection, not transcription.
+
+Arm A was therefore re-run over the whole subset with Hebrew forced (about
+$6, 2.5 h). Every row now records `language` (`'he'`, or null for the
+auto-detect run). The two runs are kept apart: `arm = 'A'` is the forced
+run and is what Stage 1 scores; the auto-detect rows are `arm = 'A_auto'`
+in the long table and `hypothesis_A_auto` in the wide one, so the
+detection-failure rate is itself available as a finding.
 
 Arm B is the **turbo-ct2** checkpoint because that is what ivrit.ai serve for
 inference; `ivrit-ai/whisper-large-v3` is the training checkpoint.
@@ -135,6 +154,7 @@ runs — identical coverage so A vs B is paired.
 chunk_id, arm, provider, model,
 speaker_id, session, session_date, knesset, duration_s, quality,
 reference, hypothesis,
+language       'he' when the model was told the language; null = auto-detect
 latency_s      our wall clock: submit → result, incl. queue and polling
 exec_s         provider-reported GPU time (RunPod only)
 queue_s        provider-reported queue wait (RunPod only)
@@ -266,6 +286,23 @@ almost linearly with in-flight requests — 8 → 47×, 64 → 128×, 128 → 14
 realtime — and the first failure at 128 was a local socket limit (`Bad file
 descriptor`), fixed with `ulimit -n 4096`. **128 in flight: ~24 h, $94–104.**
 
+### Result (2026-09-13)
+
+The subset is complete on both arms and published as
+`Dolevabudi/knesset-committees-inference` (private): 65,990/65,990 chunks with
+both hypotheses, 267 speakers, 0 unrecovered errors, all 22 acceptance checks
+of `validate_final.py` passed. Corpus WER on the subset, Stage 1's method:
+**A 0.417, B 0.324** (B better by 22 %). Empty hypotheses A 0.30 % / B 0;
+Hebrew script A 99.7 % / B 99.99 %.
+
+What it actually cost and took, against the estimates above: Arm B ran in
+about 4 h of wall time over two RunPod endpoints (10 GPU workers, the account
+quota), roughly $12 including idle; Arm A, run twice (auto-detect, then with
+Hebrew forced), about $12 on deepinfra. Wall time was dominated not by either
+provider but by pulling 410 shards of 770 MB to a laptop: 12 s per shard on a
+30 MB/s link, 18 min per shard when the link fell to 0.7 MB/s overnight. The
+memory work (`run_lean.py`) was what let the run share a 17 GB machine at all.
+
 ### Short chunks
 
 Neither provider charges per call, so the median 7.8 s chunk length does not
@@ -298,9 +335,14 @@ python src/inference/run.py --arm A --chunk-ids src/inference/verify_chunks.txt
 python src/inference/run.py --arm B --chunk-ids src/inference/verify_chunks.txt
 python src/inference/verify.py src/inference/outputs/A_*.jsonl src/inference/outputs/B_*.jsonl --expect src/inference/verify_chunks.txt
 
-python src/inference/run.py --arm A --upload-repo Dolevabudi/knesset-committees-inference   # full
-python src/inference/run.py --arm B --upload-repo Dolevabudi/knesset-committees-inference
+ulimit -n 4096
+python src/inference/run_lean.py --workers-a 96 --workers-b 24 --prefetch 2   # the subset, both arms
+zsh src/inference/finish.sh          # retry pass, merge, coverage, validate, upload only on pass
 ```
+
+`run.py --arm A|B` is the per-arm runner with filters; it reads whole shards and
+was what the verification and the first third of the subset ran on. `run_lean.py`
+is what finished it (see § Result).
 
 Secrets: `HF_INFERENCE_TOKEN`, `RUNPOD_API_KEY`, `RUNPOD_ENDPOINT_ID`, and
 `HF_WRITE_TOKEN` (mirror only) from the environment, else `the repo-level cache/`
