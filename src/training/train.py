@@ -179,7 +179,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
 
 
 def overfit_check(chunks, audio_dir, speaker, arm='B', n=20, steps=60, batch=4):
-    """Plan section 08 training sanity: a correct setup drives a 20-example
+    """Training sanity (docs/adaptation_plan.md § Verification): a correct setup drives a 20-example
     subset to near-zero loss. If this does not fall, nothing downstream is
     worth running.
 

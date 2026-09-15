@@ -4,6 +4,8 @@ Read this before touching anything. It is written for a fresh Claude session wit
 
 ## The goal
 
+**Where this stands (2026-09-16).** The inference below has run and been validated (`inference.md` § Result), and the per-speaker and per-subgroup evaluation exists (`error_map.md`). What is open is adaptation: `adaptation_plan.md` is its design, and the first step there is the integration gap named further down. The rest of this document is still the orientation it was written as.
+
 Run Whisper inference with **both** models on the committees corpus, then do **per-speaker and per-subgroup evaluation** the way Stage 1 did for VoxKnesset:
 
 - **A**: `openai/whisper-large-v3` (general)
@@ -78,11 +80,11 @@ gender  age  date_of_birth  place_of_birth  year_of_aliya  religion  nationality
 - Turns with median quality ≥ 0.7 come to 3,483 h, 324 speakers and 8,853 sessions.
 - `quality ≈ 0` usually means the protocol text doesn't match the audio. One pilot chunk had 14.7 s of audio against about 350 words. Filter on `quality`, and consider a words-per-second bound too.
 
-## The integration gap you must close first
+## The integration gap to close before training
 
-`src/evaluation/evaluate.py::transcribe_short(model, proc, chunks, audio_dir, ...)` reads audio through `read_wav(os.path.join(audio_dir, r.filename), r.start, r.end)`, which expects **WAV files on disk**. This corpus is **FLAC bytes inside parquet**, so `transcribe_short` cannot consume it unchanged.
+`src/training/train.py` and `src/evaluation/evaluate.py::transcribe_short` read audio through `read_wav(os.path.join(audio_dir, r.filename), r.start, r.end)`, which expects **WAV files on disk**. This corpus is **FLAC bytes inside parquet**, so neither can consume it unchanged. Inference sidestepped this (the providers take bytes); adaptation cannot.
 
-Write a bytes-based twin: decode FLAC → float32 in [-1, 1] → `proc.feature_extractor(..., sampling_rate=16000)` → `model.generate(..., language='he', task='transcribe')`. Keep everything else in `evaluate.py` identical, especially `score()`, which stores error **counts**, never rates. Don't materialise WAV files, since that would mean a 4,111 h extraction.
+Two ways, and the plan takes the first: materialize only the panel — the chosen speakers' chunks at quality ≥ 0.7, a few hours each, written as WAVs with a `filename, text, session, session_date, duration_s` table — so `train.py` and `evaluate.py` run unchanged; or write a bytes-based twin of `transcribe_short` (decode FLAC → float32 → `feature_extractor` → `generate`). Never materialise the whole corpus: that is a 4,111 h extraction. Whichever way, `score()` stays as it is; it stores error **counts**, never rates.
 
 `evaluate.py`'s `ARMS` is already `{'A': 'openai/whisper-large-v3', 'B': 'ivrit-ai/whisper-large-v3'}` (transformers checkpoints, fp16 on CUDA).
 
@@ -95,18 +97,18 @@ All four were live questions when this was written. `src/inference/` answered th
 3. **Quality floor.** ≥ 0.7, as recommended.
 4. **Where to run.** Neither arm needs a local GPU, so the MX230 stopped mattering. `src/inference/finish.sh` drives the run from a laptop.
 
-## Adapting the Stage 1 analysis (`notebooks/speaker_error_map.ipynb`)
+## How the Stage 1 analysis was adapted (done: `src/evaluation/error_map.py`)
 
-It inner-merges two frames on `filename`: an A-side with `filename, speaker_id, split, audio_seconds, reference, transcription, error, age, gender, speaker_place_of_birth, speaker_year_of_aliya, speaker_religion, speaker_nationality, speaker_religious_orientation`, and a B-side with `filename, model_transcription`.
+Kept for the record of what had to change. The original notebook inner-merges two frames on `filename`: an A-side with `filename, speaker_id, split, audio_seconds, reference, transcription, error, age, gender, speaker_place_of_birth, speaker_year_of_aliya, speaker_religion, speaker_nationality, speaker_religious_orientation`, and a B-side with `filename, model_transcription`.
 
-Mismatches to handle in an adapter, not by editing the corpus:
+Mismatches, handled in `error_map.py` rather than by editing the corpus:
 - `chunk_id` → `filename`, `text` → `reference`, `duration_s` → `audio_seconds`
 - Demographics have no `speaker_` prefix here. Map `place_of_birth` → `speaker_place_of_birth`, and so on.
 - `gender` is 0/1 Int64. Religion, nationality and orientation are raw Hebrew strings mapped by the notebook's dicts.
-- The notebook's QC cell (`unexplained_s = duration_s - n_words*1.5 > 300`) **can never fire on ≤30 s chunks.** Replace it with a `quality` filter.
-- The notebook's `ORIGIN` dict is missing three birthplaces in this corpus: `אוסטריה`, `דנמרק`, `האימפריה האוסטרו-הונגרית` (one speaker each). Without them those speakers silently become `Unknown`.
+- The notebook's QC cell (`unexplained_s = duration_s - n_words*1.5 > 300`) **can never fire on ≤30 s chunks.** Replaced with `quality >= 0.7`; `error_map.md` shows why that threshold.
+- The notebook's `ORIGIN` dict was missing three birthplaces in this corpus: `אוסטריה`, `דנמרק`, `האימפריה האוסטרו-הונגרית` (one speaker each). Added; `speaker_attrs` asserts nothing is unmapped.
 - Keep the Stage 1 normalisation exactly. Geresh and gershayim map to a **space**, not nothing — worth ~5.7% relative WER on B. The note above `normalize_he` in `src/common.py` records why.
-- There is no `split` column. The corpus is unsplit. Use `src/common.py::make_splits`, which is session-disjoint per speaker, if needed, and sort by `session_date`, not session id (they diverge per speaker).
+- There is no `split` column. The corpus is unsplit; the error map needs none. Adaptation uses `src/common.py::make_splits`, session-disjoint per speaker, sorted by `session_date`, not session id (they diverge per speaker).
 
 ## Open problems to keep in mind, not fix
 

@@ -51,7 +51,8 @@ notebooks/                     explore_committees.ipynb, speaker_error_map.ipynb
 docs/                          design.md + design.html are the one-page overview: the
                                whole flow, end to end. Then the build records:
                                committees_handoff.md, speaker_index_plan.md,
-                               chunk_corpus_build.html, inference.md, error_map.md
+                               chunk_corpus_build.html, inference.md, error_map.md, and
+                               adaptation_plan.md for what comes next
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
@@ -111,7 +112,10 @@ KnessetCorpus — so the tables join directly.
   question. Subgroup rules separate gain (speaking rate strongest, then religion, nationality,
   age) or difficulty (religious orientation, gender), never both — the reverse of VoxKnesset.
   `committees_adaptation_candidates.csv` is the input to the sharing axis.
-- **Training and evaluation** — written, unrun. They need a GPU.
+- **Training and evaluation** — written, unrun. They need a GPU, and before that a data step
+  that does not exist yet: `train.py` and `evaluate.py` read WAV files, the corpus is FLAC in
+  parquet, so the panel has to be materialized first. The design, the panel rules and the
+  order of work are `docs/adaptation_plan.md`.
 
 Self-checks, no GPU and no network beyond the cached data:
 
