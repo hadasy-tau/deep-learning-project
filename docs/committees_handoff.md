@@ -32,7 +32,8 @@ One caveat that remains: the *speakers* overlap with the plenum training data. R
 | `src/preprocessing/chunk_corpus/make_ear_check.py`, `src/preprocessing/chunk_corpus/ear_check_template.html` | the listening-check page generator |
 | `src/evaluation/evaluate.py` | **reuse it.** `load(arm)`, `transcribe_short`, `score`, `wer`, `paired_bootstrap` |
 | `src/common.py` | **reuse it.** `normalize_he` (Stage 1 Hebrew normalisation, never re-derive it), `make_splits` |
-| `notebooks/speaker_error_map.ipynb` | the Stage 1 analysis to reproduce: per-speaker table, gain, subgroups |
+| `notebooks/speaker_error_map.ipynb` | the Stage 1 analysis, as run on VoxKnesset: per-speaker table, gain, subgroups |
+| `src/evaluation/error_map.py`, `notebooks/committees_error_map.ipynb` | **that analysis, done on this corpus.** `docs/error_map.md` is the record; the adaptations below are already made there |
 | `src/inference/` | the inference pipeline itself, both arms, over this corpus. `docs/inference.md` is its design; `src/inference/README.md` its runbook |
 | ~~`stage1/CONTEXT.md`~~ | **gone.** Stage 1's notes on why normalisation and QC are what they are were never committed and are no longer in the working tree. What survives of them is the note above `normalize_he` in `src/common.py` |
 | ~~`stage1/inference_openai_whisper_large_v3/full_run.py`~~ | removed with the VoxKnesset path. `src/inference/run.py` inherits its design and says so |

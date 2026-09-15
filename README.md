@@ -40,13 +40,18 @@ src/
   training/train.py            one cell -> one adapter (speaker, arm, site, method, budget,
                                rank, lr, seed). Needs a GPU
   evaluation/evaluate.py       transcribe, count errors, paired bootstrap
-  evaluation/outputs/          speaker_performance.csv -- the Stage 1 per-speaker error map
+  evaluation/error_map.py      the per-speaker error map over the committees inference:
+                               WER/CER and gain per speaker with CIs, subgroup viability and
+                               separation, who to adapt
+  evaluation/outputs/          committees_*.csv -- that error map (speaker_performance.csv is
+                               the VoxKnesset one Stage 1 produced, kept as the reference point)
 
-notebooks/                     explore_committees.ipynb, speaker_error_map.ipynb
+notebooks/                     explore_committees.ipynb, speaker_error_map.ipynb (Stage 1 on
+                               VoxKnesset), committees_error_map.ipynb (the same on the committees)
 docs/                          design.md + design.html are the one-page overview: the
                                whole flow, end to end. Then the build records:
                                committees_handoff.md, speaker_index_plan.md,
-                               chunk_corpus_build.html, inference.md
+                               chunk_corpus_build.html, inference.md, error_map.md
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
@@ -99,7 +104,13 @@ KnessetCorpus — so the tables join directly.
   `Dolevabudi/knesset-committees-inference`. Corpus WER A 0.417, B 0.324. Arm A is run with
   the language forced to Hebrew, as B always was; its first, auto-detect run is kept as
   `hypothesis_A_auto` because Whisper mis-detected 6.7 % of chunks (mostly under 3 s).
-  Next: the per-speaker error map (`notebooks/speaker_error_map.ipynb`) over this table.
+- **Error map** — done (`docs/error_map.md`). After the quality ≥ 0.7 filter: 58,180 chunks,
+  217 h, 267 speakers; corpus WER A 0.387, B 0.292. Every speaker is helped by the fine-tune,
+  median 24 % of A's error removed (52 % on the plenums). Corpus hours do not predict WER; the
+  share of a speaker's chunks the filter removed does (rho ≈ 0.6–0.7), which is the labels
+  question. Subgroup rules separate gain (speaking rate strongest, then religion, nationality,
+  age) or difficulty (religious orientation, gender), never both — the reverse of VoxKnesset.
+  `committees_adaptation_candidates.csv` is the input to the sharing axis.
 - **Training and evaluation** — written, unrun. They need a GPU.
 
 Self-checks, no GPU and no network beyond the cached data:
@@ -107,6 +118,7 @@ Self-checks, no GPU and no network beyond the cached data:
 ```bash
 python src/common.py                                   # Hebrew normalisation, splits
 python src/evaluation/evaluate.py                      # scoring, paired bootstrap
+python src/evaluation/error_map.py                     # pooling, eta squared, bootstrap CI
 python src/inference/providers.py                      # both provider contracts, offline
 python src/preprocessing/speaker_index/roster.py       # PersonID uniqueness, active_on
 python src/preprocessing/speaker_index/names.py        # cleaning rules, strict agreement

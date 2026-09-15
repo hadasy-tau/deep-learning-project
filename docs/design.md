@@ -54,7 +54,11 @@ three seconds, which would have charged A for language detection rather than tra
 normalisation, then compared to the reference by word- and character-level edit distance.
 Error *counts* are stored rather than rates, so a speaker's WER stays Σerrors / Σwords no
 matter how the rows are later grouped — averaging per-chunk rates would be badly biased at
-30 seconds a chunk. The output is a WER and CER per speaker, under each arm.
+30 seconds a chunk. The output is a WER and CER per speaker, under each arm. Measured, after
+dropping chunks whose alignment quality is under 0.7 (they score a WER near 1 under both arms):
+corpus WER 0.387 for A and 0.292 for B over 267 speakers; per-speaker medians 0.378 and 0.291,
+with a bootstrap CI of about ±0.035 on each. How much a speaker talks does not predict their
+WER; how badly their chunks align does.
 
 **5 · Choose who to adapt.** For each speaker, `gain = WER_A − WER_B` is how much the
 *generic Hebrew* fine-tune already bought that voice. The speakers with the **lowest** gain
@@ -63,7 +67,11 @@ room to act; high-gain speakers are already well served. The comparison is a gai
 absolute WER because absolute WER on this corpus is dominated by register — the reference is
 a cleaned stenographic protocol while both models faithfully transcribe the repetitions and
 false starts on the tape. Both arms pay that cost equally, so the difference between them is
-the signal.
+the signal. Every speaker gains, a median 24 % of A's error removed (52 % on the plenums); the
+least-helped speakers, 11–14 %, are `src/evaluation/outputs/committees_adaptation_candidates.csv`.
+The subgroup rules that separate gain (speaking rate, religion, nationality, age) are not the
+ones that separate difficulty (religious orientation, gender), and none explains more than a tenth
+of the between-speaker variance.
 
 **6 · Fine-tune the chosen speakers.** For each selected speaker, more of their audio goes
 through *the same inference code as stage 3* — only the selection filter changes, from "one
@@ -98,4 +106,5 @@ before the model.
 | [`speaker_index_plan.md`](speaker_index_plan.md) | stage 1: identity resolution, and the measurements that killed the fuzzy-matching design |
 | [`chunk_corpus_build.html`](chunk_corpus_build.html) | stage 2: the build record |
 | [`inference.md`](inference.md) | stage 3: provider contracts, the three bottlenecks, measured cost |
+| [`error_map.md`](error_map.md) | stages 4–5: the per-speaker error map, subgroup rules, who to adapt |
 | [`design.html`](design.html) | the same design as a page, with diagrams — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |
