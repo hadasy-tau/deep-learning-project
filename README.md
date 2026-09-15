@@ -79,7 +79,7 @@ Gated means an accepted licence on the dataset page and an `HF_TOKEN` in the env
 |---|---|
 | [`Dolevabudi/knesset-committees-speakers`](https://huggingface.co/datasets/Dolevabudi/knesset-committees-speakers) | An **index, not audio**: 5,158,763 rows naming a `(session, start, end)` span, each carrying a verified Knesset `PersonID` and its demographics. 3,345 h of identified MK speech, 268 speakers, Knessets 20–25 |
 | `Hadasy/knesset-committees-chunks` | **Private.** The corpus itself: ~1.2 M chunks of ≤30 s, 330 speakers, 410 parquet shards, FLAC inline. Exact totals in `docs/committees_handoff.md` |
-| `Dolevabudi/knesset-committees-inference` | One row per (chunk, arm): hypothesis beside the protocol reference, with timing and metadata |
+| [`Dolevabudi/knesset-committees-inference`](https://huggingface.co/datasets/Dolevabudi/knesset-committees-inference) | **Private.** Both models' transcriptions of the Stage-1 subset -- 65,990 chunks, 230 h, 267 speakers, 1 h per MK -- beside the protocol reference. `inference.parquet` (one row per chunk, `hypothesis_A`/`hypothesis_B`/`hypothesis_A_auto`), `inference_long.parquet` (per chunk and arm, with timing and errors), `coverage.parquet` (every corpus chunk: what ran on which arm). Validated end to end; corpus WER A 0.417, B 0.324 |
 
 `speaker_id` throughout is the Knesset's official `PersonID` — the same id space as
 KnessetCorpus — so the tables join directly.
@@ -92,8 +92,14 @@ KnessetCorpus — so the tables join directly.
   copying the same wrong speaker header.
 - **Chunk corpus** — built and uploaded. Nothing was filtered at build time, deliberately:
   filtering is the consumer's decision. Filter on `quality` (≥ 0.7 is the recommendation).
-- **Inference** — both arms verified against a fixed 10-chunk sample, then run over a
-  1 h/speaker subset (65,990 chunks, pinned in `src/inference/subset_stage1.parquet`).
+- **Inference** — done. Both arms verified against a fixed 10-chunk sample, then run over a
+  1 h/speaker subset (65,990 chunks, pinned in `src/inference/subset_stage1.parquet`):
+  every subset chunk has both hypotheses, the 22 acceptance checks of
+  `src/inference/validate_final.py` pass, and the result is published as
+  `Dolevabudi/knesset-committees-inference`. Corpus WER A 0.417, B 0.324. Arm A is run with
+  the language forced to Hebrew, as B always was; its first, auto-detect run is kept as
+  `hypothesis_A_auto` because Whisper mis-detected 6.7 % of chunks (mostly under 3 s).
+  Next: the per-speaker error map (`notebooks/speaker_error_map.ipynb`) over this table.
 - **Training and evaluation** — written, unrun. They need a GPU.
 
 Self-checks, no GPU and no network beyond the cached data:
