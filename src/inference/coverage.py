@@ -5,7 +5,8 @@ which have not -- the record of what inference has and has not been run on.
 
 Reads every outputs/*.jsonl, joins to the full index, and writes
 outputs/coverage.parquet with one row per chunk in the corpus:
-  chunk_id, speaker_id, session, duration_s, in_subset, done_A, done_B, error_A, error_B
+  chunk_id, speaker_id, session, duration_s, in_subset, done_A, done_B, done_A_auto, error_A, error_B
+(done_A is the forced-Hebrew Arm A run; done_A_auto the earlier auto-detect run)
 so a later run (Stage 2 wanting more of a speaker) can select exactly the
 chunks that still need an arm, and nothing is ever sent twice.
 """
@@ -22,7 +23,11 @@ def results(arm):
         for line in open(p, encoding='utf-8'):
             try: r = json.loads(line)
             except json.JSONDecodeError: continue
-            if r.get('arm') != arm: continue
+            # Arm A: only the forced-Hebrew run counts (rows carry language='he');
+            # the earlier auto-detect rows are 'A_auto' (see merge.py)
+            a = r.get('arm')
+            if a == 'A' and r.get('language') != 'he': a = 'A_auto'
+            if a != arm: continue
             if r.get('error') is None: ok.add(r['chunk_id']); err.pop(r['chunk_id'], None)
             elif r['chunk_id'] not in ok: err[r['chunk_id']] = r['error'][:80]
     return ok, err
@@ -31,8 +36,8 @@ if __name__ == '__main__':
     idx = D.index()[['chunk_id', 'speaker_id', 'session', 'duration_s']]
     sub = set(pd.read_parquet(os.path.join(os.path.dirname(OUT), 'subset_stage1.parquet')).chunk_id) \
           if os.path.exists(os.path.join(os.path.dirname(OUT), 'subset_stage1.parquet')) else set()
-    okA, errA = results('A'); okB, errB = results('B')
-    c = idx.assign(in_subset=idx.chunk_id.isin(sub), done_A=idx.chunk_id.isin(okA), done_B=idx.chunk_id.isin(okB),
+    okA, errA = results('A'); okB, errB = results('B'); okAA, _ = results('A_auto')
+    c = idx.assign(in_subset=idx.chunk_id.isin(sub), done_A=idx.chunk_id.isin(okA), done_B=idx.chunk_id.isin(okB), done_A_auto=idx.chunk_id.isin(okAA),
                    error_A=idx.chunk_id.map(errA), error_B=idx.chunk_id.map(errB))
     c.to_parquet(os.path.join(OUT, 'coverage.parquet'), index=False)
     h = lambda m: c.loc[m, 'duration_s'].sum() / 3600

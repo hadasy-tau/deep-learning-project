@@ -52,7 +52,9 @@ def remaining(sub_idx):
         for line in open(p, encoding='utf-8'):
             try: r = json.loads(line)
             except json.JSONDecodeError: continue
-            if r.get('error') is None: (A if r['arm'] == 'A' else B).add(r['chunk_id'])
+            if r.get('error') is not None: continue
+            if r['arm'] == 'B': B.add(r['chunk_id'])
+            elif r.get('language') == 'he': A.add(r['chunk_id'])   # auto-detect rows do not count
     return sub_idx[~sub_idx.chunk_id.isin(A)], sub_idx[~sub_idx.chunk_id.isin(B)]
 
 def cached_path(shard):
@@ -121,7 +123,7 @@ class Lean:
             _, self.futs[r] = _wait_some(self.futs[r], r.workers)
         self.futs[r].add(self.pools[r].submit(r.one, row, audio))
 
-    def run(self, need_a, need_b, max_shards=None, only=None):
+    def run(self, need_a, need_b, max_shards=None, only=None, prefetch=2):
         shards = sorted(set(need_a.shard) | set(need_b.shard))
         if only: shards = [s for s in shards if s in set(only)]
         shards = shards[:max_shards]
@@ -129,9 +131,10 @@ class Lean:
         n_cached = sum(cached_path(s) is not None for s in shards)
         log(f'lean: {len(shards)} shards ({n_cached} already on disk); A needs {na:,} rows, B needs {nb:,}')
         os.makedirs(DL, exist_ok=True)
-        pre = ThreadPoolExecutor(2); ahead = {s: pre.submit(fetch, s) for s in shards[:2]}
+        pre = ThreadPoolExecutor(prefetch); ahead = {s: pre.submit(fetch, s) for s in shards[:prefetch]}
         for k, shard in enumerate(shards, 1):
-            if k + 1 < len(shards): ahead[shards[k + 1]] = pre.submit(fetch, shards[k + 1])   # keep two in flight
+            nxt = k - 1 + prefetch                                    # keep `prefetch` downloads in flight (disk only)
+            if nxt < len(shards) and shards[nxt] not in ahead: ahead[shards[nxt]] = pre.submit(fetch, shards[nxt])
             if any(r.stop.is_set() for r in self.all): log('a runner asked to stop (billing/quota); ending'); break
             ra = need_a[need_a.shard == shard]; rb = need_b[need_b.shard == shard]
             want = set(ra.chunk_id) | set(rb.chunk_id)
@@ -164,6 +167,7 @@ if __name__ == '__main__':
     ap.add_argument('--workers-a', type=int, default=32); ap.add_argument('--workers-b', type=int, default=16)
     ap.add_argument('--endpoints', nargs='+', default=['fifhkwzcjy7zey', 'q5fuot57ltygcs'])
     ap.add_argument('--max-shards', type=int, default=None); ap.add_argument('--shards', nargs='+', default=None)
+    ap.add_argument('--prefetch', type=int, default=2, help='shard downloads kept in flight (disk only, ~770 MB each)')
     a = ap.parse_args()
     sub = pd.read_parquet(os.path.join(HERE, 'subset_stage1.parquet'))
     sub_idx = slim_index(set(sub.chunk_id))
@@ -171,5 +175,5 @@ if __name__ == '__main__':
     need_a, need_b = remaining(sub_idx)
     log(f'resident index: {len(sub_idx):,} rows, {sub_idx.memory_usage(deep=True).sum()/1e6:.0f} MB')
     L = Lean(a.workers_a, a.workers_b, a.endpoints)
-    L.run(need_a, need_b, a.max_shards, a.shards)
+    L.run(need_a, need_b, a.max_shards, a.shards, a.prefetch)
     log('LEAN DONE')

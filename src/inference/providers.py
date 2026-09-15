@@ -60,22 +60,29 @@ class Provider:
 # ---------------------------------------------------------------------------
 class HFProvider(Provider):
     name, arm, model = 'deepinfra', 'A', 'openai/whisper-large-v3'
-    def __init__(self, provider='deepinfra', model=None, token=None):
+    # Whisper auto-detects the language unless told.  On the subset's sub-3 s
+    # chunks it guessed wrong a quarter of the time (Portuguese, Arabic,
+    # Russian...), 6.7% of all chunks, while Arm B is always called with
+    # language='he'.  Forcing Hebrew makes the comparison fair; the rows
+    # record `language` so the earlier auto-detect run stays distinguishable.
+    def __init__(self, provider='deepinfra', model=None, token=None, language='he'):
         from huggingface_hub import InferenceClient
         self.name = provider
         self.model = model or self.model
+        self.language = language
         self.client = InferenceClient(provider=provider, api_key=token or secret('HF_INFERENCE_TOKEN', 'hf_inference_token'))
     def transcribe(self, audio):
         t0 = time.perf_counter()
         try:
-            out = self.client.automatic_speech_recognition(audio=audio, model=self.model)
+            out = self.client.automatic_speech_recognition(audio=audio, model=self.model,
+                                                           extra_body={'language': self.language} if self.language else None)
         except Exception as e:
             s = str(e)
             if any(k in s for k in ('429', '503', '502', '504', 'Timeout', 'timed out', 'Connection')):
                 raise TransientError(s) from e
             raise
         return Result(text=(out.text or '').strip(), latency_s=time.perf_counter() - t0,
-                      raw={'chunks': None if out.chunks is None else [c.__dict__ for c in out.chunks]})
+                      raw={'language': self.language, 'chunks': None if out.chunks is None else [c.__dict__ for c in out.chunks]})
 
 # ---------------------------------------------------------------------------
 class RunPodProvider(Provider):
