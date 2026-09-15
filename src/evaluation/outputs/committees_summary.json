@@ -1,0 +1,31 @@
+{
+  "chunks_scored": 65990,
+  "chunks_kept": 58180,
+  "speakers": 267,
+  "reliable_speakers": 261,
+  "min_quality": 0.7,
+  "corpus": {
+    "chunks": 58180.0,
+    "hours": 217.31580925347225,
+    "ref_words": 1528937.0,
+    "WER_A": 0.38676740768259255,
+    "WER_B": 0.2924397800563398,
+    "CER_A": 0.24141848334138016,
+    "CER_B": 0.20308970519677558
+  },
+  "corpus_unfiltered": {
+    "chunks": 65990.0,
+    "hours": 230.09130685763887,
+    "ref_words": 1610207.0,
+    "WER_A": 0.41728920567355626,
+    "WER_B": 0.3243278659203444,
+    "CER_A": 0.26617370149616837,
+    "CER_B": 0.22858983092081256
+  },
+  "speakers_helped": 267,
+  "speakers_hurt": 0,
+  "median_gain_rel": 0.24117647058823535,
+  "median_gain_rel_reliable": 0.24356511717249327,
+  "flagged_sessions": 14,
+  "arm_A_autodetect_not_hebrew": 0.0705409910592514
+}

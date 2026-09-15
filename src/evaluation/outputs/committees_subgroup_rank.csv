@@ -1,0 +1,8 @@
+﻿rule,groups,speakers,eta2_gain_rel,null95_gain_rel,p_gain_rel,eta2_wer_B,null95_wer_B,p_wer_B,separates_gain,separates_wer
+speaking rate tertile,3,261,0.0916329,0.0222018,0,0.000761982,0.0233398,0.901,True,False
+religion,4,258,0.0723248,0.0314944,0.002,0.00877496,0.0307423,0.5055,True,False
+nationality,4,258,0.0704872,0.0316467,0.0025,0.00924634,0.0289578,0.483,True,False
+age quartile,4,258,0.0499407,0.0294283,0.0035,0.00884294,0.0302454,0.5325,True,False
+country of origin,6,258,0.0367721,0.0439488,0.093,0.0346913,0.0437799,0.1125,False,False
+gender,2,261,0.0196122,0.0141556,0.0245,0.0266733,0.0152772,0.0075,True,True
+religious orientation,3,187,0.00154085,0.0331912,0.8765,0.0621315,0.0322707,0.002,False,True

@@ -12,9 +12,11 @@ against Stage 1's long-form VoxKnesset numbers, off the ct2 dump's
 that column has no counterpart, so there is nothing left to reproduce.
 """
 import os, sys
-import numpy as np, pandas as pd, torch
+import numpy as np, pandas as pd
 from rapidfuzz.distance import Levenshtein
-from transformers import WhisperForConditionalGeneration, WhisperProcessor
+# torch and transformers are imported inside the functions that need them, so
+# score() and paired_bootstrap() -- which need neither -- can be imported on a
+# machine without a GPU stack (the error map runs on a laptop).
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from common import read_wav, normalize_he
@@ -24,6 +26,8 @@ ARMS = {'A': 'openai/whisper-large-v3', 'B': 'ivrit-ai/whisper-large-v3'}
 
 def load(arm='B', adapter=None, device=None):
     """Base model, optionally with a trained adapter merged on top."""
+    import torch
+    from transformers import WhisperForConditionalGeneration, WhisperProcessor
     device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
     proc = WhisperProcessor.from_pretrained(ARMS[arm], language='he', task='transcribe')
     model = WhisperForConditionalGeneration.from_pretrained(
@@ -36,9 +40,13 @@ def load(arm='B', adapter=None, device=None):
     return model.to(device).eval(), proc, device
 
 
-@torch.no_grad()
 def transcribe_short(model, proc, chunks, audio_dir, batch=8, device='cpu'):
     """Short-form: one <=30 s chunk per example. D7's primary protocol."""
+    import torch
+    with torch.no_grad():
+        return _transcribe_short(model, proc, chunks, audio_dir, batch, device)
+
+def _transcribe_short(model, proc, chunks, audio_dir, batch, device):
     out = []
     for i in range(0, len(chunks), batch):
         rows = chunks.iloc[i:i + batch]
@@ -51,8 +59,12 @@ def transcribe_short(model, proc, chunks, audio_dir, batch=8, device='cpu'):
     return out
 
 
-@torch.no_grad()
 def transcribe_long(model, proc, filenames, audio_dir, device='cpu'):
+    import torch
+    with torch.no_grad():
+        return _transcribe_long(model, proc, filenames, audio_dir, device)
+
+def _transcribe_long(model, proc, filenames, audio_dir, device):
     """Long-form: the whole recording in one pass, so Whisper's own sequential
     algorithm handles the >30 s audio. D7's secondary protocol -- and the only
     one comparable with Stage 1, which scored whole recordings."""
