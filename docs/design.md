@@ -45,6 +45,10 @@ per-speaker confidence interval is already down to about ±0.04 WER at 45 minute
 stage only needs to *rank* speakers — transcribing all 3,840 hours would cost roughly $104
 for arm A and $150 for arm B and change no decision. Neither arm needs a local GPU: arm A
 runs through HF Inference Providers, arm B on RunPod using ivrit.ai's own worker image.
+This stage has run: all 65,990 chunks carry both hypotheses, validated end to end, and on
+the subset the corpus WER is 0.417 for A and 0.324 for B. Both arms are told the language
+is Hebrew — left to detect it, Whisper large-v3 got 6.7 % of chunks wrong, almost all under
+three seconds, which would have charged A for language detection rather than transcription.
 
 **4 · Per-speaker performance.** Each hypothesis is normalised with the project's Hebrew
 normalisation, then compared to the reference by word- and character-level edit distance.
