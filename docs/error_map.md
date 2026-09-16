@@ -146,6 +146,54 @@ not a rule, is the input to Stage 2.
   back in another script, a quarter of those under 3 s. That run is kept as `hypothesis_A_auto`;
   everything above uses the forced-Hebrew run.
 
+## Beyond Stage 1 — what the inference also tells
+
+Eight checks Stage 1 did not make, over the filtered subset (`src/evaluation/error_analysis.py`;
+notebook § 11; tables `committees_conditions.csv`, `committees_error_content.csv`,
+`committees_checks.json`).
+
+**What the errors are.** The digit problem Stage 1 feared is negligible here: substitutions
+involving a digit are 1 % of errors, and WER with numeric tokens removed from both sides is
+unchanged (A 0.387 → 0.387, B 0.292 → 0.293). What dominates instead is orthography and clitics:
+the most frequent substitutions on both arms are אני↔ואני, הכול↔הכל, לכן↔ולכן, זו↔זה, הזאת↔הזו,
+כול↔כל — a conjunction the speaker said and the stenographer dropped (or the reverse), full
+versus defective spelling, and the stenographer's synonym (כאן for the spoken פה). Substitutions
+one character apart are 35 % of A's substitutions and 42 % of B's, 15–17 % of all errors. The
+top insertions and deletions are function and discourse words (אני, לא, זה, את, תודה, אז, אבל,
+כן, באמת): the filler the protocol cleans away. A normalisation note for the report: `1,000`
+splits into the tokens `1` and `000` under the frozen normaliser, which is where `000→אלף` in
+the substitution list comes from.
+
+**B's insertions are real speech, not hallucination.** 73 % of the words B inserts also appear
+in A's hypothesis of the same chunk (236,530 inserted words). Two independent models hearing
+the same absent word is the protocol not writing it down. Looping decodes (a 3-gram repeated
+three or more times) are 0.8 % of chunks for A and 1.1 % for B; runaway decodes 0.5 % and
+0.7 %; empty hypotheses 0.2 % and 0.
+
+**Conditions.** By year, 2018–2019 sessions score 6–10 points worse than 2020 onward on both
+arms (A 0.45–0.49 against 0.35–0.39; B 0.32–0.37 against 0.27–0.29). By room, the Finance
+committee is the hardest of the large committees (B 0.374) and the Status of Women committee
+the easiest (0.212). Both effects are on top of the speaker, and both are why splits are by
+date (D2) and why a panel speaker's held-out sessions were checked against the train side.
+
+**The per-speaker ranking is reliable.** Split-half over odd and even sessions, Spearman-Brown
+corrected: WER_A 0.85, WER_B 0.78, absolute gain 0.85, relative gain 0.75 (254 speakers).
+Most of the between-speaker spread is real at one hour per speaker; the subgroup rules'
+eta squared of a few percent is therefore a weak effect on a reliable outcome, not noise.
+
+**Chunk level.** Median chunk WER 0.385 (A) and 0.262 (B); 7.5 % of chunks are perfect under B,
+2.9 % under A; 5.6 % of chunks fail (WER ≥ 1) under both arms; the two arms' error counts
+correlate at 0.87 across chunks.
+
+**Language forcing.** On the filtered subset, forcing Hebrew moved A's corpus WER from 0.392 to
+0.387, almost all of it on chunks under 3 s (0.638 → 0.573).
+
+**The plenums.** 212 speakers have 20 or more segments on both corpora. Difficulty transfers:
+committees and plenum WER correlate at 0.51 (A) and 0.42 (B), relative gain at 0.34. The level
+does not: per speaker, committee WER_B is 3.2 times the plenum figure. The plenum number was
+measured on audio arm B had trained on, in the cleaner register; the committee number is the
+honest one.
+
 ## What this version leaves out
 
 - Only one filter. Chunks whose reference is *short* for the audio survive it: after the filter,
@@ -154,7 +202,7 @@ not a rule, is the input to Stage 2.
 - No check of the transcription side (runaway decodes are reported, not filtered).
 - No covariate model; rules are examined one at a time.
 - The labels, as above.
-- The digit problem: the protocol writes `שמונה`, Whisper writes `8`.
+- The digit problem, which § Beyond Stage 1 now measures at 1 % of errors.
 
 ## Files
 
@@ -167,6 +215,9 @@ not a rule, is the input to Stage 2.
 | `committees_adaptation_candidates.csv` | reliable speakers by relative gain, ascending, with CI |
 | `committees_flagged_sessions.csv` | sessions failing under both arms |
 | `committees_summary.json` | the headline numbers |
+| `committees_conditions.csv` | corpus WER by year, committee, chunk length, speaking rate |
+| `committees_error_content.csv` | top substitution pairs, insertions and deletions per arm |
+| `committees_checks.json` | insertion agreement, hallucination rates, language forcing, split-half reliability, cross-corpus |
 | `docs/figures/error_map/*.png` | the notebook's figures |
 
 ```bash
