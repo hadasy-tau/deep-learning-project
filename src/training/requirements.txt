@@ -1,0 +1,22 @@
+# Adaptation: materialize the panel, train adapters, evaluate them.
+# The GPU box installs this; the laptop only needs the first block for
+# materialize.py plan/verify.  Pin torch to the box's CUDA build separately.
+pandas>=2.0
+pyarrow>=15.0
+numpy>=1.24
+soundfile>=0.12
+huggingface_hub>=0.30
+duckdb>=1.0
+rapidfuzz>=3.0
+scipy>=1.10
+
+torch>=2.4
+transformers>=5.0
+peft>=0.13
+accelerate>=1.0
+
+# full fine-tuning (D4's method axis) on a 40 GB card: 8-bit Adam
+bitsandbytes>=0.44 ; platform_system == "Linux"
+# the audio gate (src/preprocessing/speaker_index/validate_audio.py)
+speechbrain>=1.0
+torchaudio>=2.4

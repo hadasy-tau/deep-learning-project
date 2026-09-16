@@ -158,7 +158,8 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     args = Seq2SeqTrainingArguments(
         output_dir=out, per_device_train_batch_size=batch,
         gradient_accumulation_steps=grad_accum, learning_rate=lr,
-        num_train_epochs=epochs, warmup_ratio=0.1, weight_decay=0.01,
+        # transformers 5 dropped warmup_ratio; warmup_steps takes a float in [0, 1) as the ratio
+        num_train_epochs=epochs, warmup_steps=0.1, weight_decay=0.01,
         eval_strategy='epoch', save_strategy='epoch', logging_steps=10,
         load_best_model_at_end=True, metric_for_best_model='eval_loss',
         greater_is_better=False, save_total_limit=3,
