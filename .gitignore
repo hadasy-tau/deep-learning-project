@@ -27,3 +27,6 @@ __pycache__/
 # carries the per-speaker results table, which is evidence, not build product.
 /src/training/runs/
 /src/training/outputs/
+
+# executed copies of notebooks kept for viewing; git carries the source-only notebook
+notebooks/*.executed.ipynb

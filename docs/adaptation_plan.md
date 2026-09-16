@@ -52,6 +52,56 @@ text says whether that is acoustics or labels; the audio gate
 (`src/preprocessing/speaker_index/validate_audio.py`) on the panel is the cheapest insurance
 before GPU time.
 
+## The panel (chosen 2026-09-16)
+
+`src/evaluation/outputs/committees_panel.csv`. Eleven speakers plus four alternates, picked
+from the 142 speakers that pass the entry requirements (≥ 20 chunks, ≥ 3 corpus hours at
+quality ≥ 0.7, ≥ 8 sessions, no session that fails under both arms). Ranking used each
+speaker's *earlier* sessions only; their latest sessions (about 35 % of their words) were not
+looked at and become personal-test. Within a profile, clean labels (quality-filter footprint
+below the pool median of 0.11) came first, then corpus hours, then low plenum exposure —
+the hours of the same voice in the Stage 1 VoxKnesset table, a proxy for how much of it arm B
+has already seen. `test h` is the personal-test size that resolves a 10 % relative change in
+that speaker's WER_B, from their bootstrap CI, with a 45-minute floor so long-form scoring
+(D7) has whole sessions to work with; every speaker has enough audio for it plus dev and the
+80-minute budget.
+
+Then one check the notebook's § 8.1 makes visible: a speaker's held-out sessions must tell
+the same story as the sessions the choice was made on. Ten of the first eleven did (held-out
+WER_B within 0.06 of the train side). The exception was swapped for an alternate and kept in
+the alternates with the reason.
+
+| id | profile | speaker | sex · rate · orientation | WER A / B | gain | footprint | corpus h | plenum h | test h | why |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 30831 | S1 | אליהו דלל | M · slow · Unrecorded | 0.383 / 0.328 | 14% | 0.12 | 22 | 0.5 | 0.75 | the fine-tune did little for him (14%) and his held-out sessions agree with his train side; 22 h, 0.5 h plenum exposure; footprint 0.12 -> audio gate first |
+| 30685 | S1 | אורית פרקש הכהן | F · medium · Unrecorded | 0.395 / 0.344 | 13% | 0.11 | 23 | 3.4 | 0.75 | lowest relative gain among clean-label speakers (13%), 23 h, low plenum exposure |
+| 30701 | S1 | אופיר כץ | M · fast · Secular | 0.433 / 0.345 | 20% | 0.10 | 28 | 3.8 | 0.75 | hard for both arms (B 0.35) and little helped, 28 h over 507 sessions |
+| 30843 | S2 | יאסר חוג'יראת | M · slow · Unrecorded | 0.464 / 0.361 | 22% | 0.09 | 7 | 1.1 | 0.75 | hard (B 0.36) with a normal gain; Arab speaker with almost no plenum exposure (1 h) |
+| 23558 | S2 | דוד ביטן | M · medium · Secular | 0.524 / 0.390 | 26% | 0.15 | 124 | 4.5 | 0.75 | the hardest well-documented speaker (B 0.39) with 124 h of corpus audio, MENA-born. The fine-tune already helps him more than the standard count shows (75th percentile of benefit under the protocol-aware count), so he tests how much room is left on a hard, well-served speaker; footprint 0.15 -> audio gate first, alternate חיים כץ if it flags him |
+| 30813 | S3 | אבתיסאם מראענה | F · slow · Unrecorded | 0.339 / 0.287 | 15% | 0.05 | 13 | 0.8 | 0.75 | typical WER, low gain, the cleanest labels in the pool (footprint 0.05), lowest plenum exposure (0.8 h); Arab woman |
+| 30718 | S3 | עידית סילמן | F · fast · Religious | 0.327 / 0.275 | 16% | 0.07 | 23 | 1.4 | 0.75 | typical WER, low gain (16%), clean labels, 23 h; religious, fast speech |
+| 30868 | S3 | יונתן מישרקי | M · fast · Haredi | 0.387 / 0.306 | 21% | 0.10 | 30 | 1.3 | 0.75 | the Haredi representative with clean labels: the orientation the models find hardest, 30 h, 1.3 h plenum exposure |
+| 30859 | S4 | צביקה פוגל | M · medium · Unrecorded | 0.295 / 0.218 | 26% | 0.06 | 60 | 0.7 | 0.75 | headroom check: B 0.22 with 60 h of audio and 0.7 h plenum exposure; a low-WER speaker needs the largest personal-test |
+| 30752 | C | וליד טאהא | M · slow · Unrecorded | 0.362 / 0.228 | 37% | 0.05 | 26 | 3.9 | 0.75 | control: the fine-tune already served him (37% gain), clean labels, 26 h; Arab speaker where B closed the gap |
+| 30777 | C | משה טור פז | M · fast · Religious | 0.284 / 0.199 | 30% | 0.07 | 24 | 3.8 | 0.75 | control: 30% gain, low WER, fast speech, born in the Americas; a different profile from the other control |
+
+Alternates:
+
+| id | profile | speaker | sex · rate · orientation | WER A / B | gain | footprint | corpus h | plenum h | test h | why |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 30808 | S1 alt | אפרת רייטן | F · fast · Secular | 0.334 / 0.283 | 15% | 0.11 | 36 | 3.2 | 0.75 | lowest gain with the most clean audio, but her held-out sessions (2024-25) score B 0.19 against 0.33 on the train side: an era, not only a voice. Use only with the split checked |
+| 30807 | S4 alt | גלעד קריב | M · slow · Religious | 0.314 / 0.240 | 24% | 0.08 | 196 | 8.4 | 0.75 | 196 h of audio, B 0.24; the largest speaker in the corpus, if the headroom check wants more test audio |
+| 30695 | S3 alt | יואב סגלוביץ' | M · fast · Secular | 0.397 / 0.320 | 19% | 0.09 | 26 | 8.9 | 0.75 | typical WER, low gain, clean labels, 26 h; held-out agrees with train side |
+| 556 | S2 alt | חיים כץ | M · slow · Secular | 0.488 / 0.376 | 23% | 0.08 | 10 | 15.3 | 0.75 | hard, older, Europe-born, slow; 15 h of plenum exposure is the reason he is an alternate |
+
+What the panel spans: 3 women and 8 men; four fast, three medium, four slow speakers (the
+one rule that separated gain on both corpora); secular, religious, Haredi and unrecorded
+orientations; three Arab speakers, one MENA-born, one Americas-born. Median plenum exposure is
+1.4 h against 3.5 h in the pool, so the panel is not the voices arm B knows best. Two speakers
+are marked for the audio gate before anything else — דוד ביטן and אליהו דלל, whose footprints
+sit above the pool median and who are otherwise the best-documented hard speakers — and
+anyone the gate flags.
+
 ## Decisions
 
 **D1 — Two arms.** A `openai/whisper-large-v3` is the positive control: if the recipe shows
