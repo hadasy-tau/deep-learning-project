@@ -111,7 +111,10 @@ KnessetCorpus — so the tables join directly.
   share of a speaker's chunks the filter removed does (rho ≈ 0.6–0.7), which is the labels
   question. Subgroup rules separate gain (speaking rate strongest, then religion, nationality,
   age) or difficulty (religious orientation, gender), never both — the reverse of VoxKnesset.
-  `committees_adaptation_candidates.csv` is the input to the sharing axis.
+  `committees_adaptation_candidates.csv` is the input to the sharing axis. Beyond Stage 1: B's
+  insertions are real speech the protocol left out (73 % also heard by A), the digit problem is
+  1 % of errors, the per-speaker ranking is reliable (split-half 0.75–0.85), and 2018–19
+  sessions and the Finance committee are the hard conditions.
 - **Training and evaluation** — written, unrun. They need a GPU, and before that a data step
   that does not exist yet: `train.py` and `evaluate.py` read WAV files, the corpus is FLAC in
   parquet, so the panel has to be materialized first. The design, the panel rules and the
