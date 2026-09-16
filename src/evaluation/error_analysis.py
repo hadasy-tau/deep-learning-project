@@ -96,20 +96,52 @@ def content_table(content):
         rows += [dict(arm=tag, kind='deletion', reference=w, hypothesis='', count=n) for w, n in c['top_deletions']]
     return pd.DataFrame(rows)
 
-def insertion_agreement(kept):
-    """Share of B's inserted words that also occur in A's hypothesis of the same
-    chunk.  Two independent models hearing the same absent word is speech the
-    protocol did not write down; a word only B produces may be hallucination."""
-    kept = _hyps(kept); agree = total = 0
+def forgiven_counts(kept):
+    """The protocol-aware measure.  Per chunk and arm: S, D, I as evaluate.score
+    counts them, plus `Ish` -- the arm's inserted words that also occur in the
+    OTHER arm's hypothesis of the same chunk (multiset match) -- and
+
+        werr_<arm>_f = S + D + (I - Ish)
+
+    An added word that both models produced at the same chunk is, with high
+    probability, speech the stenographer did not write down; charging both
+    models for it measures the protocol, not recognition.  It is evidence, not
+    proof: A and B are both Whisper large-v3 descendants and could hallucinate
+    alike.  Columns added: S_A_f, D_A_f, I_A_f (= I - Ish), Ish_A, werr_A_f and
+    the B set.  cerr is not re-scored.  Idempotent."""
+    kept = _hyps(kept)
+    if 'werr_A_f' in kept:
+        return kept
+    cols = {f'{c}_{t}_f': [] for t in 'AB' for c in ('S', 'D', 'I')}; cols.update({'Ish_A': [], 'Ish_B': []})
     for r, ha, hb in zip(kept.ref_n, kept.hA_n, kept.hB_n):
         rw, aw, bw = r.split(), ha.split(), hb.split()
-        inserted = [bw[j] for op, i1, i2, j1, j2 in Levenshtein.opcodes(rw, bw) if op == 'insert' for j in range(j1, j2)]
-        if not inserted: continue
-        pool = collections.Counter(aw)
-        for w in inserted:
-            total += 1
-            if pool[w] > 0: agree += 1; pool[w] -= 1
-    return dict(share_of_B_insertions_also_in_A=agree / max(total, 1), inserted_words_B=total)
+        for tag, hw, other in (('A', aw, bw), ('B', bw, aw)):
+            S = D = I = 0; inserted = []
+            for op, i1, i2, j1, j2 in Levenshtein.opcodes(rw, hw):
+                if op == 'replace':
+                    m = min(i2 - i1, j2 - j1); S += m; D += (i2 - i1) - m; I += (j2 - j1) - m
+                    inserted += hw[j1 + m:j2]
+                elif op == 'delete': D += i2 - i1
+                elif op == 'insert': I += j2 - j1; inserted += hw[j1:j2]
+            pool = collections.Counter(other); shared = 0
+            for w in inserted:
+                if pool[w] > 0: shared += 1; pool[w] -= 1
+            cols[f'S_{tag}_f'].append(S); cols[f'D_{tag}_f'].append(D); cols[f'I_{tag}_f'].append(I - shared); cols[f'Ish_{tag}'].append(shared)
+    for c, v in cols.items():
+        kept[c] = np.asarray(v)
+    for t in 'AB':
+        kept[f'werr_{t}_f'] = kept[f'S_{t}_f'] + kept[f'D_{t}_f'] + kept[f'I_{t}_f']
+    return kept
+
+def insertion_agreement(kept):
+    """Share of B's inserted words that also occur in A's hypothesis of the same
+    chunk (and the reverse).  Two models hearing the same absent word is speech
+    the protocol did not write down; a word only one produces may be
+    hallucination.  Reads forgiven_counts' columns."""
+    kept = forgiven_counts(kept)
+    ins_B, ins_A = int((kept.I_B_f + kept.Ish_B).sum()), int((kept.I_A_f + kept.Ish_A).sum())
+    return dict(share_of_B_insertions_also_in_A=float(kept.Ish_B.sum()) / max(ins_B, 1), inserted_words_B=ins_B,
+                share_of_A_insertions_also_in_B=float(kept.Ish_A.sum()) / max(ins_A, 1), inserted_words_A=ins_A)
 
 def _loops(h, n=3, k=3):
     w = h.split()
@@ -194,9 +226,22 @@ elif __name__ == '__main__':
     assert c['A']['top_substitutions'] == [(('א', 'x'), 1)] and c['A']['top_insertions'] == [('ד', 1)] and c['A']['top_deletions'] == [('ג', 1)], c['A']
     assert c['B']['top_insertions'] == [('ד', 2)] and c['B']['digit_share_of_errors'] == 0
     print('error_content: opcodes -> counters OK')
-    ia = insertion_agreement(k)                      # B inserts ד twice; A also has ד in chunk c only... chunk a: A has no ד -> 0/1; chunk b: no -> 0/1
+    # forgiven counts: chunk a -- B inserts ד, A does not have it -> charged; chunk c -- A inserts ד, B lacks it -> charged;
+    # chunk d -- A's replace א->x is a substitution (not an insertion), nothing shared
+    kf = forgiven_counts(k.copy())
+    assert list(kf.werr_A_f) == [0, 1, 1, 1] and list(kf.werr_B_f) == [1, 1, 0, 0] and kf.Ish_A.sum() == 0 and kf.Ish_B.sum() == 0
+    k2 = k.drop(columns=['hA_n', 'hB_n']).copy(); k2.loc[0, 'hyp_A'] = 'א ב ג ד'   # now A also hears ד at chunk a: both insertions forgiven
+    kf2 = forgiven_counts(k2)
+    assert list(kf2.werr_B_f) == [0, 1, 0, 0] and kf2.werr_A_f[0] == 0 and kf2.Ish_B[0] == 1 and kf2.Ish_A[0] == 1, kf2[['werr_A_f', 'werr_B_f', 'Ish_A', 'Ish_B']]
+    # unequal replace: 'א ב ג' -> 'א x y ג' is 1 substitution + 1 insertion (which of x, y is the
+    # insertion depends on the alignment, so the other arm has both); the insertion is forgiven
+    k3 = pd.DataFrame(dict(chunk_id=['e'], speaker_id=[1], session=[1], session_date=['2020'], duration_s=[5.0], ref=['א ב ג'],
+                           hyp_A=['א x y ג'], hyp_B=['א x y ג'], hyp_A_auto=[''], n_words=[3], werr_A=[2], werr_B=[2], runaway_A=[False], runaway_B=[False]))
+    k3['ref_n'] = k3.ref.map(normalize_he); kf3 = forgiven_counts(k3)
+    assert (kf3.S_A_f[0], kf3.I_A_f[0], kf3.Ish_A[0], kf3.werr_A_f[0]) == (1, 0, 1, 1), kf3[['S_A_f', 'D_A_f', 'I_A_f', 'Ish_A', 'werr_A_f']]
+    print('forgiven_counts: shared insertions forgiven, unequal replace blocks OK')
+    ia = insertion_agreement(k)
     assert ia['inserted_words_B'] == 2 and ia['share_of_B_insertions_also_in_A'] == 0.0, ia
-    k2 = k.copy(); k2.loc[0, 'hyp_A'] = 'א ב ג ד'; k2.pop('hA_n'); k2.pop('hB_n')
     assert insertion_agreement(k2)['share_of_B_insertions_also_in_A'] == 0.5
     print('insertion_agreement: OK')
     assert _loops('א ב ג א ב ג א ב ג') and not _loops('א ב ג ד ה ו ז ח ט')

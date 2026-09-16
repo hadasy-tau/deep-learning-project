@@ -79,16 +79,20 @@ def count_errors(seg):
     seg['wpm'] = seg.n_words / (seg.duration_s / 60)
     return seg
 
-def corpus_scores(df):
+# `suffix` selects the error columns a function reads: '' is the standard count
+# (evaluate.score), '_f' the protocol-aware one (error_analysis.forgiven_counts,
+# which adds werr_A_f, S_A_f, D_A_f, I_A_f and the B set).  Everything downstream
+# keeps the standard output names, so the same chain runs on either measure.
+def corpus_scores(df, suffix=''):
     return pd.Series({'chunks': len(df), 'hours': df.duration_s.sum() / 3600, 'ref_words': int(df.n_words.sum()),
-                      'WER_A': df.werr_A.sum() / df.n_words.sum(), 'WER_B': df.werr_B.sum() / df.n_words.sum(),
+                      'WER_A': df[f'werr_A{suffix}'].sum() / df.n_words.sum(), 'WER_B': df[f'werr_B{suffix}'].sum() / df.n_words.sum(),
                       'CER_A': df.cerr_A.sum() / df.n_chars.sum(), 'CER_B': df.cerr_B.sum() / df.n_chars.sum()})
 
-def qc(seg, min_quality=MIN_QUALITY):
+def qc(seg, min_quality=MIN_QUALITY, suffix=''):
     """The filter and what it does: (kept, dropped, effect table)."""
     keep = seg.quality >= min_quality
-    effect = pd.DataFrame({'before filter': corpus_scores(seg), 'after filter': corpus_scores(seg[keep]),
-                           'the dropped chunks': corpus_scores(seg[~keep])}).T
+    effect = pd.DataFrame({'before filter': corpus_scores(seg, suffix), 'after filter': corpus_scores(seg[keep], suffix),
+                           'the dropped chunks': corpus_scores(seg[~keep], suffix)}).T
     effect[['chunks', 'ref_words']] = effect[['chunks', 'ref_words']].astype(int)
     return seg[keep].reset_index(drop=True), seg[~keep].reset_index(drop=True), effect
 
@@ -101,15 +105,16 @@ def by_bucket(seg, col, edges, labels=None):
         include_groups=False)
 
 # ---- per speaker --------------------------------------------------------------
-def per_speaker(seg, n_boot=1000, seed=0):
+def per_speaker(seg, n_boot=1000, seed=0, suffix=''):
     """The error map: one row per speaker, Stage 1's columns plus S/D/I shares and
-    95% bootstrap CIs (chunks resampled within the speaker) on WER_A, WER_B, gain."""
-    g = seg.groupby('speaker_id')
+    95% bootstrap CIs (chunks resampled within the speaker) on WER_A, WER_B, gain.
+    `suffix` picks the error columns (see corpus_scores); the output names stay."""
+    g = seg.groupby('speaker_id'); f = suffix
     spk = g.agg(n_seg=('chunk_id', 'size'), hours=('duration_s', lambda s: s.sum() / 3600),
                 n_words=('n_words', 'sum'), n_chars=('n_chars', 'sum'),
-                werr_A=('werr_A', 'sum'), werr_B=('werr_B', 'sum'), cerr_A=('cerr_A', 'sum'), cerr_B=('cerr_B', 'sum'),
-                S_A=('S_A', 'sum'), D_A=('D_A', 'sum'), I_A=('I_A', 'sum'),
-                S_B=('S_B', 'sum'), D_B=('D_B', 'sum'), I_B=('I_B', 'sum'),
+                werr_A=(f'werr_A{f}', 'sum'), werr_B=(f'werr_B{f}', 'sum'), cerr_A=('cerr_A', 'sum'), cerr_B=('cerr_B', 'sum'),
+                S_A=(f'S_A{f}', 'sum'), D_A=(f'D_A{f}', 'sum'), I_A=(f'I_A{f}', 'sum'),
+                S_B=(f'S_B{f}', 'sum'), D_B=(f'D_B{f}', 'sum'), I_B=(f'I_B{f}', 'sum'),
                 runaway_A=('runaway_A', 'sum'), runaway_B=('runaway_B', 'sum'),
                 sessions=('session', 'nunique'), first_date=('session_date', 'min'), last_date=('session_date', 'max'))
     for tag in ('A', 'B'):
@@ -122,7 +127,7 @@ def per_speaker(seg, n_boot=1000, seed=0):
     # bootstrap: resample chunks within each speaker; Σerr/Σwords per resample
     rng = np.random.default_rng(seed); ci = {}
     for sid, d in g:
-        eA, eB, w = d.werr_A.values, d.werr_B.values, d.n_words.values
+        eA, eB, w = d[f'werr_A{f}'].values, d[f'werr_B{f}'].values, d.n_words.values
         idx = rng.integers(0, len(w), size=(n_boot, len(w)))
         W = w[idx].sum(1); a = eA[idx].sum(1) / W; b = eB[idx].sum(1) / W
         ci[sid] = dict(wer_A_lo=np.percentile(a, 2.5), wer_A_hi=np.percentile(a, 97.5),
@@ -266,37 +271,78 @@ def language_detection(seg):
     return t, float((~heb).mean())
 
 # ---- run --------------------------------------------------------------------------
-def run(out=OUT, n_boot=1000, n_perm=2000, verbose=True):
+def run(out=OUT, n_boot=1000, n_perm=2000, verbose=True, scoring='standard', seg=None):
+    """The whole chain.  scoring='standard' is Stage 1's count; 'forgiven' is the
+    protocol-aware one (error_analysis.forgiven_counts) run through the identical
+    chain, written with `_forgiven` before the extension.  `seg` lets a caller
+    reuse the scored chunk table between the two."""
+    assert scoring in ('standard', 'forgiven'), scoring
     os.makedirs(out, exist_ok=True); log = print if verbose else (lambda *a, **k: None)
-    seg = count_errors(load_chunks())
-    log(f'{len(seg):,} chunks, {seg.speaker_id.nunique()} speakers, {seg.duration_s.sum()/3600:.1f} h; scored both arms')
-    kept, dropped, effect = qc(seg)
+    f = '' if scoring == 'standard' else '_f'; tagf = '' if scoring == 'standard' else '_forgiven'
+    if seg is None:
+        seg = count_errors(load_chunks())
+    if scoring == 'forgiven':
+        import error_analysis
+        seg = error_analysis.forgiven_counts(seg)
+    log(f'{len(seg):,} chunks, {seg.speaker_id.nunique()} speakers, {seg.duration_s.sum()/3600:.1f} h; scoring: {scoring}')
+    kept, dropped, effect = qc(seg, suffix=f)
     log(effect.round(4).to_string())
-    spk = per_speaker(kept, n_boot=n_boot)
+    spk = per_speaker(kept, n_boot=n_boot, suffix=f)
     attrs = speaker_attrs(kept)
-    totals = kept.groupby('speaker_id').agg(werr_A_total=('werr_A', 'sum'), werr_B_total=('werr_B', 'sum'))
+    totals = kept.groupby('speaker_id').agg(werr_A_total=(f'werr_A{f}', 'sum'), werr_B_total=(f'werr_B{f}', 'sum'))
     G = spk.join(totals).join(attrs)
     subgroups = pd.concat({name: subgroup_table(G, col) for name, col in RULES.items()}, names=['rule', 'group'])
     rank = rank_rules(G, n_perm=n_perm)
     cand = candidates(spk); flagged = flagged_sessions(kept); lang, lang_share = language_detection(seg)
     # write
+    w = lambda name: os.path.join(out, f'committees_{name}{tagf}.csv')
     spk.join(attrs[['speaker_name', 'gender', 'origin', 'nationality', 'religion', 'orientation', 'age_mean', 'wpm_median', 'hours_corpus', 'label']]) \
-       .to_csv(os.path.join(out, 'committees_speaker_performance.csv'), encoding='utf-8-sig', float_format='%.6g')
-    effect.to_csv(os.path.join(out, 'committees_qc_effect.csv'), encoding='utf-8-sig', float_format='%.6g')
-    subgroups.to_csv(os.path.join(out, 'committees_subgroups.csv'), encoding='utf-8-sig', float_format='%.6g')
-    rank.to_csv(os.path.join(out, 'committees_subgroup_rank.csv'), encoding='utf-8-sig', float_format='%.6g')
-    cand.to_csv(os.path.join(out, 'committees_adaptation_candidates.csv'), encoding='utf-8-sig', float_format='%.6g')
-    flagged.to_csv(os.path.join(out, 'committees_flagged_sessions.csv'), encoding='utf-8-sig', float_format='%.6g')
-    summary = dict(chunks_scored=int(len(seg)), chunks_kept=int(len(kept)), speakers=int(spk.shape[0]),
+       .to_csv(w('speaker_performance'), encoding='utf-8-sig', float_format='%.6g')
+    effect.to_csv(w('qc_effect'), encoding='utf-8-sig', float_format='%.6g')
+    subgroups.to_csv(w('subgroups'), encoding='utf-8-sig', float_format='%.6g')
+    rank.to_csv(w('subgroup_rank'), encoding='utf-8-sig', float_format='%.6g')
+    cand.to_csv(w('adaptation_candidates'), encoding='utf-8-sig', float_format='%.6g')
+    if scoring == 'standard':
+        flagged.to_csv(w('flagged_sessions'), encoding='utf-8-sig', float_format='%.6g')
+    summary = dict(scoring=scoring, chunks_scored=int(len(seg)), chunks_kept=int(len(kept)), speakers=int(spk.shape[0]),
                    reliable_speakers=int(spk.reliable.sum()), min_quality=MIN_QUALITY,
                    corpus=effect.loc['after filter'].to_dict(), corpus_unfiltered=effect.loc['before filter'].to_dict(),
                    speakers_helped=int((spk.gain_abs > 0).sum()), speakers_hurt=int((spk.gain_abs < 0).sum()),
                    median_gain_rel=float(spk.gain_rel.median()), median_gain_rel_reliable=float(spk[spk.reliable].gain_rel.median()),
                    flagged_sessions=int(len(flagged)), arm_A_autodetect_not_hebrew=lang_share)
-    json.dump(summary, open(os.path.join(out, 'committees_summary.json'), 'w', encoding='utf-8'), indent=2, ensure_ascii=False, default=float)
-    log(f'wrote 6 tables + summary to {out}')
-    return dict(seg=seg, kept=kept, dropped=dropped, effect=effect, spk=spk, attrs=attrs, G=G,
+    json.dump(summary, open(os.path.join(out, f'committees_summary{tagf}.json'), 'w', encoding='utf-8'), indent=2, ensure_ascii=False, default=float)
+    log(f'wrote the {scoring} tables + summary to {out}')
+    return dict(scoring=scoring, seg=seg, kept=kept, dropped=dropped, effect=effect, spk=spk, attrs=attrs, G=G,
                 subgroups=subgroups, rank=rank, candidates=cand, flagged=flagged, language=lang, summary=summary)
+
+def compare(std, fgv, n_bottom=40):
+    """Standard vs protocol-aware, side by side: the corpus, the gain, the
+    per-speaker ranking, the candidate list and each rule's verdict."""
+    from scipy import stats
+    s, g = std['spk'], fgv['spk']; r = s.reliable
+    cs, cg = std['effect'].loc['after filter'], fgv['effect'].loc['after filter']
+    bottom = lambda t: set(t[t.reliable].nsmallest(n_bottom, 'gain_rel').index)
+    out = dict(corpus={'standard': dict(WER_A=cs.WER_A, WER_B=cs.WER_B, B_advantage=(cs.WER_A - cs.WER_B) / cs.WER_A),
+                       'forgiven': dict(WER_A=cg.WER_A, WER_B=cg.WER_B, B_advantage=(cg.WER_A - cg.WER_B) / cg.WER_A)},
+               median_gain_rel_reliable={'standard': float(s[r].gain_rel.median()), 'forgiven': float(g[r].gain_rel.median())},
+               speakers_hurt={'standard': int((s[r].gain_abs < 0).sum()), 'forgiven': int((g[r].gain_abs < 0).sum())},
+               spearman_between_measures={m: float(stats.spearmanr(s.loc[r, m], g.loc[r, m]).statistic) for m in ('wer_A', 'wer_B', 'gain_abs', 'gain_rel')},
+               bottom_candidates_unchanged=f'{len(bottom(s) & bottom(g))} of {n_bottom}',
+               rules={name: dict(standard=dict(separates_gain=bool(std['rank'].loc[name, 'separates_gain']), separates_wer=bool(std['rank'].loc[name, 'separates_wer']),
+                                                eta2_gain=float(std['rank'].loc[name, 'eta2_gain_rel'])),
+                                 forgiven=dict(separates_gain=bool(fgv['rank'].loc[name, 'separates_gain']), separates_wer=bool(fgv['rank'].loc[name, 'separates_wer']),
+                                               eta2_gain=float(fgv['rank'].loc[name, 'eta2_gain_rel'])))
+                      for name in std['rank'].index})
+    return out
+
+def run_all(out=OUT, verbose=True, **kw):
+    """Both scorings from one scored chunk table, plus the comparison."""
+    std = run(out=out, verbose=verbose, scoring='standard', **kw)
+    fgv = run(out=out, verbose=verbose, scoring='forgiven', seg=std['seg'], **kw)
+    cmp_ = compare(std, fgv)
+    json.dump(cmp_, open(os.path.join(out, 'committees_scoring_comparison.json'), 'w', encoding='utf-8'), indent=2, ensure_ascii=False, default=float)
+    if verbose: print('wrote committees_scoring_comparison.json')
+    return std, fgv, cmp_
 
 # ---- self-checks -----------------------------------------------------------------------
 if __name__ == '__main__' and '--run' not in sys.argv:
@@ -322,7 +368,13 @@ if __name__ == '__main__' and '--run' not in sys.argv:
     s = per_speaker(seg, n_boot=300)
     assert ((s.wer_A_lo <= s.wer_A) & (s.wer_A <= s.wer_A_hi)).all() and ((s.gain_abs_lo <= s.gain_abs) & (s.gain_abs <= s.gain_abs_hi)).all()
     assert np.allclose(s.gain_abs, s.wer_A - s.wer_B) and s.reliable.all()
-    print('per_speaker: counts, gain, bootstrap CI OK')
+    # the suffix reads a different count through the same chain, output names unchanged
+    for c in ('werr_A', 'werr_B', 'S_A', 'D_A', 'I_A', 'S_B', 'D_B', 'I_B'):
+        seg[f'{c}_f'] = seg[c] // 2
+    sf = per_speaker(seg, n_boot=50, suffix='_f')
+    assert np.allclose(sf.wer_A * seg.groupby('speaker_id').n_words.sum(), seg.groupby('speaker_id').werr_A_f.sum()) and list(sf.columns) == list(s.columns)
+    assert corpus_scores(seg, '_f').WER_A == seg.werr_A_f.sum() / seg.n_words.sum()
+    print('per_speaker: counts, gain, bootstrap CI, suffix OK')
     # the scoring is evaluate.score, i.e. Stage 1's normalisation and word Levenshtein
     e = count_errors(pd.DataFrame(dict(chunk_id=['c'], speaker_id=[1], session=[1], session_date=['2020-01-01'], knesset=[25],
                                        duration_s=[6.0], quality=[0.9], ref=['צה"ל שלום עולם'], hyp_A=['צה ל שלום עולם.'], hyp_B=['שלום'], hyp_A_auto=[''])))
@@ -330,4 +382,4 @@ if __name__ == '__main__' and '--run' not in sys.argv:
     print('count_errors: normalisation + Levenshtein OK')
     print('error_map.py self-checks OK')
 elif __name__ == '__main__':
-    run()
+    run_all()
