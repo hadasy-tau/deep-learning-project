@@ -194,8 +194,48 @@ does not: per speaker, committee WER_B is 3.2 times the plenum figure. The plenu
 measured on audio arm B had trained on, in the cleaner register; the committee number is the
 honest one.
 
+## The same map, protocol-aware
+
+§ Beyond Stage 1 showed that B's insertions are mostly the protocol's omissions. This section
+re-runs the whole map under one alternative count, **forgiven-shared WER**: an inserted word
+that the *other* model also produced at that chunk is not charged; substitutions, deletions and
+the denominator are unchanged; an insertion only one model produces is still charged. Standard
+WER stays the headline; this is the second column. Code: `error_analysis.forgiven_counts`,
+`error_map.run(scoring='forgiven')`, `error_map.compare`; notebook § 12; tables
+`committees_*_forgiven.*` and `committees_scoring_comparison.json`.
+
+| | A | B | B's advantage | median gain per speaker | speakers hurt |
+|---|---|---|---|---|---|
+| standard WER | 0.387 | 0.292 | 24 % | 24 % | 0 |
+| forgiven-shared WER | 0.282 | 0.179 | **37 %** | 36 % | 0 |
+
+**What moved: the level, and B's advantage.** The two models fail differently — A's errors are
+more often genuine mishearings, B's more often the protocol's omissions — so charging both
+equally for the protocol flatters A. Under the protocol-aware count the Hebrew fine-tune removes
+over a third of the general model's error, not a quarter.
+
+**What held: everything about individual speakers.** Every reliable speaker is still helped and
+none hurt. The per-speaker ranking barely moves: Spearman between the two counts is 0.94 on
+WER_A, 0.92 on WER_B, 0.99 on absolute gain, 0.96 on relative gain; 35 of the bottom-40
+adaptation candidates are the same. Every subgroup rule keeps its verdict on gain (speaking rate
+strongest on both counts, eta² 0.09); country of origin picks up a weak difficulty verdict it did
+not have; the effects stay small.
+
+**What to watch.** One panel speaker, דוד ביטן, moves from the 59th to the 75th percentile of
+benefit: part of his apparent difficulty is the protocol. Read together with the standard
+results, the panel stands and his role is relabelled — hard, and already well served — with the
+audio gate as the check that could remove him (`adaptation_plan.md` § The panel).
+
+**The caveat.** A and B are both Whisper large-v3 descendants, so a shared insertion is strong
+evidence of a protocol omission, not proof: correlated models can hallucinate alike. The
+measure is a diagnostic beside the standard one, not a replacement.
+
 ## What this version leaves out
 
+- **The protocol question is not settled.** A human verbatim transcription of 30–60 minutes,
+  stratified by speaker and chunk length, scored against both models, would say how much of the
+  residual error is the protocol and how much the model, and would calibrate the forgiven-shared
+  count. Deferred, deliberately.
 - Only one filter. Chunks whose reference is *short* for the audio survive it: after the filter,
   chunks under 50 words per minute (1.3 % of chunks, 3 h) score a WER of 2.0 under both arms —
   speech the protocol condensed, every word an insertion. A small share of the words; left in.
@@ -218,6 +258,8 @@ honest one.
 | `committees_conditions.csv` | corpus WER by year, committee, chunk length, speaking rate |
 | `committees_error_content.csv` | top substitution pairs, insertions and deletions per arm |
 | `committees_checks.json` | insertion agreement, hallucination rates, language forcing, split-half reliability, cross-corpus |
+| `committees_*_forgiven.csv`, `committees_summary_forgiven.json` | the six tables above under the protocol-aware count |
+| `committees_scoring_comparison.json` | standard vs protocol-aware: corpus, gain, ranking correlations, candidate overlap, rule verdicts |
 | `docs/figures/error_map/*.png` | the notebook's figures |
 
 ```bash

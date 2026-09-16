@@ -108,6 +108,6 @@ before the model.
 | [`speaker_index_plan.md`](speaker_index_plan.md) | stage 1: identity resolution, and the measurements that killed the fuzzy-matching design |
 | [`chunk_corpus_build.html`](chunk_corpus_build.html) | stage 2: the build record |
 | [`inference.md`](inference.md) | stage 3: provider contracts, the three bottlenecks, measured cost |
-| [`error_map.md`](error_map.md) | stages 4–5: the per-speaker error map, subgroup rules, who to adapt |
+| [`error_map.md`](error_map.md) | stages 4–5: the per-speaker error map, subgroup rules, who to adapt; what the errors are, and the map again under a protocol-aware count |
 | [`adaptation_plan.md`](adaptation_plan.md) | stages 6–7: the design the training and evaluation code implement (D1–D7), the panel rules, what is written and what is not |
 | [`design.html`](design.html) | the same design as a page, with diagrams — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |

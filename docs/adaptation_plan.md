@@ -102,6 +102,14 @@ are marked for the audio gate before anything else — דוד ביטן and אל�
 sit above the pool median and who are otherwise the best-documented hard speakers — and
 anyone the gate flags.
 
+**Read together (2026-09-16).** `error_map.md` § The same map, protocol-aware re-scores the map
+without charging for added words both models heard. Ten of the eleven do not move (their percentile of
+benefit changes by a few points); the candidate list holds (35 of 40). דוד ביטן moves from the 59th to the
+75th percentile of benefit: part of his difficulty is the protocol, and the fine-tune serves him better than
+the standard count shows. Decision: the panel stands. ביטן stays, with his role relabelled from "simply
+hard" to "hard, and already well served — how much room is left"; the audio gate, not this count, is what
+would remove him, and חיים כץ is his alternate if it does.
+
 ## Decisions
 
 **D1 — Two arms.** A `openai/whisper-large-v3` is the positive control: if the recipe shows

@@ -1,0 +1,115 @@
+{
+  "corpus": {
+    "standard": {
+      "WER_A": 0.38676740768259255,
+      "WER_B": 0.2924397800563398,
+      "B_advantage": 0.24388721943102393
+    },
+    "forgiven": {
+      "WER_A": 0.28230594197144815,
+      "WER_B": 0.17882620408819985,
+      "B_advantage": 0.3665517528983291
+    }
+  },
+  "median_gain_rel_reliable": {
+    "standard": 0.24356511717249327,
+    "forgiven": 0.36397058823529416
+  },
+  "speakers_hurt": {
+    "standard": 0,
+    "forgiven": 0
+  },
+  "spearman_between_measures": {
+    "wer_A": 0.9416526616316034,
+    "wer_B": 0.9242600954367209,
+    "gain_abs": 0.9864485255904052,
+    "gain_rel": 0.9557675359520413
+  },
+  "bottom_candidates_unchanged": "35 of 40",
+  "rules": {
+    "speaking rate tertile": {
+      "standard": {
+        "separates_gain": true,
+        "separates_wer": false,
+        "eta2_gain": 0.09163291860862217
+      },
+      "forgiven": {
+        "separates_gain": true,
+        "separates_wer": false,
+        "eta2_gain": 0.09056208797956261
+      }
+    },
+    "religion": {
+      "standard": {
+        "separates_gain": true,
+        "separates_wer": false,
+        "eta2_gain": 0.07232483476352504
+      },
+      "forgiven": {
+        "separates_gain": true,
+        "separates_wer": false,
+        "eta2_gain": 0.05382738868392548
+      }
+    },
+    "nationality": {
+      "standard": {
+        "separates_gain": true,
+        "separates_wer": false,
+        "eta2_gain": 0.07048716086814066
+      },
+      "forgiven": {
+        "separates_gain": true,
+        "separates_wer": false,
+        "eta2_gain": 0.051496305621445554
+      }
+    },
+    "age quartile": {
+      "standard": {
+        "separates_gain": true,
+        "separates_wer": false,
+        "eta2_gain": 0.04994069526335495
+      },
+      "forgiven": {
+        "separates_gain": true,
+        "separates_wer": false,
+        "eta2_gain": 0.05355100300284511
+      }
+    },
+    "country of origin": {
+      "standard": {
+        "separates_gain": false,
+        "separates_wer": false,
+        "eta2_gain": 0.036772117342458104
+      },
+      "forgiven": {
+        "separates_gain": false,
+        "separates_wer": true,
+        "eta2_gain": 0.033062545540227216
+      }
+    },
+    "gender": {
+      "standard": {
+        "separates_gain": true,
+        "separates_wer": true,
+        "eta2_gain": 0.01961220319739189
+      },
+      "forgiven": {
+        "separates_gain": true,
+        "separates_wer": true,
+        "eta2_gain": 0.03034827088828133
+      }
+    },
+    "religious orientation": {
+      "standard": {
+        "separates_gain": false,
+        "separates_wer": true,
+        "eta2_gain": 0.0015408495666748285
+      },
+      "forgiven": {
+        "separates_gain": false,
+        "separates_wer": true,
+        "eta2_gain": 0.0009893242506835633
+      }
+    }
+  }
+}

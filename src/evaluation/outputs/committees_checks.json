@@ -21,7 +21,9 @@
   },
   "insertion_agreement": {
     "share_of_B_insertions_also_in_A": 0.7344015558280134,
-    "inserted_words_B": 236530
+    "inserted_words_B": 236530,
+    "share_of_A_insertions_also_in_B": 0.7140398251057324,
+    "inserted_words_A": 223678
   },
   "hallucination": {
     "looping": {
