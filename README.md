@@ -37,8 +37,11 @@ src/
                                Providers (deepinfra), arm B via RunPod serverless on
                                ivrit.ai's own worker image. Resumable, cost-bounded
 
-  training/train.py            one cell -> one adapter (speaker, arm, site, method, budget,
-                               rank, lr, seed). Needs a GPU
+  training/                    materialize.py: the panel's audio from the corpus shards to WAVs
+                               (panel_plan.parquet says which chunks, which split);
+                               train.py: one cell -> one adapter (speaker, arm, site, method,
+                               budget, rank, lr, seed); run_panel.py: cells -> scored results.
+                               README.md there is the GPU session, in order
   evaluation/evaluate.py       transcribe, count errors, paired bootstrap
   evaluation/error_map.py      the per-speaker error map over the committees inference:
                                WER/CER and gain per speaker with CIs, subgroup viability and
@@ -117,10 +120,13 @@ KnessetCorpus — so the tables join directly.
   sessions and the Finance committee are the hard conditions. Under a protocol-aware count that
   stops charging for added words both models heard, B's advantage is 37 % rather than 24 %, and
   the per-speaker conclusions hold (ranking Spearman 0.96, 35 of 40 candidates the same).
-- **Training and evaluation** — written, unrun. They need a GPU, and before that a data step
-  that does not exist yet: `train.py` and `evaluate.py` read WAV files, the corpus is FLAC in
-  parquet, so the panel has to be materialized first. The design, the panel rules and the
-  order of work are `docs/adaptation_plan.md`.
+- **Adaptation** — ready for the GPU. The panel is chosen (11 speakers, `docs/adaptation_plan.md`
+  § The panel), its audio is planned and materialized (`src/training/materialize.py`: 8,113
+  chunks, 28.8 h, session-disjoint by date, ≥ 45 min test / ~15 dev / ≥ 80 train each), the
+  driver runs cells to scored results with the paired bootstrap and the S/D/I rule
+  (`src/training/run_panel.py`), and the whole path was smoke-tested on CPU with a tiny Whisper.
+  Never run on the real models: `src/training/README.md` is the session, in order — the audio
+  gate first, then `overfit_check`, then arm B / LoRA / three budgets / three seeds.
 
 Self-checks, no GPU and no network beyond the cached data:
 

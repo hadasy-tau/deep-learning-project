@@ -177,12 +177,13 @@ deployment realism; the gap between the two is where hallucination and repetitio
 | step | what | where |
 |---|---|---|
 | select the panel | from the error map, train-side only | `src/evaluation/outputs/committees_adaptation_candidates.csv`; the rules above |
-| gate the labels | ECAPA centroid check on the panel | `src/preprocessing/speaker_index/validate_audio.py` (GPU; never run) |
-| materialize | pull the panel's chunks at quality ≥ 0.7 from the corpus shards to WAV, with `filename, text, session, session_date, duration_s` | **not written.** `train.py` and `evaluate.py` read `filename, start, end` WAVs; the corpus is FLAC inside parquet (`committees_handoff.md` § the integration gap). The lean runner's shard reader is the extraction half |
+| gate the labels | ECAPA centroid check on the panel | `src/preprocessing/speaker_index/validate_audio.py` (GPU; never run — step 2 of the runbook) |
+| materialize | the panel's newest sessions at quality ≥ 0.7, covering test + dev + the 80-minute budget, pulled from the corpus shards to WAV with the table train.py reads | `src/training/materialize.py`: `plan` chooses and splits (8,113 chunks, 28.8 h, 111 shards → `panel_plan.parquet`, committed), `extract` writes the WAVs on any machine with a fast link, `verify` checks the invariants and the audio |
 | split | session-disjoint by date, test sized per speaker, nested budgets | `common.make_splits`, `common.budget_order` |
 | baseline | both base models on personal-test, short- and long-form; error counts stored | `evaluate.load`, `transcribe_short/long`, `score` |
 | train | one cell → one adapter, idempotent | `train.train_cell`; `overfit_check` first |
 | evaluate | every adapter on personal-test, cross-speaker, out-of-domain; paired bootstrap and Wilcoxon over chunks | `evaluate.score`, `evaluate.paired_bootstrap` |
+| drive | cells → adapters → scored results with the paired bootstrap and the S/D/I rule applied | `src/training/run_panel.py`; the session, in order, is `src/training/README.md` |
 | statistics | recipe curves, mixed effects across the panel | notebook, to be written |
 
 ## Fine-tuning gotchas encoded in `train.py`

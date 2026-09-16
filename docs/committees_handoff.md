@@ -84,7 +84,7 @@ gender  age  date_of_birth  place_of_birth  year_of_aliya  religion  nationality
 
 `src/training/train.py` and `src/evaluation/evaluate.py::transcribe_short` read audio through `read_wav(os.path.join(audio_dir, r.filename), r.start, r.end)`, which expects **WAV files on disk**. This corpus is **FLAC bytes inside parquet**, so neither can consume it unchanged. Inference sidestepped this (the providers take bytes); adaptation cannot.
 
-Two ways, and the plan takes the first: materialize only the panel — the chosen speakers' chunks at quality ≥ 0.7, a few hours each, written as WAVs with a `filename, text, session, session_date, duration_s` table — so `train.py` and `evaluate.py` run unchanged; or write a bytes-based twin of `transcribe_short` (decode FLAC → float32 → `feature_extractor` → `generate`). Never materialise the whole corpus: that is a 4,111 h extraction. Whichever way, `score()` stays as it is; it stores error **counts**, never rates.
+Two ways, and the plan takes the first (done: `src/training/materialize.py`): materialize only the panel — the chosen speakers' chunks at quality ≥ 0.7, a few hours each, written as WAVs with a `filename, text, session, session_date, duration_s` table — so `train.py` and `evaluate.py` run unchanged; or write a bytes-based twin of `transcribe_short` (decode FLAC → float32 → `feature_extractor` → `generate`). Never materialise the whole corpus: that is a 4,111 h extraction. Whichever way, `score()` stays as it is; it stores error **counts**, never rates.
 
 `evaluate.py`'s `ARMS` is already `{'A': 'openai/whisper-large-v3', 'B': 'ivrit-ai/whisper-large-v3'}` (transformers checkpoints, fp16 on CUDA).
 
