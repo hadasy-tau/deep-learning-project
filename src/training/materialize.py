@@ -201,9 +201,26 @@ def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=T
 def upload(repo, audio_dir=AUDIO, plan_path=PLAN):
     from huggingface_hub import HfApi
     api = HfApi(); api.create_repo(repo, repo_type='dataset', private=True, exist_ok=True)
+    P = pd.read_parquet(plan_path)
+    card = f"""---
+license: cc-by-sa-4.0
+language: [he]
+pretty_name: Knesset Committees Panel
+---
+# Knesset Committees Panel
+
+The audio the adaptation stage trains and tests on: {len(P):,} chunks ({P.duration_s.sum()/3600:.1f} h) of
+{P.speaker_id.nunique()} Knesset members, cut from `Hadasy/knesset-committees-chunks` at alignment quality >= 0.7,
+as 16 kHz 16-bit mono WAV under `panel_audio/<speaker_id>/<chunk_id>.wav`. `panel_plan.parquet` is the
+table: one row per chunk with the reference text, session and date, and the split (`part`: test = the
+speaker's newest sessions, then dev, the rest train; session-disjoint by date; train ordered latest-first so
+nested budgets are prefixes). Built by `src/training/materialize.py` in hadasy-tau/deep-learning-project;
+why these speakers is `docs/adaptation_plan.md` there. Source audio: ivrit.ai; references: the Knesset protocols.
+"""
+    api.upload_file(path_or_fileobj=card.encode('utf-8'), path_in_repo='README.md', repo_id=repo, repo_type='dataset')
     api.upload_file(path_or_fileobj=plan_path, path_in_repo='panel_plan.parquet', repo_id=repo, repo_type='dataset')
     api.upload_folder(folder_path=audio_dir, path_in_repo='panel_audio', repo_id=repo, repo_type='dataset')
-    log(f'uploaded plan + wavs to {repo}')
+    log(f'uploaded card + plan + wavs to {repo}')
 
 def download(repo, audio_dir=AUDIO):
     from huggingface_hub import snapshot_download
