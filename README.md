@@ -54,8 +54,9 @@ notebooks/                     explore_committees.ipynb, speaker_error_map.ipynb
 docs/                          design.md + design.html are the one-page overview: the
                                whole flow, end to end. Then the build records:
                                committees_handoff.md, speaker_index_plan.md,
-                               chunk_corpus_build.html, inference.md, error_map.md, and
-                               adaptation_plan.md for what comes next
+                               chunk_corpus_build.html, inference.md, error_map.md,
+                               adaptation_plan.md for the design, and training_handoff.md --
+                               read that one first on the GPU box
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
