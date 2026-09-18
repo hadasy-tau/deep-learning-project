@@ -1,6 +1,8 @@
 # Adaptation — the runbook
 
-What to do on the GPU box, in order, and what to bring back. The design is
+What to do on the GPU box, in order, and what to bring back. **Read
+`docs/training_handoff.md` first** — it carries the decisions, the panel and the two rules for
+reading the results. The design is
 `docs/adaptation_plan.md`; the panel is `src/evaluation/outputs/committees_panel.csv`;
 the audio it needs is described by `panel_plan.parquet` (one row per chunk: who, which
 session, which split, which shard).
