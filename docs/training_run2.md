@@ -366,6 +366,28 @@ anyone" under an honest count is about five points of relative WER, concentrated
 same speakers as before. Run B (selection alone) separates how much of this is the targets and
 how much the selection criterion.
 
+**Run B: protocol targets + selection on dev forgiven WER (finished 21:35 UTC).** The
+separating experiment. Same rate, same targets as the sweep's best recipe; only the
+checkpoint rule differs.
+
+| recipe, 3e-4, 80 min | standard WER | forgiven-shared | worse under forgiven | control std / forgiven | own − control std / forgiven |
+|---|---|---|---|---|---|
+| protocol, dev-loss selection | +17.7 % (9/11 sig) | +11.6 % (2/11 sig) | 4/11 | +12.5 % / +4.3 % | +3.6 / +2.6 pts |
+| protocol, dev-forgiven selection | +15.1 % (7/11 sig) | **+2.0 %** (3/11 sig) | 5/11 | +12.8 % / +4.7 % | +3.3 / **−0.7** pts |
+| semi-verbatim, dev-forgiven selection | +7.7 % (6/11 sig) | +6.9 % (4/11 sig) | 3/11 | +6.8 % / +2.6 % | +0.5 / +4.7 pts |
+
+**Selecting on dev forgiven WER is worse than selecting on dev loss.** With protocol targets it
+drops the forgiven median from 11.6 to 2.0 % and the personal share to zero. The reason is
+plain in the epochs it picks — 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3 against the loss's uniform 2 —
+and in the dev sets: 15 minutes is 40–120 chunks, too few for a generation-based WER to rank
+epochs that differ by a point or two; the loss, averaged over every token, is the steadier
+signal. The idea (training_next.md § A2) was sound and is now measured: not at this dev size.
+
+**Therefore run A's gain in the personal component is the targets', and run A was
+handicapped by its selection rule.** The clean reading of the semi-verbatim objective needs
+the missing cell of the 2 × 2 — semi-verbatim targets with dev-loss selection — which is
+queued as run D after the decoder-MLP run.
+
 ## How to resume on a fresh pod
 
 The pod was stopped after this session; the network volume (`/workspace`) persists, the
