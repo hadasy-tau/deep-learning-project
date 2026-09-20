@@ -10,7 +10,16 @@ gotchas -- -100 label masking, use_cache=False under gradient checkpointing,
 enable_input_require_grads() under PEFT -- still apply and are encoded below.
 """
 import contextlib, os
+# Cap the BLAS/OpenMP pool BEFORE numpy loads.  Whisper's log-mel extraction is a
+# numpy STFT + mel matmul, and on a 255-core box the default pool (one thread per
+# core) made it 1.4 s per chunk against 8 ms with 4 threads (measured 2026-09-20 on
+# an A100 pod).  Through __getitem__ and the per-epoch dev eval that alone was
+# ~25 of the first run's ~30 minutes per cell.  A value already set in the
+# environment wins.
+for _v in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'OPENBLAS_NUM_THREADS'):
+    os.environ.setdefault(_v, '8')
 import numpy as np, torch
+torch.set_num_threads(int(os.environ['OMP_NUM_THREADS']))
 from torch.utils.data import Dataset
 from transformers import (WhisperForConditionalGeneration, WhisperProcessor,
                           Seq2SeqTrainer, Seq2SeqTrainingArguments)
@@ -86,12 +95,20 @@ def cell_name(speaker, arm, site, method, budget, rank, lr, seed):
 
 def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
                method='lora', budget=30, rank=8, lr=None, seed=0,
-               epochs=8, batch=8, grad_accum=1, timestamps=False):
+               epochs=8, batch=8, grad_accum=1, timestamps=False,
+               train_rows=None, dev_rows=None, grad_ckpt=None, num_workers=4):
     """Train one cell. Returns the output dir; skips it if already finished.
 
     lr defaults per method (see DEFAULT_LR) because one value cannot serve both
     adapters and full fine-tuning. Resolved before cell_name, so the directory
     records the rate actually used.
+
+    train_rows / dev_rows: pass the chunks explicitly instead of filtering
+    `chunks` by speaker -- the cross-speaker control (D3) trains on a pool
+    drawn from several speakers, under a string `speaker` label.
+    grad_ckpt: None = only where it is needed (full fine-tuning, or a card
+    under 40 GB). Checkpointing recomputes every activation in the backward
+    pass: 823 -> 518 ms per LoRA step on an A100 without it, at 21 GB peak.
     """
     if method not in DEFAULT_LR:
         raise ValueError(f'unknown method {method}; expected one of '
@@ -113,7 +130,17 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     # with timestamps, so dropping them can degrade timestamp behaviour.
     proc.tokenizer.set_prefix_tokens(language='he', task='transcribe',
                                      predict_timestamps=timestamps)
-    model = WhisperForConditionalGeneration.from_pretrained(ARMS[arm])
+    # bf16 wherever the card has it (L4, A10G, A100 -- the plan's target VMs),
+    # fp16 only where it does not (T4, the PoC box). They are not
+    # interchangeable at this lr: fp16's narrow range is exactly where LoRA at
+    # 1e-3 trips the gradient scaler, and bf16 needs no scaler at all.
+    use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    use_fp16 = torch.cuda.is_available() and not use_bf16
+    # Adapters: the frozen base lives in bf16 (PEFT keeps the adapter weights
+    # in fp32), half the memory of fp32 and no per-op cast under autocast.
+    # Full fine-tuning keeps fp32 master weights for the optimizer.
+    base_dtype = torch.bfloat16 if (use_bf16 and method != 'full') else torch.float32
+    model = WhisperForConditionalGeneration.from_pretrained(ARMS[arm], dtype=base_dtype)
     dsti = model.config.decoder_start_token_id   # capture before the PEFT wrap
 
     # transformers 5: no forced_decoder_ids. Language/task live here, and an
@@ -123,12 +150,18 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     model.generation_config.suppress_tokens = []
     model.config.use_cache = False               # required with gradient checkpointing
 
-    spk = chunks[chunks.speaker_id == speaker]
-    tr = take_budget(spk[spk.part == 'train'], budget)
-    dev = spk[spk.part == 'dev']
+    if train_rows is None:
+        spk = chunks[chunks.speaker_id == speaker]
+        tr = take_budget(spk[spk.part == 'train'], budget)
+        dev = spk[spk.part == 'dev']
+    else:
+        tr, dev = train_rows, dev_rows
     print(f'{cell_name(speaker, arm, site, method, budget, rank, lr, seed)}: '
           f'{len(tr)} train chunks ({tr.duration_s.sum()/60:.1f} min), {len(dev)} dev')
 
+    if grad_ckpt is None:
+        grad_ckpt = method == 'full' or not torch.cuda.is_available() or \
+            torch.cuda.get_device_properties(0).total_memory < 40 * 2**30
     if method == 'full':
         model.gradient_checkpointing_enable()
     else:
@@ -143,16 +176,11 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
             raise ValueError(f'unknown method {method}')
         model = get_peft_model(model, cfg)
         model.print_trainable_parameters()
-        model.gradient_checkpointing_enable()
-        model.enable_input_require_grads()       # else checkpointing yields no grads
-
-    # bf16 wherever the card has it (L4, A10G, A100 -- the plan's target VMs),
-    # fp16 only where it does not (T4, the PoC box). They are not
-    # interchangeable at this lr: fp16's narrow range is exactly where LoRA at
-    # 1e-3 trips the gradient scaler, and bf16 needs no scaler at all.
-    use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
-    use_fp16 = torch.cuda.is_available() and not use_bf16
+        if grad_ckpt:
+            model.gradient_checkpointing_enable()
+            model.enable_input_require_grads()   # else checkpointing yields no grads
     print(f'precision: {"bf16" if use_bf16 else "fp16" if use_fp16 else "fp32 (cpu)"}'
+          f', base weights {base_dtype}, grad checkpointing {grad_ckpt}'
           f', lr {lr:g}, method {method}')
 
     args = Seq2SeqTrainingArguments(
@@ -165,6 +193,9 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
         greater_is_better=False, save_total_limit=3,
         bf16=use_bf16, fp16=use_fp16, report_to=[], seed=seed,
         remove_unused_columns=False, label_names=['labels'],
+        per_device_eval_batch_size=2 * batch,
+        # workers overlap the wav read + log-mel with the GPU step
+        dataloader_num_workers=num_workers, dataloader_persistent_workers=num_workers > 0,
     )
     trainer = Seq2SeqTrainer(
         model=model, args=args,
@@ -175,6 +206,22 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     trainer.train()
     trainer.save_model(out)
     proc.save_pretrained(out)
+    # What the run did, for the results table: steps and the dev-loss curve.
+    # Point 4 of the handoff's "Before the second run": passes are fixed at
+    # `epochs`, so steps scale with the budget -- record them rather than hide it.
+    st = trainer.state
+    evals = [dict(epoch=h['epoch'], eval_loss=h['eval_loss']) for h in st.log_history if 'eval_loss' in h]
+    meta = dict(global_step=st.global_step, epochs=epochs, train_chunks=len(tr),
+                train_minutes=float(tr.duration_s.sum() / 60), dev_chunks=len(dev),
+                best_eval_loss=min((e['eval_loss'] for e in evals), default=None), evals=evals,
+                base_dtype=str(base_dtype), grad_ckpt=bool(grad_ckpt))
+    import json, shutil, glob
+    json.dump(meta, open(os.path.join(out, 'train_meta.json'), 'w'), indent=1)
+    # The per-epoch checkpoints carry optimizer state (~3x the adapter) and are
+    # only there for load_best_model_at_end, which has already run.  The
+    # persistent volume on the GPU box has a 10 GB quota; drop them.
+    for ck in glob.glob(os.path.join(out, 'checkpoint-*')):
+        shutil.rmtree(ck, ignore_errors=True)
     open(os.path.join(out, 'DONE'), 'w').close()
     return out
 

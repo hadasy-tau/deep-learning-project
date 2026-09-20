@@ -197,6 +197,14 @@ checkpoint (4 decoder layers, faster-whisper); the adapters train on the full
 0.10 gap, and why the adaptation gain and the error-map gain are not on one scale. Say so in
 the write-up.
 
+**Status (2026-09-20, second run).** Points 1–3 are done and 4–5 decided: the profile found
+BLAS thread oversubscription in the log-mel extraction (1.4 s a chunk) and gradient
+checkpointing on an 80 GB card, and a cell now takes 1.5–4.7 minutes (`src/training/README.md`
+§ Speed); every cell carries forgiven-shared WER beside standard WER; the control runs in two
+folds (`--control-folds 2`), so no speaker is evaluated on an adapter that saw them; passes
+stay fixed at 8 and `train_steps` is reported per cell; the run is `--seeds 0` plus the
+control. Point 6 stays a write-up item.
+
 **Operational, learned the hard way.** This pod has no persistent volume, and RunPod can
 preempt a pod on its own: a preemption after 30 hours loses everything. Run a background loop
 that copies `src/training/outputs/results/` and `src/training/runs/` to a private HuggingFace
