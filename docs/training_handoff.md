@@ -150,6 +150,60 @@ Beyond those: each cell reports a paired bootstrap over test chunks (`ci_lo`, `c
 comparing base and tuned on the *same* chunks. A `delta_rel` whose interval spans zero is not a
 result, however large it looks.
 
+## Before the second run — what to change (written 2026-09-20, after the first run started)
+
+The first run launched as designed. Watching it exposed six things. The first three change
+what the result *means* and should be done before more GPU hours are spent; the last three are
+judgement calls to settle and state. Nothing already trained is wasted: adapters stay valid,
+and the driver skips finished cells on a restart.
+
+**1. Profile one cell before anything else.** The box measured about 30 minutes per cell. The
+arithmetic says ten: the 80-minute budget is 372 chunks × 8 passes ÷ batch 8 ≈ 370 steps, well
+under ten minutes on an A100, and transcribing 223 test chunks is about a minute. Time the
+phases separately — model load, training, dev eval per epoch, test transcription, scoring.
+Usual suspects: generation not batched or with a large `max_new_tokens`, something in fp32,
+the model reloaded more than once per cell. Fix what you find. This could halve the bill.
+
+**2. Score the test set under the protocol-aware count as well.** The training target is the
+cleaned protocol, so the loss *rewards* learning to drop filler the way a stenographer does —
+precisely the behaviour `style_not_speaker` flags. The flag catches it afterward; the objective
+causes it. Mitigation: transcribe each speaker's test chunks with arm A once (cache it like the
+base-B transcription), then compute forgiven-shared WER (`src/evaluation/error_analysis.py::
+forgiven_counts`, see `docs/error_map.md` § The same map, protocol-aware) for base and tuned
+beside standard WER, and put both in `results.csv`. A gain that survives when shared insertions
+are forgiven is more likely the voice.
+
+**3. Add the cross-speaker control (design decision D3) to this run.** Without it, "the adapter
+helped speaker X" cannot be told from "80 minutes of any committee audio teaches the model
+committee Hebrew". Train one adapter on a budget-matched 80 minutes pooled from the *other*
+speakers (the ten other panel members, or non-panel speakers from the corpus), evaluate it on
+every panel speaker's test set, and report personalization = Δ(own adapter) − Δ(others'
+adapter). One training run and eleven evaluations. It is the single addition that makes the
+word "personalization" defensible.
+
+**4. Steps versus passes — decide and state it.** Eight passes regardless of budget gives the
+80-minute cell 23× the optimisation of the 5-minute cell (≈370 steps against 16), so the
+budget curve confounds "more audio" with "more compute". Either fix the step count and cycle
+small budgets more often, or keep passes fixed and report steps per cell. Both are defensible;
+leaving it implicit is not.
+
+**5. One seed first.** `--seeds 0` is 33 cells. Stopping the 99-cell run and restarting with
+one seed loses only the cell in progress. Add seeds 1 and 2 only if seed 0 shows an effect;
+they tighten the intervals, they do not change the answer.
+
+**6. State the checkpoint seam.** The error map's B was ivrit.ai's `turbo-ct2` serving
+checkpoint (4 decoder layers, faster-whisper); the adapters train on the full
+`whisper-large-v3` fine-tune (32 decoder layers). That is why the base-WER check allows a
+0.10 gap, and why the adaptation gain and the error-map gain are not on one scale. Say so in
+the write-up.
+
+**Operational, learned the hard way.** This pod has no persistent volume, and RunPod can
+preempt a pod on its own: a preemption after 30 hours loses everything. Run a background loop
+that copies `src/training/outputs/results/` and `src/training/runs/` to a private HuggingFace
+dataset every 30 minutes; they are megabytes. And any HuggingFace token that was pasted into a
+chat is in a transcript — revoke it and issue a read-only replacement, given through
+`hf auth login` typed interactively.
+
 ## Open problems — know them, do not fix them
 
 - **Labels are verified against the protocol, not the voice.** Committee cross-talk is heavy and
