@@ -233,9 +233,51 @@ sites at 1e-4) are one chunk each: a 7-word reference where the tuned model loop
 that is why those rows have p ≈ 0.8 — and `runaway` in the S/D/I block counts them. Read a
 large, non-significant loss as "one loop", not as damage to the speaker.
 
-## Results: follow-up 2, the learning-rate axis
+## Results: follow-up 2, the learning-rate axis (finished 16:42 UTC, 22 cells + 22 control evaluations, 2.8 h)
 
-Filled in when it finishes.
+Both sites, 80 minutes, 8 passes, best epoch restored by dev loss; medians over eleven speakers:
+
+| lr | standard WER | forgiven-shared | worse under forgiven | control std / forgiven | own − control std / forgiven | best epoch | runaways |
+|---|---|---|---|---|---|---|---|
+| 1e-3 (seed-0 run) | +17.2 % (8/11 sig) | +4.7 % (3/11 sig) | 5/11 | +15.0 % / +1.6 % | +2.2 / +2.0 pts | 1 for all | 12 |
+| 3e-4 | +17.7 % (9/11 sig) | **+11.6 %** (2/11 sig) | 4/11 | +12.5 % / +4.3 % | **+3.6 / +2.6 pts** | 2 for all | 10 |
+| 1e-4 | +16.7 % (8/11 sig) | +5.5 % (2/11 sig) | 4/11 | +14.0 % / +1.8 % | +1.8 / +3.2 pts | 3–5 | 9 |
+
+**The rate changes how much of the gain survives the forgiven count, not the standard
+gain.** All three rates remove about 17 % of standard WER. At 3e-4 the forgiven median more
+than doubles (4.7 → 11.6 %), the two speakers the high rate damaged recover (30685: −7 % → +15 %
+standard, −54 % → −4 % forgiven), and the best epoch is the second for every speaker. At
+1e-4 the curve bottoms at epochs 3–5 and the forgiven gain is back near the 1e-3 level: too
+little optimisation now. **3e-4 is the recipe's rate from here on.**
+
+**The control moves less than the personal adapters.** The 3e-4 control removes 12.5 % standard
+and 4.3 % forgiven; own minus control widens to +3.6 / +2.6 points. Still small, still mostly
+domain, but the direction is consistent: the lower rate lets the personal adapter keep more of
+the voice-specific part and less of the stenographer.
+
+**Two speakers are rate-independent.** 30813 is worse at every rate and site (and the control
+hurts her too: −18 to −22 %), so her problem is not optimisation — the audio gate, running as
+this was written, is the check. 30752's 3e-4 and 1e-4 cells are the single-loop artefact
+described above.
+
+**On passes versus steps (handoff point 4), now answered empirically.** With 8 passes and
+dev-loss selection, the effective training is 1 pass at 1e-3, 2 at 3e-4, 3–5 at 1e-4. Fixing
+the step count would not have removed the confound; the selection criterion is what sets the
+optimisation each cell gets, and the follow-up on selection by dev forgiven WER (next section)
+is where that is addressed.
+
+## Results: follow-ups 3–5, the objective, the selection criterion, the decoder MLPs
+
+Queued after the sweep (`src/training/box/next_runs.sh`): semi-verbatim targets with
+selection on dev forgiven WER; selection alone; LoRA on the decoder's `fc1`/`fc2`. All at
+3e-4, 80 minutes, with two-fold controls. Filled in as they finish.
+
+**The targets** (`src/training/targets.py`, `outputs/targets_verbatim.parquet`; both arms'
+transcriptions of every train and dev chunk cached under `outputs/results/hyps_*`): the
+protocol text with the words arms A and B both produced at the same place put back, nothing
+removed. Over the 5,177 train and dev chunks, 58 % change and 10.7 words go back per 100
+reference words; per speaker the rate runs from 4 (30859) to 17 (30813) per 100 — and 30813, whose protocol is the most condensed, is the speaker every adapter has hurt so far: her training targets were the most stenographer-like of the panel. The words
+put back are the ones a stenographer drops: אני (574), לא (565), זה (478), אז (405), את (284), גם (213), מה (211), אבל (207), כן (195), בעצם (190), אנחנו (178), באמת (162), יש (144), הוא (130).
 
 ## How to resume on a fresh pod
 

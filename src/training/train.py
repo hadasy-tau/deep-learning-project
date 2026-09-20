@@ -38,6 +38,9 @@ SITES = {
     'decoder_cross': r'.*model\.decoder.*\.encoder_attn\.(q_proj|v_proj)',
     'both':         r'.*\.(q_proj|v_proj)',
     'all_linear':   r'.*\.(q_proj|k_proj|v_proj|out_proj|fc1|fc2)',
+    # the decoder's MLPs: where a placement study on atypical speakers found the
+    # speaker information lands (self-attention "unstable and rarely beneficial")
+    'decoder_mlp':  r'.*model\.decoder.*\.(fc1|fc2)',
 }
 
 # D4's reference lr of 1e-3 is an ADAPTER learning rate. Applied to full
@@ -52,9 +55,9 @@ class ChunkDataset(Dataset):
     """Chunks -> (log-mel features, label ids). Audio is sliced out of the
     whole-recording wavs that `materialize` wrote."""
 
-    def __init__(self, chunks, audio_dir, processor):
+    def __init__(self, chunks, audio_dir, processor, dtype=torch.float32):
         self.rows = chunks.reset_index(drop=True)
-        self.audio_dir, self.proc = audio_dir, processor
+        self.audio_dir, self.proc, self.dtype = audio_dir, processor, dtype
 
     def __len__(self):
         return len(self.rows)
@@ -62,8 +65,10 @@ class ChunkDataset(Dataset):
     def __getitem__(self, i):
         r = self.rows.iloc[i]
         wav = read_wav(os.path.join(self.audio_dir, r.filename), r.start, r.end)
+        # in the base weights' dtype: the Trainer's generate() for checkpoint
+        # selection runs outside autocast, and a bf16 conv1d rejects fp32 input
         feats = self.proc.feature_extractor(wav, sampling_rate=16000,
-                                            return_tensors='pt').input_features[0]
+                                            return_tensors='pt').input_features[0].to(self.dtype)
         ids = self.proc.tokenizer(r.text).input_ids
         return {'input_features': feats, 'labels': ids}
 
@@ -88,15 +93,16 @@ def take_budget(train_chunks, budget_min):
     return g[g.duration_s.cumsum() / 60 <= budget_min]
 
 
-def cell_name(speaker, arm, site, method, budget, rank, lr, seed):
+def cell_name(speaker, arm, site, method, budget, rank, lr, seed, tag=''):
     return (f's{speaker}_arm{arm}_{site}_{method}_b{budget}_r{rank}'
-            f'_lr{lr:g}_seed{seed}')
+            f'_lr{lr:g}_seed{seed}' + (f'_{tag}' if tag else ''))
 
 
 def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
                method='lora', budget=30, rank=8, lr=None, seed=0,
                epochs=8, batch=8, grad_accum=1, timestamps=False,
-               train_rows=None, dev_rows=None, grad_ckpt=None, num_workers=4):
+               train_rows=None, dev_rows=None, grad_ckpt=None, num_workers=4,
+               tag='', select='loss', select_refs=None, select_other=None):
     """Train one cell. Returns the output dir; skips it if already finished.
 
     lr defaults per method (see DEFAULT_LR) because one value cannot serve both
@@ -109,6 +115,13 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     grad_ckpt: None = only where it is needed (full fine-tuning, or a card
     under 40 GB). Checkpointing recomputes every activation in the backward
     pass: 823 -> 518 ms per LoRA step on an A100 without it, at 21 GB peak.
+    tag: appended to the cell name (e.g. 'verbatim' when the targets are not the
+    protocol), so variants of one recipe never collide.
+    select: 'loss' picks the epoch with the lowest dev loss; 'forgiven' generates
+    on the dev set each epoch and picks the lowest forgiven-shared WER against
+    select_refs (the protocol dev text) with select_other (arm A's dev
+    transcription) -- the test metric, not the loss that rewards omission
+    (docs/training_next.md § A2).  ~10-20 s per epoch on an A100.
     """
     if method not in DEFAULT_LR:
         raise ValueError(f'unknown method {method}; expected one of '
@@ -119,7 +132,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
         lr = DEFAULT_LR[method]
 
     out = os.path.join(out_root, cell_name(speaker, arm, site, method,
-                                           budget, rank, lr, seed))
+                                           budget, rank, lr, seed, tag))
     if os.path.exists(os.path.join(out, 'DONE')):
         print(f'skip (done): {out}')
         return out
@@ -156,12 +169,13 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
         dev = spk[spk.part == 'dev']
     else:
         tr, dev = train_rows, dev_rows
-    print(f'{cell_name(speaker, arm, site, method, budget, rank, lr, seed)}: '
-          f'{len(tr)} train chunks ({tr.duration_s.sum()/60:.1f} min), {len(dev)} dev')
+    print(f'{cell_name(speaker, arm, site, method, budget, rank, lr, seed, tag)}: '
+          f'{len(tr)} train chunks ({tr.duration_s.sum()/60:.1f} min), {len(dev)} dev, select on {select}')
 
     if grad_ckpt is None:
         grad_ckpt = method == 'full' or not torch.cuda.is_available() or \
             torch.cuda.get_device_properties(0).total_memory < 40 * 2**30
+    model.config.use_cache = not grad_ckpt         # generation on the dev set needs the cache; checkpointing forbids it
     if method == 'full':
         model.gradient_checkpointing_enable()
     else:
@@ -183,14 +197,28 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
           f', base weights {base_dtype}, grad checkpointing {grad_ckpt}'
           f', lr {lr:g}, method {method}')
 
+    compute_metrics = None
+    if select == 'forgiven':
+        assert select_refs is not None and select_other is not None, 'select=forgiven needs the dev protocol text and arm A dev hyps'
+        from targets import forgiven_score
+        import evaluate as EV
+        pad = proc.tokenizer.pad_token_id
+        def compute_metrics(ev):
+            preds, labels = ev.predictions, ev.label_ids
+            preds = np.where(preds < 0, pad, preds)
+            hyps = proc.tokenizer.batch_decode(preds, skip_special_tokens=True)
+            f = forgiven_score(select_refs, hyps, select_other); st = EV.score(select_refs, hyps)
+            return dict(forgiven_wer=float(f.werr.sum() / f.n_words.sum()), wer=float(st.werr.sum() / st.n_words.sum()),
+                        runaway=int(st.runaway.sum()))
     args = Seq2SeqTrainingArguments(
         output_dir=out, per_device_train_batch_size=batch,
         gradient_accumulation_steps=grad_accum, learning_rate=lr,
         # transformers 5 dropped warmup_ratio; warmup_steps takes a float in [0, 1) as the ratio
         num_train_epochs=epochs, warmup_steps=0.1, weight_decay=0.01,
         eval_strategy='epoch', save_strategy='epoch', logging_steps=10,
-        load_best_model_at_end=True, metric_for_best_model='eval_loss',
+        load_best_model_at_end=True, metric_for_best_model='forgiven_wer' if select == 'forgiven' else 'eval_loss',
         greater_is_better=False, save_total_limit=3,
+        predict_with_generate=(select == 'forgiven'), generation_max_length=448,
         bf16=use_bf16, fp16=use_fp16, report_to=[], seed=seed,
         remove_unused_columns=False, label_names=['labels'],
         per_device_eval_batch_size=2 * batch,
@@ -199,9 +227,9 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     )
     trainer = Seq2SeqTrainer(
         model=model, args=args,
-        train_dataset=ChunkDataset(tr, audio_dir, proc),
-        eval_dataset=ChunkDataset(dev, audio_dir, proc),
-        data_collator=lambda b: collate(b, dsti),
+        train_dataset=ChunkDataset(tr, audio_dir, proc, base_dtype),
+        eval_dataset=ChunkDataset(dev, audio_dir, proc, base_dtype),
+        data_collator=lambda b: collate(b, dsti), compute_metrics=compute_metrics,
     )
     trainer.train()
     trainer.save_model(out)
@@ -210,11 +238,12 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     # Point 4 of the handoff's "Before the second run": passes are fixed at
     # `epochs`, so steps scale with the budget -- record them rather than hide it.
     st = trainer.state
-    evals = [dict(epoch=h['epoch'], eval_loss=h['eval_loss']) for h in st.log_history if 'eval_loss' in h]
+    evals = [{k: h[k] for k in h if k.startswith('eval_') or k == 'epoch'} for h in st.log_history if 'eval_loss' in h]
     meta = dict(global_step=st.global_step, epochs=epochs, train_chunks=len(tr),
                 train_minutes=float(tr.duration_s.sum() / 60), dev_chunks=len(dev),
                 best_eval_loss=min((e['eval_loss'] for e in evals), default=None), evals=evals,
-                base_dtype=str(base_dtype), grad_ckpt=bool(grad_ckpt))
+                select=select, best_epoch=(min(evals, key=lambda e: e['eval_forgiven_wer'] if select == 'forgiven' else e['eval_loss'])['epoch'] if evals else None),
+                base_dtype=str(base_dtype), grad_ckpt=bool(grad_ckpt), tag=tag)
     import json, shutil, glob
     json.dump(meta, open(os.path.join(out, 'train_meta.json'), 'w'), indent=1)
     # The per-epoch checkpoints carry optimizer state (~3x the adapter) and are
