@@ -203,7 +203,7 @@ checkpointing on an 80 GB card, and a cell now takes 1.5–4.7 minutes (`src/tra
 § Speed); every cell carries forgiven-shared WER beside standard WER; the control runs in two
 folds (`--control-folds 2`), so no speaker is evaluated on an adapter that saw them; passes
 stay fixed at 8 and `train_steps` is reported per cell; the run is `--seeds 0` plus the
-control. Point 6 stays a write-up item.
+control. Point 6 stays a write-up item. The session's results and every decision are in `docs/training_run2.md`; what to do next is `docs/training_next.md`.
 
 **Operational, learned the hard way.** This pod has no persistent volume, and RunPod can
 preempt a pod on its own: a preemption after 30 hours loses everything. Run a background loop

@@ -388,6 +388,80 @@ handicapped by its selection rule.** The clean reading of the semi-verbatim obje
 the missing cell of the 2 × 2 — semi-verbatim targets with dev-loss selection — which is
 queued as run D after the decoder-MLP run.
 
+**Run C: LoRA on the decoder's MLPs (`fc1`/`fc2`), protocol targets, dev-loss selection
+(finished 22:35 UTC, 11 cells + 11 control evaluations, 1 h).** The placement the survey
+singled out (Müller-Eberstein et al.: decoder MLP > attention for atypical speakers).
+
+| recipe, 3e-4, 80 min | standard WER | forgiven-shared | control std / forgiven | own − control std / forgiven | runaways |
+|---|---|---|---|---|---|
+| q/v at both sites | +17.7 % (9/11 sig) | +11.6 % (2/11 sig) | +12.5 % / +4.3 % | +3.6 / +2.6 pts | 10 |
+| decoder `fc1`/`fc2` | +13.4 % (9/11 sig) | +2.0 % (2/11 sig) | +13.1 % / −3.7 % | +0.8 / +3.3 pts | 7 |
+
+**Not better.** The decoder-MLP adapters remove less standard error, almost nothing under the
+forgiven count, and their control is as strong on the standard count as the personal
+adapters — the same domain story. The one place the site looked different, 23558 (own +30 %
+against control +17 %), does not generalise: 30777's and 30831's controls match or beat
+their own adapters. Fewer runaways (7) and cells of three minutes are the only advantages.
+Site, then, has now been varied three ways (q/v both, q/v encoder, decoder MLP) with the
+same answer: under this objective the adapter site does not separate the voice from the
+protocol.
+
+**Run D: semi-verbatim targets with dev-loss selection** — the missing cell — runs last; its
+row completes the table in § Conclusion.
+
+**Run D: semi-verbatim targets with dev-loss selection (finished 23:35 UTC, 11 cells + 11
+control evaluations, 1.2 h).** The missing cell.
+
+| recipe, 3e-4, 80 min, q/v both sites | standard WER | forgiven-shared | worse under forgiven | control std / forgiven | own − control std / forgiven | runaways |
+|---|---|---|---|---|---|---|
+| protocol targets, dev-loss selection | +17.7 % (9/11 sig) | +11.6 % (2/11 sig) | 4/11 | +12.5 % / +4.3 % | +3.6 / +2.6 pts | 10 |
+| protocol targets, dev-forgiven selection | +15.1 % (7/11) | +2.0 % (3/11) | 5/11 | +12.8 % / +4.7 % | +3.3 / −0.7 pts | 10 |
+| semi-verbatim, dev-forgiven selection | +7.7 % (6/11) | +6.9 % (4/11) | 3/11 | +6.8 % / +2.6 % | +0.5 / +4.7 pts | 17 |
+| **semi-verbatim, dev-loss selection** | +9.3 % (6/11) | **+11.0 %** (3/11) | **1/11** | +7.4 % / +4.9 % | +2.5 / +2.6 pts | 15 |
+
+**The semi-verbatim objective reaches the same forgiven ceiling as the protocol one and
+stops hurting anyone.** Median forgiven gain 11.0 % against 11.6 %; positive for ten of
+eleven speakers instead of seven; only one speaker worse (30752's loop) instead of four;
+30813 goes from −31 % to **+16 %** and 30859 gets his first significant forgiven gain
+(+7.5 %, p < 0.001). Standard and forgiven now agree (9.3 vs 11.0 %), so the number reported
+is the number earned. The personal share is unchanged at +2.6 points. What it costs: runaway
+decodes, 15 against 10.
+
+## Conclusion (2026-09-20, 23:40 UTC; 242 result rows, 88 control evaluations, ~13 GPU hours)
+
+1. **Adapting to one speaker helps by about 17 % of WER at 80 minutes, and about 15 of
+   those 17 points are bought equally well by anyone's committee audio.** The D3 control,
+   run for every recipe, is the finding. Personal minus control is +2 to +5 points across
+   every recipe tried; it is never zero and never large.
+2. **Under a protocol-aware count, the recipe as designed learns the stenographer.** Three
+   quarters of the standard gain is fewer insertions of words that were said; the style flag
+   fires in nine or ten cells of eleven at every budget. The semi-verbatim objective removes
+   that incentive: the standard and forgiven gains coincide, no speaker is damaged, and the
+   forgiven gain (11 %) is as large as the best protocol recipe's. The ceiling did not move;
+   the honesty of the number did.
+3. **For whom.** The personal effect concentrates in the hardest speakers (23558, 30843,
+   30701; base WER 0.32–0.44) and in one typical speaker (30868). The S1 speakers, where the
+   fine-tune had failed and the most room was expected, show no personal component. The
+   low-WER speakers gain the domain effect only, and two of them are hurt by the protocol
+   objective and not by the semi-verbatim one.
+4. **The recipe.** LoRA r=8 on q/v at both sites, lr 3e-4 (1e-3 overshoots by epoch 1;
+   1e-4 undershoots), 8 passes with the best epoch by dev loss (dev forgiven WER is worse at
+   15-minute dev sets), semi-verbatim targets. Site does not matter (three placements, one
+   answer). Budget matters shallowly; 5 minutes is noise.
+5. **The labels.** The audio gate's first run: 5 % of the panel's chunks carry another voice,
+   30843's dev session most of all; 30813 and 30718 are clean. Report it; it moves no
+   corpus-level number.
+6. **Two things to fix before the numbers go in a paper.** Runaway decodes decide individual
+   cells (one chunk, ~200 errors) and rise under semi-verbatim targets: decode with Whisper's
+   compression-ratio fallback or a repeat-n-gram guard, re-cache both arms, report the
+   repeated-n-gram rate. And seed 0 only: seeds 1–2 at 80 minutes for the two objectives
+   would put intervals on the "for whom" claim.
+
+The write-up's table is the one above this section; its sentence is: *LoRA with the
+protocol as target is a committee-domain adapter that also learns the stenographer's habits;
+with a semi-verbatim target it is an honest committee-domain adapter; the personal component
+is a few points, concentrated in the speakers the base model finds hardest.*
+
 ## How to resume on a fresh pod
 
 The pod was stopped after this session; the network volume (`/workspace`) persists, the

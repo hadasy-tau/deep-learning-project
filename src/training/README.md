@@ -13,7 +13,9 @@ session, which split, which shard).
 | `panel_plan.parquet` | 8,113 chunks, 28.8 h, 11 speakers, 111 shards; per speaker ≥ 45 min test (the newest sessions), ~15 min dev, ≥ 80 min train, session-disjoint by date, train ordered latest-first so budgets nest |
 | `train.py` | one cell → one adapter (`train_cell`), `overfit_check` |
 | `run_panel.py` | cells → adapters → scored results (`outputs/results/*.json`, `outputs/results.csv`); standard and forgiven-shared WER per cell; `--control-folds K` for the cross-speaker control (D3) |
+| `targets.py` | semi-verbatim training targets: the protocol text with the words both base models produced put back (`--build-targets`); `forgiven_score` for training-side selection |
 | `backup.py` | copies `outputs/results/` and `runs/` (adapters only, no trainer checkpoints) to a private HF dataset on a loop |
+| `box/` | the GPU box's `env.sh` (caches on the container disk, thread cap) and the detached run chains of the 2026-09-20 session |
 | `requirements.txt` | the stack; pin torch to the box's CUDA build |
 
 ## The machine
@@ -55,6 +57,12 @@ setsid nohup python src/training/run_panel.py --arm B --budgets 5 20 80 --seeds 
     --control-folds 2 --control-budget 80 > src/training/outputs/run_seed0.log 2>&1 < /dev/null &
 python src/training/run_panel.py --summary            # outputs/results.csv
 ```
+
+Recipe options added on 2026-09-20 (`docs/training_run2.md` for what each did):
+`--lrs 3e-4` (the rate to use; 1e-3 restores epoch 1 everywhere), `--sites decoder_mlp`,
+`--targets verbatim` (needs `--transcribe-parts` once, then `--build-targets`),
+`--select forgiven` (checkpoint by dev forgiven-shared WER; measured worse than dev loss at
+15-minute dev sets), `--control-folds K` (one control per recipe).
 
 Seeds 1 and 2 only if seed 0 shows an effect (`docs/training_handoff.md` § Before the second
 run, point 5). Passes are fixed at 8 whatever the budget, so steps scale with the budget:

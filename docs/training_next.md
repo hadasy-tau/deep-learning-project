@@ -156,6 +156,17 @@ diagnostic contrast, never as the main recipe. *Rank* changes: the survey's smal
 (r=8 best at tens of files) agree with ours. *Style/coverage tokens* (Reverb) are the principled
 long-term fix but need parallel verbatim targets, which item 1 would produce first.
 
+**Status after the session (2026-09-20, evening).** Items 1, 3 and 4 were executed on the
+same pod, plus the missing cell of item 1's 2 × 2 (semi-verbatim targets with dev-loss
+selection) and the selection criterion on its own; every result is in
+`docs/training_run2.md` § Results: follow-ups 3–5 and § Conclusion. In one line each:
+semi-verbatim targets remove the omission incentive and raise the personal share of the
+forgiven gain to about five points, at the cost of more runaway decodes; selecting on dev
+forgiven WER is *worse* than dev loss at 15-minute dev sets; the decoder-MLP site is not
+better than q/v; the audio gate finds 5 % foreign-voice chunks, concentrated in 30843's dev
+session, and clears 30813. Items 2 (decode hygiene, now necessary because of the runaways),
+5, 6, 7 and 8 remain.
+
 Items 1–3 are one session of about four GPU hours. Item 2 should be done before item 1's
 cells are scored, so that every table in the paper uses one decode configuration.
 Everything runs through `run_panel.py` with new flags (`--targets verbatim`, `--select
