@@ -266,6 +266,63 @@ the step count would not have removed the confound; the selection criterion is w
 optimisation each cell gets, and the follow-up on selection by dev forgiven WER (next section)
 is where that is addressed.
 
+## The audio gate, run for the first time (17:20 UTC)
+
+`validate_audio.py` with a `--speakers` focus (the eleven panel members at 40 segments each,
+plus 60 random other MK speakers at 12 as the reference population; 1,127 segments, ECAPA
+embeddings, ~1 h with the GPU shared). Output: `src/preprocessing/speaker_index/outputs/
+audio_check_panel.parquet`, `audio_report_panel.txt`.
+
+**Corpus level: 4.6 % of segments are closer to another speaker's centroid than their own**
+(52 of 1,127; the reference population alone 3.8 %), against the gate's 0.5 % design
+threshold. Committee cross-talk is real and the protocol's floor-holder label is wrong for a
+few percent of spans. That is a property of the corpus, not of the panel.
+
+**Panel level.** Flags per speaker (of 31–40 sampled): 23558 7, 30859 5, 30843 4, 30701 3,
+30718 / 30752 / 30831 2, and **zero for 30685, 30777, 30813 and 30868**. The flagged
+segments have own-similarity near 0 — a different voice entirely, not a noisy one.
+
+- **30813 is clean.** 18 of her 40 sampled segments fall in the panel's sessions, none flagged,
+  and her own-centroid similarity (0.91) is the tightest of the panel. Her being hurt by every
+  adapter is not mislabelling. The targets table above offers the alternative: her protocol is
+  the most condensed of the panel (17 words put back per 100), so her adapters had the most
+  stenographer to learn.
+- **30843's dev set has another voice in it.** Three of the four flagged segments in panel
+  sessions are in her dev session 2235355 (own-similarity 0.09–0.13), one in train session
+  2232234. Dev is what early stopping and the forgiven-WER selection read; her dev set is also
+  the panel's largest (39 min). Her cells stand — the test set is untouched — but her dev
+  signal is noisier than the others'.
+- **23558's flags are all outside the panel's sessions** (2018–2020 sessions; the panel uses
+  2025–2026). His label quality over the corpus is the worst of the eleven, which fits the
+  handoff's "the one to watch"; his panel material is not sampled by this pass.
+
+The first pass sampled the longest segments per Knesset, so only 66 of the 425 panel segments
+fall in the panel's own sessions. A second pass over the panel's *own* train, dev and test
+chunks (15 per part per speaker, plus 40 reference speakers) is running as this is written;
+its result is `audio_report_panel_chunks.txt`, read here.
+
+**Second pass, the panel's own chunks (18:20 UTC).** 388 panel chunks (15 per split per
+speaker, minus thin Knessets) and 465 reference segments from 40 other MK speakers.
+Panel chunks flagged: **21 of 388 (5.4 %)**; reference 3.4 %. Per speaker, flagged of ~36
+sampled, by split:
+
+| speaker | flagged | where | reading |
+|---|---|---|---|
+| 30843 | **8** | 7 in dev session 2235355, 1 train | her dev set is substantially another voice (own-similarity 0.15–0.19, nearest centroid 30808, the alternate who chaired): early stopping and the forgiven-WER selection read a noisy signal for her |
+| 30777 | 3 | 2 test, 1 dev | one test chunk is clearly someone else (own 0.06) |
+| 30868 | 2 | 2 test | one test chunk is 30859's voice (similarity 0.81 to his centroid, 0.23 to own) |
+| 23558, 30752 | 2 each | dev/train, dev/test | marginal (own 0.28–0.49) |
+| 30685, 30701, 30831, 30859 | 1 each | mixed | marginal |
+| **30718, 30813** | **0** | — | clean |
+
+So the panel's labels are about 95 % right at the chunk level, cross-talk accounts for the
+rest, and it is not evenly spread: 30843's dev session is the one materially contaminated
+set, and 30868 and 30777 carry a couple of foreign-voice test chunks each (out of 202 and
+268), which lowers their measurable ceiling slightly but does not move a corpus-level WER.
+30813 is clean on both passes; her results are about her protocol, not her labels. For the
+write-up: report the 5.4 % and name 30843's dev set; if her selection-based cells look
+erratic, that is why.
+
 ## Results: follow-ups 3–5, the objective, the selection criterion, the decoder MLPs
 
 Queued after the sweep (`src/training/box/next_runs.sh`): semi-verbatim targets with
@@ -278,6 +335,36 @@ protocol text with the words arms A and B both produced at the same place put ba
 removed. Over the 5,177 train and dev chunks, 58 % change and 10.7 words go back per 100
 reference words; per speaker the rate runs from 4 (30859) to 17 (30813) per 100 — and 30813, whose protocol is the most condensed, is the speaker every adapter has hurt so far: her training targets were the most stenographer-like of the panel. The words
 put back are the ones a stenographer drops: אני (574), לא (565), זה (478), אז (405), את (284), גם (213), מה (211), אבל (207), כן (195), בעצם (190), אנחנו (178), באמת (162), יש (144), הוא (130).
+
+**Run A: semi-verbatim targets + selection on dev forgiven WER (finished 19:10 UTC, 11 cells +
+11 control evaluations, 2.5 h).** Against the best protocol recipe (3e-4, dev-loss selection):
+
+| recipe, 3e-4, 80 min | standard WER | forgiven-shared | worse under forgiven | control std / forgiven | own − control std / forgiven | runaways |
+|---|---|---|---|---|---|---|
+| protocol targets, dev-loss selection | +17.7 % (9/11 sig) | +11.6 % (2/11 sig) | 4/11 | +12.5 % / +4.3 % | +3.6 / +2.6 pts | 10 |
+| semi-verbatim targets, dev-forgiven selection | +7.7 % (6/11 sig) | +6.9 % (**4/11 sig**) | 3/11 | +6.8 % / +2.6 % | **+0.5 / +4.7 pts** | 17 |
+
+**What changed.** The standard gain halves, as it must: a model trained to write what was
+said is scored against a protocol that did not. The standard and forgiven gains now coincide
+(7.7 vs 6.9 %) where the protocol recipe had a 6-point gap — the omission incentive is gone
+from the objective. The forgiven gain is *not* higher than the protocol recipe's median (6.9
+vs 11.6 %), but it is significant for four speakers instead of two, no speaker is damaged
+(30813: −1 %, from −31 %), and the personal share of it — own minus the control trained the
+same way — rises from +2.6 to **+4.7 points**, the largest personalization number of the
+session. Per speaker the forgiven personal effect is now positive for 30718 (+15), 30868
+(+17), 30843 (+11), 30701 (+10), 23558 (+6), 30831 (+5); negative for 30752 (the loop), 30813,
+30777, 30685.
+
+**The cost.** Runaway decodes rise from 10 to 17 over the eleven test sets: the targets contain
+repetitions and fillers, and a model trained toward them loops more readily. That is the
+decode-hygiene item (training_next.md § D) becoming necessary rather than optional.
+
+**Reading.** The semi-verbatim objective does what it was built for — it removes the
+stenographer from what the adapter learns — and it moves the personal component up, but it
+does not lift the ceiling: what an 80-minute personal adapter can buy over "80 minutes of
+anyone" under an honest count is about five points of relative WER, concentrated in the
+same speakers as before. Run B (selection alone) separates how much of this is the targets and
+how much the selection criterion.
 
 ## How to resume on a fresh pod
 
