@@ -1,5 +1,10 @@
 # Adaptation — the runbook
 
+> **Current plan: `docs/training_plan_v3.md`** — quality-filtered training data
+> (`word_quality.py`, `materialize.py plan-v2`), step-mode training with early stopping,
+> validation-only tuning (`run_panel.py --tune`, `--tuning-report`) and augmentation. Its
+> runbook supersedes the session below, which is how the second run was driven.
+
 What to do on the GPU box, in order, and what to bring back. **Read
 `docs/training_handoff.md` first** — it carries the decisions, the panel and the two rules for
 reading the results. The design is
@@ -14,6 +19,8 @@ session, which split, which shard).
 | `train.py` | one cell → one adapter (`train_cell`), `overfit_check` |
 | `run_panel.py` | cells → adapters → scored results (`outputs/results/*.json`, `outputs/results.csv`); standard and forgiven-shared WER per cell; `--control-folds K` for the cross-speaker control (D3) |
 | `targets.py` | semi-verbatim training targets: the protocol text with the words both base models produced put back (`--build-targets`); `forgiven_score` for training-side selection |
+| `word_quality.py` | per-word alignment scores for the candidate train/dev clips (from the raw ivrit.ai sessions) and the word rule `word_ok`; writes `word_quality.parquet` |
+| `panel_plan_v2.parquet` | the quality-filtered plan: v1's test unchanged, train/dev at quality ≥ 0.95 passing the word rule (`materialize.py plan-v2`) |
 | `backup.py` | copies `outputs/results/` and `runs/` (adapters only, no trainer checkpoints) to a private HF dataset on a loop |
 | `box/` | the GPU box's `env.sh` (caches on the container disk, thread cap) and the detached run chains of the 2026-09-20 session |
 | `requirements.txt` | the stack; pin torch to the box's CUDA build |

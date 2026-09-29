@@ -31,6 +31,20 @@ Two additions from docs/training_handoff.md § Before the second run:
     python src/training/run_panel.py --speakers 30831 --budgets 1 --seeds 0 --epochs 1 --model openai/whisper-tiny   # smoke
     python src/training/run_panel.py --summary
 
+Step mode and tuning (docs/training_plan_v3.md).  --max-steps switches train.py to a
+fixed number of optimiser steps for every budget, validation every 20 steps and
+optional early stopping (--patience); --dropouts and --augments are swept like
+--lrs and --ranks; --plan panel_plan_v2.parquet trains on the quality-filtered
+data.  --tune trains and validates only -- the test set is never transcribed --
+and --tuning-report turns the logged validation curves into outputs/tuning.csv,
+applying each patience value afterwards (patience_pick).  --summary also writes
+outputs/results_q95.csv: every scored row re-scored on its test chunks with
+quality >= 0.95, from the saved transcriptions.
+
+    python src/training/run_panel.py --tune --plan src/training/panel_plan_v2.parquet --max-steps 400 \
+        --speakers 30685 23558 30718 30868 30859 30752 --budgets 5 80 --lrs 1e-4 3e-4 1e-3 --seeds 0
+    python src/training/run_panel.py --tuning-report
+
 Needs the materialized audio (materialize.py extract or download) and a GPU
 for anything but the smoke test.
 """
@@ -44,6 +58,8 @@ sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, '..')); sys.path
 
 PLAN, AUDIO = os.path.join(HERE, 'panel_plan.parquet'), os.path.join(HERE, 'outputs', 'panel_audio')
 RUNS, RESULTS = os.path.join(HERE, 'runs'), os.path.join(HERE, 'outputs', 'results')
+TUNE_RUNS, TUNING = os.path.join(HERE, 'runs_tune'), os.path.join(HERE, 'outputs', 'tuning.csv')
+Q95 = 0.95                                  # the high-quality line for the second view of the test set
 
 def load_plan(plan_path=PLAN, speakers=None):
     P = pd.read_parquet(plan_path)
@@ -141,6 +157,16 @@ def _train_meta(adapter):
 
 RECIPE_TAG = {('protocol', 'loss'): '', ('protocol', 'forgiven'): 'selF', ('verbatim', 'loss'): 'verbatim', ('verbatim', 'forgiven'): 'verbatim-selF'}
 
+def full_tag(targets, select, step):
+    """The cell-name suffix: the target/selection recipe, then the step-mode
+    settings (train.recipe_tag); empty for the second run's reference recipe."""
+    import train as T
+    return '_'.join(t for t in (RECIPE_TAG[(targets, select)], T.recipe_tag(**step)) if t)
+
+def step_kw(step):
+    """train_cell's keywords from the step-mode settings (data is only a name tag)."""
+    return {k: v for k, v in step.items() if k != 'data'}
+
 def apply_targets(P, targets):
     """Swap the train/dev reference text for the semi-verbatim one (targets.py);
     the test text is never touched -- it is what every cell is scored against."""
@@ -162,12 +188,13 @@ def select_kw(P_protocol, dev_rows, select, audio_dir, eval_batch, arm):
         other += [h[c] for c in g.chunk_id]
     return dict(select='forgiven', select_refs=refs, select_other=other)
 
-def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_override=None, forgiven=True, targets='protocol', select='loss'):
+def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_override=None, forgiven=True, targets='protocol', select='loss', step=None):
     import train as T, evaluate as EV
     if model_override:                         # smoke tests: both arms, so the other-arm transcription is tiny too
         for a in T.ARMS: T.ARMS[a] = model_override; EV.ARMS[a] = model_override
     c = {**c, 'lr': c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']]}   # the rate actually used, so the summary can join on it
-    tag = RECIPE_TAG[(targets, select)]
+    step = step or {}
+    tag = full_tag(targets, select, step)
     name = T.cell_name(c['speaker'], c['arm'], c['site'], c['method'], c['budget'], c['rank'], c['lr'], c['seed'], tag)
     out_json = os.path.join(RESULTS, name + '.json')
     if os.path.exists(out_json):
@@ -177,7 +204,7 @@ def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_overr
     spk = Pt[Pt.speaker_id == c['speaker']]
     skw = select_kw(P, spk[spk.part == 'dev'], select, audio_dir, eval_batch, c['arm'])
     adapter = T.train_cell(spk, audio_dir, RUNS, c['speaker'], arm=c['arm'], site=c['site'], method=c['method'], budget=c['budget'],
-                           rank=c['rank'], lr=c['lr'], seed=c['seed'], epochs=epochs, batch=batch, grad_accum=grad_accum, tag=tag, **skw)
+                           rank=c['rank'], lr=c['lr'], seed=c['seed'], epochs=epochs, batch=batch, grad_accum=grad_accum, tag=tag, **skw, **step_kw(step))
     phase['train'] = time.time() - t0
     spk = P[P.speaker_id == c['speaker']]      # scoring: the protocol test text
     test = spk[spk.part == 'test'].reset_index(drop=True)
@@ -225,14 +252,15 @@ def control_folds(speakers, k, seed=0):
     return [sorted(int(s) for s in order[i::k]) for i in range(k)]
 
 def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, budget=80, arm='B', site='both', method='lora',
-                rank=8, lr=None, seed=0, dev_min=15, forgiven=True, targets='protocol', select='loss'):
+                rank=8, lr=None, seed=0, dev_min=15, forgiven=True, targets='protocol', select='loss', step=None):
     """k adapters, each trained on a pool from the speakers NOT in its fold and
     evaluated on the fold's speakers.  With k=1 (the handoff's single adapter)
     the pool spans all the speakers and each is evaluated on an adapter that saw
     ~budget/11 minutes of them -- stated in the JSON as `saw_own_minutes`."""
     import train as T, evaluate as EV
     spk_ids = sorted(int(s) for s in P.speaker_id.unique()); fold_of = control_folds(spk_ids, folds, seed)
-    lr = lr if lr is not None else T.DEFAULT_LR[method]; out = []; tag = RECIPE_TAG[(targets, select)]; Pt = apply_targets(P, targets)
+    step = step or {}
+    lr = lr if lr is not None else T.DEFAULT_LR[method]; out = []; tag = full_tag(targets, select, step); Pt = apply_targets(P, targets)
     for k, evals in enumerate(fold_of):
         trainers = [s for s in spk_ids if s not in evals] if folds > 1 else spk_ids
         label = f'ctrl{k}of{folds}'
@@ -245,7 +273,7 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
         print(f'{name}: pool of {len(trainers)} speakers, {len(tr)} chunks ({tr.duration_s.sum()/60:.1f} min), dev {len(dev)}; evaluates {evals}', flush=True)
         skw = select_kw(P, dev, select, audio_dir, eval_batch, arm)
         adapter = T.train_cell(Pt, audio_dir, RUNS, label, arm=arm, site=site, method=method, budget=budget, rank=rank, lr=lr, seed=seed,
-                               epochs=epochs, batch=batch, grad_accum=grad_accum, train_rows=tr, dev_rows=dev, tag=tag, **skw)
+                               epochs=epochs, batch=batch, grad_accum=grad_accum, train_rows=tr, dev_rows=dev, tag=tag, **skw, **step_kw(step))
         t_train = time.time() - t0; meta = _train_meta(adapter)
         per_spk_min = tr.groupby('speaker_id').duration_s.sum().div(60).to_dict()
         model, proc, device = EV.load(arm, adapter=adapter)
@@ -268,9 +296,92 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
         del model
     return out
 
-def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
-    rows = [json.load(open(f, encoding='utf-8')) for f in sorted(glob.glob(os.path.join(RESULTS, '*.json'))) if not f.endswith('.hyps.json') and not os.path.basename(f).startswith('base_')]
-    if not rows: print('no results yet'); return None
+# ---- tuning: validation only ---------------------------------------------------------
+def run_tune(c, P, audio_dir, batch, grad_accum, step, model_override=None):
+    """Train one cell to max_steps with no early stopping and keep only its
+    validation curve (train_meta.json under runs_tune/).  The test set is not
+    read.  Patience is applied afterwards, from the curve (patience_pick)."""
+    import train as T
+    if model_override:
+        for a in T.ARMS: T.ARMS[a] = model_override
+    c = {**c, 'lr': c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']]}
+    step = {**step, 'patience': None}
+    spk = P[P.speaker_id == c['speaker']]
+    return T.train_cell(spk, audio_dir, TUNE_RUNS, c['speaker'], arm=c['arm'], site=c['site'], method=c['method'], budget=c['budget'],
+                        rank=c['rank'], lr=c['lr'], seed=c['seed'], batch=batch, grad_accum=grad_accum, tag=full_tag('protocol', 'loss', step),
+                        keep_adapter=False, **step_kw(step))
+
+def patience_pick(evals, patience=None):
+    """What early stopping with this patience would have kept, from a full curve:
+    (best loss, its step, the step training stops at).  Same rule as
+    transformers' EarlyStoppingCallback: an evaluation counts as an improvement
+    only if it is strictly below the best so far."""
+    best, best_step, waited = float('inf'), None, 0
+    for e in evals:
+        if e['eval_loss'] < best:
+            best, best_step, waited = e['eval_loss'], e['step'], 0
+        else:
+            waited += 1
+            if patience and waited >= patience:
+                return best, best_step, e['step']
+    return best, best_step, (evals[-1]['step'] if evals else None)
+
+def tuning_report(patiences=(2, 4, 8), out=TUNING):
+    """One row per (tuning run, patience): the settings, the untuned and the kept
+    validation loss, and rel_drop = the relative drop between them -- the
+    tuning criterion (docs/training_plan_v3.md, step 3).  Prints the mean over
+    speakers per recipe, budget and patience, with how many speakers improved."""
+    rows = []
+    for d in sorted(glob.glob(os.path.join(TUNE_RUNS, '*', 'train_meta.json'))):
+        m = json.load(open(d)); name = os.path.basename(os.path.dirname(d))
+        if not m.get('max_steps') or m.get('base_eval_loss') is None: continue
+        head = name.split('_')                        # s<speaker>_arm<A>_<site>_<method>_b<budget>_r<rank>_lr<lr>_seed<seed>[_tag]
+        spk, budget = head[0][1:], int(head[4][1:]); rank = int(head[5][1:]); lr = float(head[6][2:])
+        recipe = name.split('_seed', 1)[1].split('_', 1)[1] if '_' in name.split('_seed', 1)[1] else ''
+        for pat in (None,) + tuple(patiences):
+            best, best_step, stop = patience_pick(m['evals'], pat)
+            rows.append(dict(run=name, speaker=spk, budget=budget, lr=lr, rank=rank, dropout=m.get('dropout') or 0.0,
+                             augment=m.get('augment', 'none'), recipe=recipe, patience=pat or 0, base_loss=m['base_eval_loss'],
+                             best_loss=best, rel_drop=1 - best / m['base_eval_loss'], best_step=best_step, stop_step=stop,
+                             train_minutes=m.get('train_minutes')))
+    if not rows: print('no tuning runs yet'); return None
+    T = pd.DataFrame(rows); T.to_csv(out, index=False, float_format='%.5g')
+    g = T.groupby(['budget', 'lr', 'rank', 'dropout', 'augment', 'patience'])
+    S = g.agg(speakers=('speaker', 'nunique'), mean_rel_drop=('rel_drop', 'mean'), mean_stop_step=('stop_step', 'mean')).reset_index()
+    print(f'{len(T)} rows -> {out}'); print(S.round(4).to_string(index=False))
+    return T
+
+# ---- the results tables ----------------------------------------------------------------
+def _recipe(cell):
+    """The name suffix after the seed, identical for a recipe's own cells and its controls."""
+    tail = cell.split('__eval')[0].split('_seed', 1)[1]
+    return tail.split('_', 1)[1] if '_' in tail else ''
+
+def _rows_q95(rows, plan_path=PLAN):
+    """Every scored row again, on the test chunks with quality >= Q95 only, from
+    the saved hypotheses (tuned: <cell>.hyps.json; base and arm A: the base_*
+    caches).  No transcription."""
+    import evaluate as EV
+    P = pd.read_parquet(plan_path); P = P[P.part == 'test'].set_index('chunk_id')
+    out = []
+    for r in rows:
+        hp = os.path.join(RESULTS, r['cell'] + '.hyps.json')
+        if not os.path.exists(hp): continue
+        ht = json.load(open(hp, encoding='utf-8')); ids = ht['chunk_ids']
+        def cached(arm):
+            f = glob.glob(os.path.join(RESULTS, f"base_{arm}_{r['speaker']}_*.json"))
+            d = json.load(open(f[0], encoding='utf-8')) if f else None
+            return dict(zip(d['chunk_ids'], d['hyps'])) if d else None
+        hb, ha = cached(r['arm']), cached(OTHER_ARM[r['arm']])
+        keep = [i for i, c in enumerate(ids) if c in P.index and P.at[c, 'quality'] >= Q95]
+        if hb is None or not keep: continue
+        test = P.loc[[ids[i] for i in keep]].reset_index()
+        cmp = compare(test, [hb[ids[i]] for i in keep], [ht['hyps'][i] for i in keep],
+                      [ha[ids[i]] for i in keep] if (ha is not None and 'wer_base_f' in r) else None)
+        out.append({**r, **cmp, 'n_test': len(test), 'test_minutes': float(test.duration_s.sum() / 60)})
+    return out
+
+def _table(rows, control_budget=80):
     R = pd.json_normalize(rows)
     if 'control' not in R: R['control'] = False
     R['control'] = R.control.fillna(False).astype(bool)
@@ -280,23 +391,42 @@ def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
     # the acceptance rule: where did the improvement come from?
     R['improvement_from_insertions'] = ((R['base.I'] * R.wer_base - R['tuned.I'] * R.wer_tuned) / (R.wer_base - R.wer_tuned).replace(0, np.nan)).clip(-5, 5)
     R['style_not_speaker'] = R.improvement_from_insertions > 0.5
-    # D3: personalization = delta(own adapter) - delta(others' adapter), per speaker, on the same test chunks.
-    # The control is trained at one budget (80 min); every personal budget is compared against it, so only
-    # the 80-minute row is budget-matched -- the smaller budgets read as 'less audio of the speaker versus
-    # 80 minutes of everyone else'.
+    # D3: personalization = delta(own adapter) - delta(others' adapter), per speaker, on the same test chunks,
+    # within one recipe (the cell-name suffix).  A control trained at the cell's own budget is used when it
+    # exists; otherwise the recipe's control at `control_budget` (80 min) -- the second run's rows, whose
+    # smaller budgets read as 'less audio of the speaker versus 80 minutes of everyone else'.
     ctrl = R[R.control]
     if len(ctrl):
-        keys = ['speaker', 'arm', 'site', 'method', 'rank', 'lr', 'seed', 'targets', 'select']
-        keep = keys + ['delta_abs', 'delta_rel', 'wer_tuned', 'ci_lo', 'ci_hi', 'p_boot'] + [c for c in ('delta_abs_f', 'delta_rel_f', 'wer_tuned_f') if c in ctrl]
-        c = ctrl[keep].rename(columns={k: k.replace('delta', 'control_delta').replace('wer_tuned', 'wer_control').replace('ci_', 'control_ci_').replace('p_boot', 'control_p_boot') for k in keep[len(keys):]})
-        R = R.merge(c, on=keys, how='left')
+        R['_recipe'] = R.cell.map(_recipe)
+        keys = ['speaker', 'arm', 'site', 'method', 'rank', 'lr', 'seed', 'targets', 'select', '_recipe']
+        vals = ['delta_abs', 'delta_rel', 'wer_tuned', 'ci_lo', 'ci_hi', 'p_boot'] + [c for c in ('delta_abs_f', 'delta_rel_f', 'wer_tuned_f') if c in ctrl]
+        ren = {k: k.replace('delta', 'control_delta').replace('wer_tuned', 'wer_control').replace('ci_', 'control_ci_').replace('p_boot', 'control_p_boot') for k in vals}
+        C = R[R.control][keys + ['budget'] + vals].rename(columns=ren)
+        same = R[keys + ['budget']].merge(C, on=keys + ['budget'], how='left')
+        fall = R[keys].merge(C[C.budget == control_budget].drop(columns='budget'), on=keys, how='left')
+        for c in ren.values():
+            R[c] = same[c].where(same[list(ren.values())].notna().any(axis=1), fall[c]).values
+        R = R.drop(columns='_recipe')
         R['personalization_abs'] = R.delta_abs - R.control_delta_abs
         R['personalization_rel'] = R.personalization_abs / R.wer_base
         if 'delta_abs_f' in R: R['personalization_abs_f'] = R.delta_abs_f - R.control_delta_abs_f
+    return R
+
+def summary(out=os.path.join(HERE, 'outputs', 'results.csv'), q95=True, plan_path=PLAN):
+    rows = [json.load(open(f, encoding='utf-8')) for f in sorted(glob.glob(os.path.join(RESULTS, '*.json'))) if not f.endswith('.hyps.json') and not os.path.basename(f).startswith(('base_', 'hyps_'))]
+    if not rows: print('no results yet'); return None
+    R = _table(rows)
     R.to_csv(out, index=False, float_format='%.5g'); print(f'{len(R)} rows ({int(R.control.sum())} control evaluations) -> {out}')
     cols = [c for c in ['speaker', 'site', 'lr', 'targets', 'select', 'budget', 'seed', 'control', 'n_test', 'train_steps', 'wer_base', 'wer_tuned', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot', 'wer_base_f', 'wer_tuned_f', 'delta_rel_f', 'p_boot_f',
                         'improvement_from_insertions', 'style_not_speaker', 'control_delta_rel', 'personalization_rel'] if c in R]
-    print(R[cols].round(4).to_string(index=False)); return R
+    print(R[cols].round(4).to_string(index=False))
+    if q95:                                    # the second view of the test set, same columns
+        Q = _rows_q95(rows, plan_path)          # test chunks are the same in every plan; quality comes from the plan
+        if Q:
+            q = _table(Q)[[c for c in R.columns]]
+            qout = os.path.join(os.path.dirname(out), 'results_q95.csv')
+            q.to_csv(qout, index=False, float_format='%.5g'); print(f'{len(q)} rows on test chunks with quality >= {Q95} -> {qout}')
+    return R
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
@@ -314,9 +444,24 @@ if __name__ == '__main__':
     ap.add_argument('--build-targets', action='store_true', help='write outputs/targets_verbatim.parquet from the cached train/dev transcriptions, then exit')
     ap.add_argument('--targets', choices=['protocol', 'verbatim'], default='protocol', help='training target text (docs/training_next.md A1)')
     ap.add_argument('--select', choices=['loss', 'forgiven'], default='loss', help='checkpoint selection: dev loss, or dev forgiven-shared WER (A2)')
+    ap.add_argument('--plan', default=PLAN, help='the data plan; panel_plan_v2.parquet = quality-filtered train/dev (docs/training_plan_v3.md)')
+    ap.add_argument('--max-steps', type=int, help='step mode: this many optimiser steps for every budget (docs/training_plan_v3.md)')
+    ap.add_argument('--eval-steps', type=int, default=20, help='step mode: validate every N steps')
+    ap.add_argument('--patience', type=int, help='step mode: stop after N validations without improvement')
+    ap.add_argument('--dropouts', nargs='+', type=float, default=[None], help="step mode: Whisper's `dropout` (0 in the checkpoint)")
+    ap.add_argument('--augments', nargs='+', default=['none'], choices=['none', 'specaug', 'specaug+tempo', 'specaug+tempo+noise'])
+    ap.add_argument('--control-budgets', nargs='+', type=int, help='train the control at each of these budgets (default: --control-budget)')
+    ap.add_argument('--tune', action='store_true', help='train + validate only, no test (runs_tune/); then --tuning-report')
+    ap.add_argument('--tuning-report', action='store_true', help='write outputs/tuning.csv from the tuning runs and print the comparison')
     a = ap.parse_args()
-    if a.summary: summary(); sys.exit(0)
-    P = load_plan(speakers=a.speakers)
+    if a.summary: summary(plan_path=a.plan); sys.exit(0)
+    if a.tuning_report: tuning_report(); sys.exit(0)
+    if (a.dropouts != [None] or a.augments != ['none'] or a.patience or a.tune) and not a.max_steps:
+        ap.error('--dropouts, --augments, --patience and --tune are step-mode settings: give --max-steps')
+    P = load_plan(a.plan, speakers=a.speakers)
+    data_tag = '' if os.path.abspath(a.plan) == os.path.abspath(PLAN) else 'q95'
+    steps = [dict(max_steps=a.max_steps, eval_steps=a.eval_steps, patience=a.patience, dropout=d, augment=g, data=data_tag)
+             for d in a.dropouts for g in a.augments] if a.max_steps else [{}]
     if a.transcribe_parts: transcribe_parts(P, a.audio, a.eval_batch); sys.exit(0)
     if a.build_targets:
         import targets as TG
@@ -326,14 +471,23 @@ if __name__ == '__main__':
           + (f'; then the cross-speaker control in {a.control_folds} fold(s) at {a.control_budget} min' if a.control_folds else ''))
     if a.dry_run:
         import train as T
-        for c in C: print('  ' + T.cell_name(c['speaker'], c['arm'], c['site'], c['method'], c['budget'], c['rank'], c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']], c['seed'], RECIPE_TAG[(a.targets, a.select)]))
+        for st in steps:
+            for c in C: print('  ' + ('[tune] ' if a.tune else '') + T.cell_name(c['speaker'], c['arm'], c['site'], c['method'], c['budget'], c['rank'], c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']], c['seed'],
+                                                full_tag(a.targets, a.select, {**st, 'patience': None} if a.tune else st)))
         if a.control_folds:
             for k, f in enumerate(control_folds(sorted(int(s) for s in P.speaker_id.unique()), a.control_folds, a.seeds[0])): print(f'  ctrl{k}of{a.control_folds}: evaluates {f}')
         sys.exit(0)
-    for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, forgiven=not a.no_forgiven, targets=a.targets, select=a.select)
+    if a.tune:                                 # validation only: nothing here reads the test set
+        for st in steps:
+            for c in C: run_tune(c, P, a.audio, a.batch, a.grad_accum, st, a.model)
+        tuning_report(); sys.exit(0)
+    for st in steps:
+        for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, forgiven=not a.no_forgiven, targets=a.targets, select=a.select, step=st)
     if a.control_folds:                        # one control per recipe, so every sweep point has a budget-matched 'others' adapter
-        for site in a.sites:
-            for lr in a.lrs:
-                run_control(P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, folds=a.control_folds, budget=a.control_budget, arm=a.arms[0], site=site,
-                            method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], forgiven=not a.no_forgiven, targets=a.targets, select=a.select)
-    summary()
+        for st in steps:
+            for cb in (a.control_budgets or [a.control_budget]):
+                for site in a.sites:
+                    for lr in a.lrs:
+                        run_control(P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, folds=a.control_folds, budget=cb, arm=a.arms[0], site=site,
+                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], forgiven=not a.no_forgiven, targets=a.targets, select=a.select, step=st)
+    summary(plan_path=a.plan)

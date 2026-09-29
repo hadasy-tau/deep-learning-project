@@ -50,21 +50,74 @@ SITES = {
 # overrides these -- the optimization axis sweeps {3e-4, 1e-3, 3e-3} on adapters.
 DEFAULT_LR = {'lora': 1e-3, 'dora': 1e-3, 'ia3': 1e-3, 'full': 1e-5}
 
+# docs/training_plan_v3.md.  Step mode (max_steps set): every budget gets the same
+# number of optimiser steps, validation every EVAL_STEPS, a constant rate after
+# WARMUP_STEPS (a decaying schedule would tie the rate to max_steps, and a run
+# that stops early would never reach its low-rate phase).
+EVAL_STEPS, WARMUP_STEPS = 20, 20
+# Augmentation settings, fixed (not tuned): SpecAugment through Whisper's config,
+# tempo and noise on the waveform (ChunkDataset).
+SPECAUG = dict(apply_spec_augment=True, mask_time_prob=0.05, mask_time_length=10,
+               mask_feature_prob=0.05, mask_feature_length=10)
+TEMPO, NOISE_SNR_DB = (0.9, 1.1), (10.0, 25.0)
+AUGMENTS = {'none': (), 'specaug': ('specaug',), 'specaug+tempo': ('specaug', 'tempo'),
+            'specaug+tempo+noise': ('specaug', 'tempo', 'noise')}
+
+
+def recipe_tag(max_steps=None, eval_steps=EVAL_STEPS, patience=None, dropout=None, augment='none', data=''):
+    """The step-mode settings as a cell-name suffix, so no two recipes share a
+    directory or a results file.  Empty in epoch mode (the old cells' names)."""
+    if not max_steps:
+        return ''
+    t = [data] if data else []
+    t.append(f'ms{max_steps}')
+    if eval_steps != EVAL_STEPS: t.append(f'ev{eval_steps}')
+    if patience: t.append(f'pat{patience}')
+    if dropout: t.append(f'do{dropout:g}')
+    if augment and augment != 'none': t.append('aug-' + augment.replace('+', '-'))
+    return '_'.join(t)
+
 
 class ChunkDataset(Dataset):
     """Chunks -> (log-mel features, label ids). Audio is sliced out of the
-    whole-recording wavs that `materialize` wrote."""
+    whole-recording wavs that `materialize` wrote.
 
-    def __init__(self, chunks, audio_dir, processor, dtype=torch.float32):
+    augment: waveform augmentations for the TRAINING set only (docs/training_plan_v3.md
+    § Augmentation), drawn afresh every time a chunk is read.  'tempo' changes the
+    speaking rate at the same pitch (0.9-1.1, half the chunks) -- unlike resampling
+    'speed' perturbation it keeps the voice; 'noise' adds coloured noise at
+    10-25 dB SNR (half the chunks).  SpecAugment is not here: it is Whisper's own,
+    switched on in the model config (train_cell's augment)."""
+
+    def __init__(self, chunks, audio_dir, processor, dtype=torch.float32, augment=()):
         self.rows = chunks.reset_index(drop=True)
         self.audio_dir, self.proc, self.dtype = audio_dir, processor, dtype
+        self.augment, self._rng = tuple(augment), None
 
     def __len__(self):
         return len(self.rows)
 
+    def _augmented(self, wav):
+        import audiomentations as AU
+        if self._rng is None:        # one generator per worker, seeded from the Trainer's seed (torch gives each worker its own)
+            self._rng = np.random.default_rng(torch.initial_seed() % 2**32)
+        r = self._rng
+        if 'tempo' in self.augment and r.random() < 0.5:
+            # a slower rate lengthens the chunk; never past Whisper's 30 s window
+            lo = max(TEMPO[0], len(wav) / (29.5 * 16000))
+            rate = r.uniform(lo, TEMPO[1]) if lo < TEMPO[1] else 1.0
+            if rate != 1.0:
+                wav = AU.TimeStretch(min_rate=rate, max_rate=rate, leave_length_unchanged=False, p=1.0)(wav, sample_rate=16000)
+        if 'noise' in self.augment and r.random() < 0.5:
+            snr = r.uniform(*NOISE_SNR_DB)
+            wav = AU.AddColorNoise(min_snr_db=snr, max_snr_db=snr, p=1.0)(wav, sample_rate=16000)
+        return np.asarray(wav, dtype=np.float32)
+
     def __getitem__(self, i):
         r = self.rows.iloc[i]
         wav = read_wav(os.path.join(self.audio_dir, r.filename), r.start, r.end)
+        if self.augment:
+            wav = self._augmented(np.asarray(wav, dtype=np.float32))
         # in the base weights' dtype: the Trainer's generate() for checkpoint
         # selection runs outside autocast, and a bf16 conv1d rejects fp32 input
         feats = self.proc.feature_extractor(wav, sampling_rate=16000,
@@ -102,7 +155,9 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
                method='lora', budget=30, rank=8, lr=None, seed=0,
                epochs=8, batch=8, grad_accum=1, timestamps=False,
                train_rows=None, dev_rows=None, grad_ckpt=None, num_workers=4,
-               tag='', select='loss', select_refs=None, select_other=None):
+               tag='', select='loss', select_refs=None, select_other=None,
+               max_steps=None, eval_steps=EVAL_STEPS, patience=None, dropout=None,
+               augment='none', keep_adapter=True):
     """Train one cell. Returns the output dir; skips it if already finished.
 
     lr defaults per method (see DEFAULT_LR) because one value cannot serve both
@@ -122,6 +177,19 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     select_refs (the protocol dev text) with select_other (arm A's dev
     transcription) -- the test metric, not the loss that rewards omission
     (docs/training_next.md § A2).  ~10-20 s per epoch on an A100.
+
+    Step mode (docs/training_plan_v3.md), off unless max_steps is given:
+    max_steps: the same number of optimiser steps for every budget (epochs is then
+    ignored); validation loss every eval_steps, constant lr after WARMUP_STEPS,
+    the best checkpoint restored at the end.
+    patience: stop after this many validations without improvement (None = run
+    to max_steps; the tuning runs do that and apply patience afterwards from the
+    logged curve, see run_panel.patience_pick).
+    dropout: Whisper's own `dropout` (0 in this checkpoint); LoRA's stays 0.05.
+    augment: a key of AUGMENTS -- SpecAugment via the model config, tempo and
+    noise on the training waveforms only.
+    keep_adapter=False: delete the adapter weights once train_meta.json is written
+    (tuning runs keep only their validation curve).
     """
     if method not in DEFAULT_LR:
         raise ValueError(f'unknown method {method}; expected one of '
@@ -153,7 +221,12 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     # in fp32), half the memory of fp32 and no per-op cast under autocast.
     # Full fine-tuning keeps fp32 master weights for the optimizer.
     base_dtype = torch.bfloat16 if (use_bf16 and method != 'full') else torch.float32
-    model = WhisperForConditionalGeneration.from_pretrained(ARMS[arm], dtype=base_dtype)
+    aug = AUGMENTS[augment]
+    # Whisper's layers read config.dropout when they are built, so it is set at load time
+    cfg_kw = dict(dropout=dropout) if dropout is not None else {}
+    if 'specaug' in aug:
+        cfg_kw.update(SPECAUG)       # applied by WhisperModel._mask_input_features, in training mode only
+    model = WhisperForConditionalGeneration.from_pretrained(ARMS[arm], dtype=base_dtype, **cfg_kw)
     dsti = model.config.decoder_start_token_id   # capture before the PEFT wrap
 
     # transformers 5: no forced_decoder_ids. Language/task live here, and an
@@ -210,12 +283,16 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
             f = forgiven_score(select_refs, hyps, select_other); st = EV.score(select_refs, hyps)
             return dict(forgiven_wer=float(f.werr.sum() / f.n_words.sum()), wer=float(st.werr.sum() / st.n_words.sum()),
                         runaway=int(st.runaway.sum()))
+    if max_steps:                    # step mode
+        sched = dict(max_steps=max_steps, warmup_steps=WARMUP_STEPS, lr_scheduler_type='constant_with_warmup',
+                     eval_strategy='steps', save_strategy='steps', eval_steps=eval_steps, save_steps=eval_steps)
+    else:                            # epoch mode, as the second run ran
+        # transformers 5 dropped warmup_ratio; warmup_steps takes a float in [0, 1) as the ratio
+        sched = dict(num_train_epochs=epochs, warmup_steps=0.1, eval_strategy='epoch', save_strategy='epoch')
     args = Seq2SeqTrainingArguments(
         output_dir=out, per_device_train_batch_size=batch,
         gradient_accumulation_steps=grad_accum, learning_rate=lr,
-        # transformers 5 dropped warmup_ratio; warmup_steps takes a float in [0, 1) as the ratio
-        num_train_epochs=epochs, warmup_steps=0.1, weight_decay=0.01,
-        eval_strategy='epoch', save_strategy='epoch', logging_steps=10,
+        weight_decay=0.01, logging_steps=10, **sched,
         load_best_model_at_end=True, metric_for_best_model='forgiven_wer' if select == 'forgiven' else 'eval_loss',
         greater_is_better=False, save_total_limit=3,
         predict_with_generate=(select == 'forgiven'), generation_max_length=448,
@@ -227,10 +304,18 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     )
     trainer = Seq2SeqTrainer(
         model=model, args=args,
-        train_dataset=ChunkDataset(tr, audio_dir, proc, base_dtype),
+        train_dataset=ChunkDataset(tr, audio_dir, proc, base_dtype, augment=[a for a in aug if a != 'specaug']),
         eval_dataset=ChunkDataset(dev, audio_dir, proc, base_dtype),
         data_collator=lambda b: collate(b, dsti), compute_metrics=compute_metrics,
     )
+    base_eval_loss = None
+    if max_steps:
+        from transformers import EarlyStoppingCallback
+        # the untuned model's validation loss: the tuning criterion is the relative drop from it
+        # (before the callback is added, so this evaluation cannot count toward patience)
+        base_eval_loss = float(trainer.evaluate()['eval_loss'])
+        if patience:
+            trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=patience))
     trainer.train()
     trainer.save_model(out)
     proc.save_pretrained(out)
@@ -238,12 +323,17 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     # Point 4 of the handoff's "Before the second run": passes are fixed at
     # `epochs`, so steps scale with the budget -- record them rather than hide it.
     st = trainer.state
-    evals = [{k: h[k] for k in h if k.startswith('eval_') or k == 'epoch'} for h in st.log_history if 'eval_loss' in h]
-    meta = dict(global_step=st.global_step, epochs=epochs, train_chunks=len(tr),
+    evals = [{k: h[k] for k in h if k.startswith('eval_') or k in ('epoch', 'step')} for h in st.log_history if 'eval_loss' in h]
+    if max_steps:
+        evals = [e for e in evals if e.get('step', 0) > 0]      # the step-0 evaluate() is base_eval_loss, not a checkpoint
+    meta = dict(global_step=st.global_step, epochs=(float(st.epoch) if max_steps else epochs), train_chunks=len(tr),
                 train_minutes=float(tr.duration_s.sum() / 60), dev_chunks=len(dev),
                 best_eval_loss=min((e['eval_loss'] for e in evals), default=None), evals=evals,
                 select=select, best_epoch=(min(evals, key=lambda e: e['eval_forgiven_wer'] if select == 'forgiven' else e['eval_loss'])['epoch'] if evals else None),
-                base_dtype=str(base_dtype), grad_ckpt=bool(grad_ckpt), tag=tag)
+                base_dtype=str(base_dtype), grad_ckpt=bool(grad_ckpt), tag=tag,
+                max_steps=max_steps, eval_steps=eval_steps if max_steps else None, patience=patience, dropout=dropout,
+                augment=augment, base_eval_loss=base_eval_loss,
+                best_step=(min(evals, key=lambda e: e['eval_loss']).get('step') if (evals and max_steps) else None))
     import json, shutil, glob
     json.dump(meta, open(os.path.join(out, 'train_meta.json'), 'w'), indent=1)
     # The per-epoch checkpoints carry optimizer state (~3x the adapter) and are
@@ -251,6 +341,9 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     # persistent volume on the GPU box has a 10 GB quota; drop them.
     for ck in glob.glob(os.path.join(out, 'checkpoint-*')):
         shutil.rmtree(ck, ignore_errors=True)
+    if not keep_adapter:             # tuning: the curve in train_meta.json is the result
+        for f in glob.glob(os.path.join(out, 'adapter_model.*')):
+            os.remove(f)
     open(os.path.join(out, 'DONE'), 'w').close()
     return out
 
