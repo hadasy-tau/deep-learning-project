@@ -153,3 +153,100 @@ python src/training/run_panel.py --tuning-report                 # outputs/tunin
 python src/training/run_panel.py --plan $V2 --max-steps 400 --budgets 5 20 80 --seeds 0 \
     --lrs <A> --ranks <B> --dropouts <B> --augments <C or none> --control-folds 2 --control-budgets 5 20 80
 ```
+
+## Handoff: continuing from here (written 2026-10-01)
+
+For whoever runs the training next, a person or a fresh Claude session on a GPU box. Read § 1–5 above first: they carry the decisions. This section is only the *how*, in order.
+
+### Where things stand
+- **Code:** PR [hadasy-tau/deep-learning-project#23](https://github.com/hadasy-tau/deep-learning-project/pull/23) (`training-plan-v3` → `main`). Train from `main` once it's merged, otherwise from the branch. It includes Dolev's second run.
+- **Data plan:** `src/training/panel_plan_v2.parquet` (6,462 clips, 27.9 h, 11 speakers), built and verified. It's committed, along with `word_quality.parquet`.
+- **Audio:** extracted on Hadas's laptop on 2026-10-01 into `src/training/outputs/panel_audio/<speaker>/<clip>.wav` (git-ignored): all 6,462 WAVs, 3.1 GB, 46 minutes for 186 shards at about 80 Mbit/s. `verify` passed every check, including 200 sampled WAVs with the right duration and non-silent audio. Nothing has been trained on it yet.
+- **Access:** `Dolevabudi/knesset-committees-panel` and `Dolevabudi/knesset-committees-adapters` are Dolev's private datasets and aren't readable from Hadas's HF account. The corpus `Hadasy/knesset-committees-chunks` is Hadas's.
+
+### 1. Get the audio onto the GPU box, one of two ways
+- **(a) From a private HF dataset**, if the laptop's WAVs were uploaded (3.1 GB):
+  ```bash
+  python src/training/materialize.py download --repo <that dataset>      # fetches panel_audio/ and panel_plan*.parquet
+  ```
+  The upload, from the laptop: `python src/training/materialize.py upload --plan src/training/panel_plan_v2.parquet --repo <dataset>`.
+- **(b) Extract on the box itself.** It needs read access to `Hadasy/knesset-committees-chunks`. 186 shards pass through, about 125 GB; each is deleted after use, and the run is resumable. That's under an hour on a datacenter link, CPU only.
+  ```bash
+  python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet --prefetch 3
+  ```
+
+Either way, it must pass before anything else:
+```bash
+python src/training/materialize.py verify --plan src/training/panel_plan_v2.parquet    # splits, filters, every WAV readable
+```
+
+### 2. Set up the box
+- **GPU:** one A100 (40 or 80 GB). LoRA also fits a 24 GB card, about 2× slower.
+- **Disk:** about 10 GB for audio, adapters and model weights.
+```bash
+git clone https://github.com/hadasy-tau/deep-learning-project.git && cd deep-learning-project   # (git checkout training-plan-v3 if not merged)
+pip install -r src/training/requirements.txt         # torch: the box's CUDA wheel; audiomentations is new in v3
+hf auth login                                        # typed interactively; never paste a token into a chat or a file
+source src/training/box/env.sh                       # RunPod: caches on the container disk, BLAS thread cap
+# a pod can be preempted: mirror results every 30 min to a private dataset YOU can write to
+nohup python src/training/backup.py --repo <your-private-dataset> --every 30 > backup.log 2>&1 &
+```
+
+### 3. Two sanity checks (about 15 minutes)
+```bash
+python - <<'EOF'                                     # the loop learns: 20 clips driven to near-zero loss
+import sys, pandas as pd; sys.path.insert(0, 'src/training'); import train
+P = pd.read_parquet('src/training/panel_plan_v2.parquet')
+train.overfit_check(P, 'src/training/outputs/panel_audio', speaker=30685, arm='B')
+EOF
+V2=src/training/panel_plan_v2.parquet
+python src/training/run_panel.py --tune --plan $V2 --max-steps 400 --speakers 30685 --budgets 80 --seeds 0 --lrs 3e-4
+python src/training/run_panel.py --tuning-report
+```
+- **First check:** the overfit check's loss must fall steeply. If it doesn't, stop.
+- **Second check:** the single tuning run should take about 2–4 minutes, and its `rel_drop` should be positive. Multiply its time by about 70 to price the whole plan, and tell Hadas before spending it.
+
+### 4. Tuning: validation only, three stages
+```bash
+S="30685 23558 30718 30859"
+T="python src/training/run_panel.py --tune --plan $V2 --max-steps 400 --speakers $S --budgets 5 80 --seeds 0 --eval-batch 64"
+$T --lrs 1e-4 3e-4 1e-3                                          # A: 24 runs
+python src/training/run_panel.py --tuning-report                 # pick A by the rule below
+$T --lrs <A> --ranks 8 16 --dropouts 0 0.1                       # B: 24 runs (rank 8 / dropout 0 is skipped: run in A)
+python src/training/run_panel.py --tuning-report
+$T --lrs <A> --ranks <B> --dropouts <B> --augments specaug specaug+tempo     # C: 16 runs
+python src/training/run_panel.py --tuning-report
+```
+- **How to choose** (§ 2), separately for each budget, from `tuning.csv`: a setting replaces the current best only if it raises the mean `rel_drop` over the 4 speakers by at least 1% (absolute) **and** helps at least 3 of the 4. Otherwise keep the simpler setting: lower rank, no dropout, no augmentation.
+- **If 5 and 80 minutes disagree,** 20 minutes takes 80's value. Write the disagreement down; it's a finding.
+- **Never** look at test WER while choosing. `--tune` doesn't compute it.
+
+### 5. The final run: test set used once
+```bash
+python src/training/run_panel.py --plan $V2 --max-steps 400 --budgets 5 20 80 --seeds 0 --eval-batch 64 \
+    --lrs <A> --ranks <B> --dropouts <B> --augments <C or none> --control-folds 2 --control-budgets 5 20 80
+python src/training/run_panel.py --summary                       # outputs/results.csv
+```
+- **Time:** about 2–2.5 hours. It's idempotent, so kill and rerun it freely.
+- **If 5 and 80 minutes chose different settings,** run the command once per budget group with that group's flags, adding `--control-only` for the second group's controls only where needed. Each recipe gets its own controls through its cell name.
+- **Base transcriptions** of the new high-quality test set are made once per speaker and cached as `outputs/results/base_B_<speaker>_…_hq.json`, next to the second run's caches, never over them.
+
+### 6. Reading the results
+- **New rows** are the ones with `hq` in `cell`.
+- **The headline column** is `personalization_rel`, the own adapter's gain minus the control's gain at the same budget. A gain whose interval (`ci_lo`, `ci_hi`) crosses zero isn't a result.
+- **`style_not_speaker`** marks gains that are mostly fewer insertions. On high-quality clips these should be rare. If they aren't, say so.
+- **Base-WER sanity check:** the base WER on the high-quality test set should come out *below* each speaker's `wer_B` in `src/evaluation/outputs/committees_speaker_performance.csv`, because these clips are cleaner. If it comes out more than 0.10 *above*, materialization or scoring is broken: stop.
+
+### 7. What to bring back
+The backup loop already mirrors everything to your private dataset:
+- `outputs/results.csv`, `outputs/results/*.json` and `*.hyps.json`;
+- `outputs/tuning.csv`;
+- `runs/` (adapters + `train_meta.json`) and `runs_tune/` (`train_meta.json`);
+- the run logs, passed with `backup.py --logs`.
+
+§ 5 describes what each file holds, for the analysis notebook.
+
+### Gotchas
+- **On a Linux box,** DataLoader workers are forked and nothing special is needed. On Windows, `train_cell(num_workers=0)` is required: the collator is a lambda, and spawned workers re-import the script.
+- **`--dropouts 0` names the cell the same as no dropout flag**, on purpose. That's how stage B skips the stage-A cell.
+- **The second run's rows in `results.csv`** are a different data plan and test set; don't pool them with the `hq` rows.
