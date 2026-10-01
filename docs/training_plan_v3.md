@@ -105,7 +105,18 @@ Rate is tuned first because it mattered most in the second run. With alpha = 2 �
 - **Cells:** the chosen recipe at 5, 20 and 80 minutes, all 11 speakers, seed 0.
 - **The control:** a random group of the *other* panel speakers, in 2 folds, trained on the same number of minutes and evaluated on every speaker it never heard. It runs at **each** budget (`--control-folds 2 --control-budgets 5 20 80`). Personalization = the own adapter's gain − the control's gain, on the same test clips (`run_panel._table`). This is the comparison that tells "learned this voice" apart from "learned committee Hebrew".
 - **Not in this plan:** comparing *similar*-speaker groups against random groups of the same size (`training_next.md`, "sharing"). It can follow on the chosen recipe: about 44 short runs.
-- **Metrics:** standard and forgiven WER on the high-quality test set.
+- **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is off (`--forgiven` turns it back on). On high-quality clips the protocol matches the audio, which is what it was a workaround for.
+
+## 5. What every run collects, for the analysis notebook
+
+Nothing is computed only for display. Every number a plot could need is written to disk as the run goes, and `backup.py` mirrors it to HuggingFace every 30 minutes.
+
+| file | one per | holds |
+|---|---|---|
+| `outputs/results.csv` (from `outputs/results/<cell>.json`) | scored cell or control evaluation | the settings, train minutes, steps and best checkpoint, test size, base and tuned WER and CER, the gain with its 95% interval and p-values, the substitution/deletion/insertion shares and looping outputs, the style flag, the control's gain and **personalization** = own gain − control's gain |
+| `outputs/results/<cell>.hyps.json`, `base_*_hq.json` | cell; speaker | every test clip's transcription by the tuned and the base model, for re-scoring and per-clip analysis without a GPU |
+| `runs/<cell>/train_meta.json`, `runs_tune/<cell>/train_meta.json` | trained adapter (final run and tuning) | `settings` (speaker, budget, lr, rank, alpha, LoRA dropout, Whisper dropout, augmentation, batch, schedule, seed); `train_log`: the **training loss**, gradient norm and learning rate every 5 steps; `evals`: the **validation loss** every 20 steps; `base_eval_loss` (the untuned model's); `best_step`, `global_step`, `stopped_early`; `trainable_params`, `train_runtime_s`, `peak_gpu_mem_gb`; the train and validation clip IDs |
+| `outputs/tuning.csv` | tuning run | the settings, untuned and best validation loss, `rel_drop` (the tuning criterion), best and stop steps |
 
 ## Cost (A100 at $1.9–2.7/h; about 3 minutes per early-stopped run)
 

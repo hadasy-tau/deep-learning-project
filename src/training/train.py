@@ -291,7 +291,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     args = Seq2SeqTrainingArguments(
         output_dir=out, per_device_train_batch_size=batch,
         gradient_accumulation_steps=grad_accum, learning_rate=lr,
-        weight_decay=0.01, logging_steps=10, **sched,
+        weight_decay=0.01, logging_steps=5, **sched,       # the training-loss curve: one point every 5 steps
         load_best_model_at_end=True, metric_for_best_model='forgiven_wer' if select == 'forgiven' else 'eval_loss',
         greater_is_better=False, save_total_limit=3,
         predict_with_generate=(select == 'forgiven'), generation_max_length=448,
@@ -315,6 +315,8 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
         base_eval_loss = float(trainer.evaluate()['eval_loss'])
         if patience:
             trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=patience))
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
     trainer.train()
     trainer.save_model(out)
     proc.save_pretrained(out)
@@ -325,6 +327,20 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     evals = [{k: h[k] for k in h if k.startswith('eval_') or k in ('epoch', 'step')} for h in st.log_history if 'eval_loss' in h]
     if max_steps:
         evals = [e for e in evals if e.get('step', 0) > 0]      # the step-0 evaluate() is base_eval_loss, not a checkpoint
+    # Everything the analysis notebook needs about the run, beside the scores in
+    # results.csv: the settings, the training-loss curve, the validation curve, cost.
+    train_log = [{k: h[k] for k in ('step', 'epoch', 'loss', 'grad_norm', 'learning_rate') if k in h} for h in st.log_history if 'loss' in h]
+    summary = next((h for h in st.log_history if 'train_runtime' in h), {})
+    n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    settings = dict(speaker=str(speaker), arm=arm, model=ARMS[arm], site=site, method=method, budget=budget, rank=rank,
+                    lora_alpha=2 * rank if method in ('lora', 'dora') else None, lora_dropout=0.05 if method in ('lora', 'dora') else None,
+                    lr=lr, seed=seed, batch=batch, grad_accum=grad_accum, weight_decay=0.01,
+                    schedule='constant_with_warmup' if max_steps else 'linear', warmup_steps=WARMUP_STEPS if max_steps else 0.1)
+    meta_extra = dict(settings=settings, train_log=train_log, trainable_params=int(n_trainable),
+                      train_runtime_s=summary.get('train_runtime'), train_loss_mean=summary.get('train_loss'),
+                      peak_gpu_mem_gb=(torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None),
+                      stopped_early=bool(max_steps and st.global_step < max_steps),
+                      train_chunk_ids=list(tr.chunk_id), dev_chunk_ids=list(dev.chunk_id))
     meta = dict(global_step=st.global_step, epochs=(float(st.epoch) if max_steps else epochs), train_chunks=len(tr),
                 train_minutes=float(tr.duration_s.sum() / 60), dev_chunks=len(dev),
                 best_eval_loss=min((e['eval_loss'] for e in evals), default=None), evals=evals,
@@ -332,7 +348,8 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
                 base_dtype=str(base_dtype), grad_ckpt=bool(grad_ckpt), tag=tag,
                 max_steps=max_steps, eval_steps=eval_steps if max_steps else None, patience=patience, dropout=dropout,
                 augment=augment, base_eval_loss=base_eval_loss,
-                best_step=(min(evals, key=lambda e: e['eval_loss']).get('step') if (evals and max_steps) else None))
+                best_step=(min(evals, key=lambda e: e['eval_loss']).get('step') if (evals and max_steps) else None),
+                **meta_extra)
     import json, shutil, glob
     json.dump(meta, open(os.path.join(out, 'train_meta.json'), 'w'), indent=1)
     # The per-epoch checkpoints carry optimizer state (~3x the adapter) and are

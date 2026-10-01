@@ -13,8 +13,9 @@ cell whose DONE marker is missing.  The token comes from `hf auth login`
 """
 import argparse, os, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
-FOLDERS = {'results': os.path.join(HERE, 'outputs', 'results'), 'runs': os.path.join(HERE, 'runs')}
-FILES = {'results.csv': os.path.join(HERE, 'outputs', 'results.csv')}
+FOLDERS = {'results': os.path.join(HERE, 'outputs', 'results'), 'runs': os.path.join(HERE, 'runs'),
+           'runs_tune': os.path.join(HERE, 'runs_tune')}    # plan v3's tuning runs: train_meta.json only (adapters deleted)
+FILES = {'results.csv': os.path.join(HERE, 'outputs', 'results.csv'), 'tuning.csv': os.path.join(HERE, 'outputs', 'tuning.csv')}
 IGNORE = ['**/checkpoint-*/**', 'checkpoint-*/**', '**/checkpoint-*', '*.pt', '*.pth', 'optimizer*', 'scheduler*', 'rng_state*']
 
 def log(msg):

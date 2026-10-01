@@ -15,10 +15,13 @@ improvement that is insertions > 0.5) is flagged `style_not_speaker`.
 
 Two additions from docs/training_handoff.md § Before the second run:
 
-  forgiven-shared WER   every cell is also scored under the protocol-aware count
-        (error_analysis.forgiven_counts): an inserted word that the OTHER arm
-        also produced at that chunk is not charged.  Arm A's transcription of
-        each speaker's test set is cached once like arm B's.  `*_f` columns.
+  forgiven-shared WER   with --forgiven, every cell is also scored under the
+        protocol-aware count (error_analysis.forgiven_counts): an inserted word
+        that the OTHER arm also produced at that chunk is not charged.  Arm A's
+        transcription of each speaker's test set is cached once like arm B's.
+        `*_f` columns.  Off by default since plan v3, which trains and tests on
+        high-quality clips only (docs/training_plan_v3.md); the second run's rows
+        carry it.
   the cross-speaker control (D3)   --control-folds K trains K adapters, each on a
         budget-matched pool drawn from the panel speakers of the other folds,
         and evaluates every speaker on the adapter that never saw them.  K=2 is
@@ -187,7 +190,7 @@ def select_kw(P_protocol, dev_rows, select, audio_dir, eval_batch, arm):
         other += [h[c] for c in g.chunk_id]
     return dict(select='forgiven', select_refs=refs, select_other=other)
 
-def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_override=None, forgiven=True, targets='protocol', select='loss', step=None):
+def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_override=None, forgiven=False, targets='protocol', select='loss', step=None):
     import train as T, evaluate as EV
     if model_override:                         # smoke tests: both arms, so the other-arm transcription is tiny too
         for a in T.ARMS: T.ARMS[a] = model_override; EV.ARMS[a] = model_override
@@ -252,7 +255,7 @@ def control_folds(speakers, k, seed=0):
     return [sorted(int(s) for s in order[i::k]) for i in range(k)]
 
 def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, budget=80, arm='B', site='both', method='lora',
-                rank=8, lr=None, seed=0, dev_min=15, forgiven=True, targets='protocol', select='loss', step=None):
+                rank=8, lr=None, seed=0, dev_min=15, forgiven=False, targets='protocol', select='loss', step=None):
     """k adapters, each trained on a pool from the speakers NOT in its fold and
     evaluated on the fold's speakers.  With k=1 (the handoff's single adapter)
     the pool spans all the speakers and each is evaluated on an adapter that saw
@@ -388,7 +391,7 @@ if __name__ == '__main__':
     ap.add_argument('--epochs', type=int, default=8); ap.add_argument('--batch', type=int, default=8); ap.add_argument('--grad-accum', type=int, default=1)
     ap.add_argument('--eval-batch', type=int, default=8); ap.add_argument('--model', help='override the arm\'s checkpoint (smoke tests only)')
     ap.add_argument('--audio', default=AUDIO); ap.add_argument('--dry-run', action='store_true'); ap.add_argument('--summary', action='store_true')
-    ap.add_argument('--no-forgiven', action='store_true', help='skip the arm-A transcription and the forgiven-shared count')
+    ap.add_argument('--forgiven', action='store_true', help='also transcribe with arm A and score the forgiven-shared count (off since plan v3)')
     ap.add_argument('--control-folds', type=int, default=0, help='D3: train the cross-speaker control in K folds after the cells (0 = none)')
     ap.add_argument('--control-budget', type=int, default=80); ap.add_argument('--control-only', action='store_true')
     ap.add_argument('--transcribe-parts', action='store_true', help='both arms over every speaker\'s train and dev chunks (cached), then exit')
@@ -433,12 +436,12 @@ if __name__ == '__main__':
             for c in C: run_tune(c, P, a.audio, a.batch, a.grad_accum, st, a.model)
         tuning_report(); sys.exit(0)
     for st in steps:
-        for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, forgiven=not a.no_forgiven, targets=a.targets, select=a.select, step=st)
+        for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, forgiven=a.forgiven, targets=a.targets, select=a.select, step=st)
     if a.control_folds:                        # one control per recipe, so every sweep point has a budget-matched 'others' adapter
         for st in steps:
             for cb in (a.control_budgets or [a.control_budget]):
                 for site in a.sites:
                     for lr in a.lrs:
                         run_control(P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, folds=a.control_folds, budget=cb, arm=a.arms[0], site=site,
-                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], forgiven=not a.no_forgiven, targets=a.targets, select=a.select, step=st)
+                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], forgiven=a.forgiven, targets=a.targets, select=a.select, step=st)
     summary()
