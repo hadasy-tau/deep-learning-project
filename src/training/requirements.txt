@@ -14,6 +14,8 @@ torch>=2.4
 transformers>=5.0
 peft>=0.13
 accelerate>=1.0
+# tempo and noise augmentation (train.ChunkDataset; docs/training_plan_v3.md)
+audiomentations>=0.43
 
 # full fine-tuning (D4's method axis) on a 40 GB card: 8-bit Adam
 bitsandbytes>=0.44 ; platform_system == "Linux"

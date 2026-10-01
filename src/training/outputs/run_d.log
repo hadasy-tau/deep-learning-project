@@ -1,0 +1,916 @@
+[Sun Sep 20 21:37:09 UTC 2026] waiting for pid 63681
+[Sun Sep 20 22:25:09 UTC 2026] run D: verbatim targets + dev-loss selection, lr 3e-4
+11 cells over 11 speakers; test 603 min, train 915 min available; then the cross-speaker control in 2 fold(s) at 80 min
+s23558_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 511 train chunks (80.0 min), 126 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.7292', 'grad_norm': '0.1972', 'learning_rate': '5.192e-05', 'epoch': '0.1562'}
+{'loss': '0.609', 'grad_norm': '0.172', 'learning_rate': '0.0001096', 'epoch': '0.3125'}
+{'loss': '0.5461', 'grad_norm': '0.1551', 'learning_rate': '0.0001673', 'epoch': '0.4688'}
+{'loss': '0.5636', 'grad_norm': '0.3354', 'learning_rate': '0.000225', 'epoch': '0.625'}
+{'loss': '0.5046', 'grad_norm': '0.3245', 'learning_rate': '0.0002827', 'epoch': '0.7812'}
+{'loss': '0.461', 'grad_norm': '0.3062', 'learning_rate': '0.0002954', 'epoch': '0.9375'}
+{'eval_loss': '0.5509', 'eval_runtime': '3.945', 'eval_samples_per_second': '31.94', 'eval_steps_per_second': '2.028', 'epoch': '1'}
+{'loss': '0.3781', 'grad_norm': '0.2972', 'learning_rate': '0.0002889', 'epoch': '1.094'}
+{'loss': '0.3864', 'grad_norm': '0.4936', 'learning_rate': '0.0002824', 'epoch': '1.25'}
+{'loss': '0.3753', 'grad_norm': '0.4126', 'learning_rate': '0.0002759', 'epoch': '1.406'}
+{'loss': '0.3396', 'grad_norm': '0.3969', 'learning_rate': '0.0002693', 'epoch': '1.562'}
+{'loss': '0.3925', 'grad_norm': '0.3152', 'learning_rate': '0.0002628', 'epoch': '1.719'}
+{'loss': '0.3789', 'grad_norm': '0.3717', 'learning_rate': '0.0002563', 'epoch': '1.875'}
+{'eval_loss': '0.5127', 'eval_runtime': '3.47', 'eval_samples_per_second': '36.31', 'eval_steps_per_second': '2.305', 'epoch': '2'}
+{'loss': '0.3499', 'grad_norm': '0.4307', 'learning_rate': '0.0002498', 'epoch': '2.031'}
+{'loss': '0.2795', 'grad_norm': '0.312', 'learning_rate': '0.0002433', 'epoch': '2.188'}
+{'loss': '0.3182', 'grad_norm': '0.4045', 'learning_rate': '0.0002367', 'epoch': '2.344'}
+{'loss': '0.2685', 'grad_norm': '0.2642', 'learning_rate': '0.0002302', 'epoch': '2.5'}
+{'loss': '0.2989', 'grad_norm': '0.563', 'learning_rate': '0.0002237', 'epoch': '2.656'}
+{'loss': '0.3001', 'grad_norm': '0.5876', 'learning_rate': '0.0002172', 'epoch': '2.812'}
+{'loss': '0.3049', 'grad_norm': '0.4165', 'learning_rate': '0.0002107', 'epoch': '2.969'}
+{'eval_loss': '0.5272', 'eval_runtime': '3.475', 'eval_samples_per_second': '36.26', 'eval_steps_per_second': '2.302', 'epoch': '3'}
+{'loss': '0.2637', 'grad_norm': '0.4051', 'learning_rate': '0.0002041', 'epoch': '3.125'}
+{'loss': '0.2064', 'grad_norm': '0.3032', 'learning_rate': '0.0001976', 'epoch': '3.281'}
+{'loss': '0.2394', 'grad_norm': '0.5099', 'learning_rate': '0.0001911', 'epoch': '3.438'}
+{'loss': '0.2485', 'grad_norm': '0.5823', 'learning_rate': '0.0001846', 'epoch': '3.594'}
+{'loss': '0.2265', 'grad_norm': '0.3788', 'learning_rate': '0.000178', 'epoch': '3.75'}
+{'loss': '0.2456', 'grad_norm': '0.418', 'learning_rate': '0.0001715', 'epoch': '3.906'}
+{'eval_loss': '0.5593', 'eval_runtime': '3.524', 'eval_samples_per_second': '35.76', 'eval_steps_per_second': '2.27', 'epoch': '4'}
+{'loss': '0.2086', 'grad_norm': '0.3452', 'learning_rate': '0.000165', 'epoch': '4.062'}
+{'loss': '0.1722', 'grad_norm': '0.7507', 'learning_rate': '0.0001585', 'epoch': '4.219'}
+{'loss': '0.1751', 'grad_norm': '0.5492', 'learning_rate': '0.000152', 'epoch': '4.375'}
+{'loss': '0.1847', 'grad_norm': '0.5572', 'learning_rate': '0.0001454', 'epoch': '4.531'}
+{'loss': '0.1796', 'grad_norm': '0.6282', 'learning_rate': '0.0001389', 'epoch': '4.688'}
+{'loss': '0.191', 'grad_norm': '0.5499', 'learning_rate': '0.0001324', 'epoch': '4.844'}
+{'loss': '0.1876', 'grad_norm': '0.3793', 'learning_rate': '0.0001259', 'epoch': '5'}
+{'eval_loss': '0.5939', 'eval_runtime': '3.503', 'eval_samples_per_second': '35.97', 'eval_steps_per_second': '2.284', 'epoch': '5'}
+{'loss': '0.135', 'grad_norm': '0.3502', 'learning_rate': '0.0001193', 'epoch': '5.156'}
+{'loss': '0.1466', 'grad_norm': '0.3992', 'learning_rate': '0.0001128', 'epoch': '5.312'}
+{'loss': '0.1211', 'grad_norm': '0.4591', 'learning_rate': '0.0001063', 'epoch': '5.469'}
+{'loss': '0.1564', 'grad_norm': '0.5435', 'learning_rate': '9.978e-05', 'epoch': '5.625'}
+{'loss': '0.1514', 'grad_norm': '0.5608', 'learning_rate': '9.326e-05', 'epoch': '5.781'}
+{'loss': '0.142', 'grad_norm': '0.4703', 'learning_rate': '8.674e-05', 'epoch': '5.938'}
+{'eval_loss': '0.6498', 'eval_runtime': '3.51', 'eval_samples_per_second': '35.9', 'eval_steps_per_second': '2.279', 'epoch': '6'}
+{'loss': '0.1173', 'grad_norm': '0.4264', 'learning_rate': '8.022e-05', 'epoch': '6.094'}
+{'loss': '0.0981', 'grad_norm': '0.4307', 'learning_rate': '7.37e-05', 'epoch': '6.25'}
+{'loss': '0.1215', 'grad_norm': '0.5191', 'learning_rate': '6.717e-05', 'epoch': '6.406'}
+{'loss': '0.09548', 'grad_norm': '0.6132', 'learning_rate': '6.065e-05', 'epoch': '6.562'}
+{'loss': '0.1041', 'grad_norm': '0.464', 'learning_rate': '5.413e-05', 'epoch': '6.719'}
+{'loss': '0.1166', 'grad_norm': '0.5238', 'learning_rate': '4.761e-05', 'epoch': '6.875'}
+{'eval_loss': '0.6856', 'eval_runtime': '3.501', 'eval_samples_per_second': '35.99', 'eval_steps_per_second': '2.285', 'epoch': '7'}
+{'loss': '0.1088', 'grad_norm': '0.415', 'learning_rate': '4.109e-05', 'epoch': '7.031'}
+{'loss': '0.09911', 'grad_norm': '0.4953', 'learning_rate': '3.457e-05', 'epoch': '7.188'}
+{'loss': '0.09015', 'grad_norm': '0.5026', 'learning_rate': '2.804e-05', 'epoch': '7.344'}
+{'loss': '0.07596', 'grad_norm': '0.4738', 'learning_rate': '2.152e-05', 'epoch': '7.5'}
+{'loss': '0.08052', 'grad_norm': '0.5768', 'learning_rate': '1.5e-05', 'epoch': '7.656'}
+{'loss': '0.08408', 'grad_norm': '0.3678', 'learning_rate': '8.478e-06', 'epoch': '7.812'}
+{'loss': '0.0886', 'grad_norm': '0.6427', 'learning_rate': '1.957e-06', 'epoch': '7.969'}
+{'eval_loss': '0.7175', 'eval_runtime': '3.518', 'eval_samples_per_second': '35.81', 'eval_steps_per_second': '2.274', 'epoch': '8'}
+{'train_runtime': '328.3', 'train_samples_per_second': '12.45', 'train_steps_per_second': '1.56', 'train_loss': '0.2474', 'epoch': '8'}
+s23558_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.4420 -> 0.3805 (+13.9%, p 0.164); forgiven 0.2947 -> 0.2512 (+14.8%, p 0.259) in 6.5 min train 336s base 0s other_arm 0s load_tuned 7s transcribe_tuned 46s score 0s
+s30685_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 328 train chunks (79.8 min), 105 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.501', 'grad_norm': '0.1469', 'learning_rate': '8.182e-05', 'epoch': '0.2439'}
+{'loss': '0.4947', 'grad_norm': '0.1467', 'learning_rate': '0.0001727', 'epoch': '0.4878'}
+{'loss': '0.3985', 'grad_norm': '0.1299', 'learning_rate': '0.0002636', 'epoch': '0.7317'}
+{'loss': '0.4064', 'grad_norm': '0.1984', 'learning_rate': '0.0002939', 'epoch': '0.9756'}
+{'eval_loss': '0.443', 'eval_runtime': '3.777', 'eval_samples_per_second': '27.8', 'eval_steps_per_second': '1.853', 'epoch': '1'}
+{'loss': '0.3426', 'grad_norm': '0.233', 'learning_rate': '0.0002837', 'epoch': '1.22'}
+{'loss': '0.2728', 'grad_norm': '0.206', 'learning_rate': '0.0002736', 'epoch': '1.463'}
+{'loss': '0.3105', 'grad_norm': '0.257', 'learning_rate': '0.0002634', 'epoch': '1.707'}
+{'loss': '0.2929', 'grad_norm': '0.2511', 'learning_rate': '0.0002532', 'epoch': '1.951'}
+{'eval_loss': '0.3808', 'eval_runtime': '3.049', 'eval_samples_per_second': '34.44', 'eval_steps_per_second': '2.296', 'epoch': '2'}
+{'loss': '0.2454', 'grad_norm': '0.1925', 'learning_rate': '0.0002431', 'epoch': '2.195'}
+{'loss': '0.217', 'grad_norm': '0.2324', 'learning_rate': '0.0002329', 'epoch': '2.439'}
+{'loss': '0.195', 'grad_norm': '0.3349', 'learning_rate': '0.0002227', 'epoch': '2.683'}
+{'loss': '0.2681', 'grad_norm': '0.5023', 'learning_rate': '0.0002125', 'epoch': '2.927'}
+{'eval_loss': '0.3852', 'eval_runtime': '2.98', 'eval_samples_per_second': '35.24', 'eval_steps_per_second': '2.349', 'epoch': '3'}
+{'loss': '0.194', 'grad_norm': '0.19', 'learning_rate': '0.0002024', 'epoch': '3.171'}
+{'loss': '0.1722', 'grad_norm': '0.3024', 'learning_rate': '0.0001922', 'epoch': '3.415'}
+{'loss': '0.1944', 'grad_norm': '0.421', 'learning_rate': '0.000182', 'epoch': '3.659'}
+{'loss': '0.1841', 'grad_norm': '0.2907', 'learning_rate': '0.0001719', 'epoch': '3.902'}
+{'eval_loss': '0.4067', 'eval_runtime': '3.035', 'eval_samples_per_second': '34.59', 'eval_steps_per_second': '2.306', 'epoch': '4'}
+{'loss': '0.1888', 'grad_norm': '0.2754', 'learning_rate': '0.0001617', 'epoch': '4.146'}
+{'loss': '0.1391', 'grad_norm': '0.4273', 'learning_rate': '0.0001515', 'epoch': '4.39'}
+{'loss': '0.154', 'grad_norm': '0.3522', 'learning_rate': '0.0001414', 'epoch': '4.634'}
+{'loss': '0.1389', 'grad_norm': '0.4291', 'learning_rate': '0.0001312', 'epoch': '4.878'}
+{'eval_loss': '0.4436', 'eval_runtime': '2.994', 'eval_samples_per_second': '35.07', 'eval_steps_per_second': '2.338', 'epoch': '5'}
+{'loss': '0.1065', 'grad_norm': '0.3052', 'learning_rate': '0.000121', 'epoch': '5.122'}
+{'loss': '0.1223', 'grad_norm': '0.4009', 'learning_rate': '0.0001108', 'epoch': '5.366'}
+{'loss': '0.1087', 'grad_norm': '0.6699', 'learning_rate': '0.0001007', 'epoch': '5.61'}
+{'loss': '0.1007', 'grad_norm': '0.2845', 'learning_rate': '9.051e-05', 'epoch': '5.854'}
+{'eval_loss': '0.4702', 'eval_runtime': '3.011', 'eval_samples_per_second': '34.87', 'eval_steps_per_second': '2.325', 'epoch': '6'}
+{'loss': '0.09924', 'grad_norm': '0.3212', 'learning_rate': '8.034e-05', 'epoch': '6.098'}
+{'loss': '0.09403', 'grad_norm': '0.3933', 'learning_rate': '7.017e-05', 'epoch': '6.341'}
+{'loss': '0.09347', 'grad_norm': '0.3682', 'learning_rate': '6e-05', 'epoch': '6.585'}
+{'loss': '0.0766', 'grad_norm': '0.5237', 'learning_rate': '4.983e-05', 'epoch': '6.829'}
+{'eval_loss': '0.5065', 'eval_runtime': '3.015', 'eval_samples_per_second': '34.82', 'eval_steps_per_second': '2.322', 'epoch': '7'}
+{'loss': '0.07867', 'grad_norm': '0.2478', 'learning_rate': '3.966e-05', 'epoch': '7.073'}
+{'loss': '0.08055', 'grad_norm': '0.6239', 'learning_rate': '2.949e-05', 'epoch': '7.317'}
+{'loss': '0.07421', 'grad_norm': '0.4452', 'learning_rate': '1.932e-05', 'epoch': '7.561'}
+{'loss': '0.0634', 'grad_norm': '0.2894', 'learning_rate': '9.153e-06', 'epoch': '7.805'}
+{'eval_loss': '0.5233', 'eval_runtime': '3', 'eval_samples_per_second': '35', 'eval_steps_per_second': '2.333', 'epoch': '8'}
+{'train_runtime': '221.5', 'train_samples_per_second': '11.85', 'train_steps_per_second': '1.481', 'train_loss': '0.1972', 'epoch': '8'}
+s30685_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.2330 -> 0.2216 (+4.9%, p 0.014); forgiven 0.1094 -> 0.1060 (+3.1%, p 0.376) in 4.5 min train 229s base 0s other_arm 0s load_tuned 5s transcribe_tuned 37s score 0s
+s30701_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 385 train chunks (79.9 min), 88 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.5678', 'grad_norm': '0.1287', 'learning_rate': '6.75e-05', 'epoch': '0.2041'}
+{'loss': '0.5094', 'grad_norm': '0.1125', 'learning_rate': '0.0001425', 'epoch': '0.4082'}
+{'loss': '0.5446', 'grad_norm': '0.2082', 'learning_rate': '0.0002175', 'epoch': '0.6122'}
+{'loss': '0.4204', 'grad_norm': '0.2094', 'learning_rate': '0.0002925', 'epoch': '0.8163'}
+{'eval_loss': '0.3803', 'eval_runtime': '3.415', 'eval_samples_per_second': '25.77', 'eval_steps_per_second': '1.757', 'epoch': '1'}
+{'loss': '0.3745', 'grad_norm': '0.33', 'learning_rate': '0.0002923', 'epoch': '1.02'}
+{'loss': '0.3544', 'grad_norm': '0.2346', 'learning_rate': '0.0002838', 'epoch': '1.224'}
+{'loss': '0.3485', 'grad_norm': '0.2891', 'learning_rate': '0.0002753', 'epoch': '1.429'}
+{'loss': '0.303', 'grad_norm': '0.3476', 'learning_rate': '0.0002668', 'epoch': '1.633'}
+{'loss': '0.3638', 'grad_norm': '0.3374', 'learning_rate': '0.0002582', 'epoch': '1.837'}
+{'eval_loss': '0.3315', 'eval_runtime': '2.596', 'eval_samples_per_second': '33.89', 'eval_steps_per_second': '2.311', 'epoch': '2'}
+{'loss': '0.3576', 'grad_norm': '0.3885', 'learning_rate': '0.0002497', 'epoch': '2.041'}
+{'loss': '0.2488', 'grad_norm': '0.2392', 'learning_rate': '0.0002412', 'epoch': '2.245'}
+{'loss': '0.2875', 'grad_norm': '0.4136', 'learning_rate': '0.0002327', 'epoch': '2.449'}
+{'loss': '0.2659', 'grad_norm': '0.2781', 'learning_rate': '0.0002241', 'epoch': '2.653'}
+{'loss': '0.2198', 'grad_norm': '0.3332', 'learning_rate': '0.0002156', 'epoch': '2.857'}
+{'eval_loss': '0.3327', 'eval_runtime': '2.604', 'eval_samples_per_second': '33.8', 'eval_steps_per_second': '2.304', 'epoch': '3'}
+{'loss': '0.2853', 'grad_norm': '0.2734', 'learning_rate': '0.0002071', 'epoch': '3.061'}
+{'loss': '0.2511', 'grad_norm': '0.4648', 'learning_rate': '0.0001986', 'epoch': '3.265'}
+{'loss': '0.204', 'grad_norm': '0.209', 'learning_rate': '0.0001901', 'epoch': '3.469'}
+{'loss': '0.183', 'grad_norm': '0.3305', 'learning_rate': '0.0001815', 'epoch': '3.673'}
+{'loss': '0.2184', 'grad_norm': '0.4798', 'learning_rate': '0.000173', 'epoch': '3.878'}
+{'eval_loss': '0.3479', 'eval_runtime': '2.632', 'eval_samples_per_second': '33.44', 'eval_steps_per_second': '2.28', 'epoch': '4'}
+{'loss': '0.2074', 'grad_norm': '0.4842', 'learning_rate': '0.0001645', 'epoch': '4.082'}
+{'loss': '0.1452', 'grad_norm': '0.3731', 'learning_rate': '0.000156', 'epoch': '4.286'}
+{'loss': '0.149', 'grad_norm': '0.4163', 'learning_rate': '0.0001474', 'epoch': '4.49'}
+{'loss': '0.1714', 'grad_norm': '0.4073', 'learning_rate': '0.0001389', 'epoch': '4.694'}
+{'loss': '0.1956', 'grad_norm': '0.5396', 'learning_rate': '0.0001304', 'epoch': '4.898'}
+{'eval_loss': '0.3698', 'eval_runtime': '2.574', 'eval_samples_per_second': '34.19', 'eval_steps_per_second': '2.331', 'epoch': '5'}
+{'loss': '0.1405', 'grad_norm': '0.3212', 'learning_rate': '0.0001219', 'epoch': '5.102'}
+{'loss': '0.1366', 'grad_norm': '0.5969', 'learning_rate': '0.0001134', 'epoch': '5.306'}
+{'loss': '0.1339', 'grad_norm': '0.6331', 'learning_rate': '0.0001048', 'epoch': '5.51'}
+{'loss': '0.1321', 'grad_norm': '0.5324', 'learning_rate': '9.631e-05', 'epoch': '5.714'}
+{'loss': '0.1183', 'grad_norm': '0.4696', 'learning_rate': '8.778e-05', 'epoch': '5.918'}
+{'eval_loss': '0.3998', 'eval_runtime': '2.606', 'eval_samples_per_second': '33.77', 'eval_steps_per_second': '2.302', 'epoch': '6'}
+{'loss': '0.1267', 'grad_norm': '0.4112', 'learning_rate': '7.926e-05', 'epoch': '6.122'}
+{'loss': '0.1221', 'grad_norm': '0.4893', 'learning_rate': '7.074e-05', 'epoch': '6.327'}
+{'loss': '0.09105', 'grad_norm': '0.4586', 'learning_rate': '6.222e-05', 'epoch': '6.531'}
+{'loss': '0.09397', 'grad_norm': '0.3118', 'learning_rate': '5.369e-05', 'epoch': '6.735'}
+{'loss': '0.1184', 'grad_norm': '0.5835', 'learning_rate': '4.517e-05', 'epoch': '6.939'}
+{'eval_loss': '0.4208', 'eval_runtime': '2.575', 'eval_samples_per_second': '34.17', 'eval_steps_per_second': '2.33', 'epoch': '7'}
+{'loss': '0.0877', 'grad_norm': '0.4403', 'learning_rate': '3.665e-05', 'epoch': '7.143'}
+{'loss': '0.08287', 'grad_norm': '0.3685', 'learning_rate': '2.812e-05', 'epoch': '7.347'}
+{'loss': '0.1053', 'grad_norm': '0.458', 'learning_rate': '1.96e-05', 'epoch': '7.551'}
+{'loss': '0.08607', 'grad_norm': '0.4873', 'learning_rate': '1.108e-05', 'epoch': '7.755'}
+{'loss': '0.07514', 'grad_norm': '0.4812', 'learning_rate': '2.557e-06', 'epoch': '7.959'}
+{'eval_loss': '0.437', 'eval_runtime': '2.656', 'eval_samples_per_second': '33.13', 'eval_steps_per_second': '2.259', 'epoch': '8'}
+{'train_runtime': '253.7', 'train_samples_per_second': '12.14', 'train_steps_per_second': '1.545', 'train_loss': '0.2256', 'epoch': '8'}
+s30701_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.4059 -> 0.3366 (+17.1%, p 0.030); forgiven 0.2669 -> 0.2156 (+19.2%, p 0.098) in 5.3 min train 262s base 0s other_arm 0s load_tuned 5s transcribe_tuned 52s score 0s
+s30718_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 300 train chunks (79.7 min), 43 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.495', 'grad_norm': '0.09317', 'learning_rate': '8.71e-05', 'epoch': '0.2632'}
+{'loss': '0.5574', 'grad_norm': '0.1541', 'learning_rate': '0.0001839', 'epoch': '0.5263'}
+{'loss': '0.3827', 'grad_norm': '0.1593', 'learning_rate': '0.0002806', 'epoch': '0.7895'}
+{'eval_loss': '0.2732', 'eval_runtime': '2.416', 'eval_samples_per_second': '17.8', 'eval_steps_per_second': '1.242', 'epoch': '1'}
+{'loss': '0.397', 'grad_norm': '0.1587', 'learning_rate': '0.0002912', 'epoch': '1.053'}
+{'loss': '0.3382', 'grad_norm': '0.246', 'learning_rate': '0.0002802', 'epoch': '1.316'}
+{'loss': '0.3336', 'grad_norm': '0.2015', 'learning_rate': '0.0002692', 'epoch': '1.579'}
+{'loss': '0.3275', 'grad_norm': '0.1517', 'learning_rate': '0.0002582', 'epoch': '1.842'}
+{'eval_loss': '0.2263', 'eval_runtime': '1.441', 'eval_samples_per_second': '29.83', 'eval_steps_per_second': '2.081', 'epoch': '2'}
+{'loss': '0.2841', 'grad_norm': '0.1906', 'learning_rate': '0.0002473', 'epoch': '2.105'}
+{'loss': '0.2759', 'grad_norm': '0.2679', 'learning_rate': '0.0002363', 'epoch': '2.368'}
+{'loss': '0.2597', 'grad_norm': '0.3215', 'learning_rate': '0.0002253', 'epoch': '2.632'}
+{'loss': '0.2486', 'grad_norm': '0.2755', 'learning_rate': '0.0002143', 'epoch': '2.895'}
+{'eval_loss': '0.2303', 'eval_runtime': '1.451', 'eval_samples_per_second': '29.63', 'eval_steps_per_second': '2.067', 'epoch': '3'}
+{'loss': '0.193', 'grad_norm': '0.2339', 'learning_rate': '0.0002033', 'epoch': '3.158'}
+{'loss': '0.2027', 'grad_norm': '0.3267', 'learning_rate': '0.0001923', 'epoch': '3.421'}
+{'loss': '0.2218', 'grad_norm': '0.2469', 'learning_rate': '0.0001813', 'epoch': '3.684'}
+{'loss': '0.2258', 'grad_norm': '0.4134', 'learning_rate': '0.0001703', 'epoch': '3.947'}
+{'eval_loss': '0.24', 'eval_runtime': '1.425', 'eval_samples_per_second': '30.18', 'eval_steps_per_second': '2.106', 'epoch': '4'}
+{'loss': '0.1964', 'grad_norm': '0.3735', 'learning_rate': '0.0001593', 'epoch': '4.211'}
+{'loss': '0.1576', 'grad_norm': '0.3338', 'learning_rate': '0.0001484', 'epoch': '4.474'}
+{'loss': '0.1641', 'grad_norm': '0.502', 'learning_rate': '0.0001374', 'epoch': '4.737'}
+{'loss': '0.1611', 'grad_norm': '0.5739', 'learning_rate': '0.0001264', 'epoch': '5'}
+{'eval_loss': '0.258', 'eval_runtime': '1.47', 'eval_samples_per_second': '29.26', 'eval_steps_per_second': '2.041', 'epoch': '5'}
+{'loss': '0.1367', 'grad_norm': '0.3871', 'learning_rate': '0.0001154', 'epoch': '5.263'}
+{'loss': '0.1352', 'grad_norm': '0.4845', 'learning_rate': '0.0001044', 'epoch': '5.526'}
+{'loss': '0.1371', 'grad_norm': '0.3575', 'learning_rate': '9.341e-05', 'epoch': '5.789'}
+{'eval_loss': '0.2787', 'eval_runtime': '1.497', 'eval_samples_per_second': '28.72', 'eval_steps_per_second': '2.004', 'epoch': '6'}
+{'loss': '0.1364', 'grad_norm': '0.4412', 'learning_rate': '8.242e-05', 'epoch': '6.053'}
+{'loss': '0.1054', 'grad_norm': '0.5171', 'learning_rate': '7.143e-05', 'epoch': '6.316'}
+{'loss': '0.107', 'grad_norm': '0.5142', 'learning_rate': '6.044e-05', 'epoch': '6.579'}
+{'loss': '0.1044', 'grad_norm': '0.4752', 'learning_rate': '4.945e-05', 'epoch': '6.842'}
+{'eval_loss': '0.2953', 'eval_runtime': '1.439', 'eval_samples_per_second': '29.89', 'eval_steps_per_second': '2.085', 'epoch': '7'}
+{'loss': '0.0983', 'grad_norm': '0.3527', 'learning_rate': '3.846e-05', 'epoch': '7.105'}
+{'loss': '0.09785', 'grad_norm': '0.3945', 'learning_rate': '2.747e-05', 'epoch': '7.368'}
+{'loss': '0.08565', 'grad_norm': '0.294', 'learning_rate': '1.648e-05', 'epoch': '7.632'}
+{'loss': '0.08914', 'grad_norm': '0.4624', 'learning_rate': '5.495e-06', 'epoch': '7.895'}
+{'eval_loss': '0.3093', 'eval_runtime': '1.453', 'eval_samples_per_second': '29.6', 'eval_steps_per_second': '2.065', 'epoch': '8'}
+{'train_runtime': '195.9', 'train_samples_per_second': '12.25', 'train_steps_per_second': '1.552', 'train_loss': '0.2202', 'epoch': '8'}
+s30718_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.1995 -> 0.1683 (+15.6%, p 0.127); forgiven 0.1404 -> 0.1168 (+16.8%, p 0.433) in 4.3 min train 204s base 0s other_arm 0s load_tuned 6s transcribe_tuned 47s score 0s
+s30752_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 410 train chunks (79.9 min), 93 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.557', 'grad_norm': '0.1751', 'learning_rate': '6.429e-05', 'epoch': '0.1923'}
+{'loss': '0.5761', 'grad_norm': '0.2229', 'learning_rate': '0.0001357', 'epoch': '0.3846'}
+{'loss': '0.5188', 'grad_norm': '0.4709', 'learning_rate': '0.0002071', 'epoch': '0.5769'}
+{'loss': '0.4232', 'grad_norm': '0.3742', 'learning_rate': '0.0002786', 'epoch': '0.7692'}
+{'loss': '0.3878', 'grad_norm': '0.1859', 'learning_rate': '0.0002944', 'epoch': '0.9615'}
+{'eval_loss': '0.3825', 'eval_runtime': '3.618', 'eval_samples_per_second': '25.7', 'eval_steps_per_second': '1.658', 'epoch': '1'}
+{'loss': '0.2843', 'grad_norm': '0.2415', 'learning_rate': '0.0002864', 'epoch': '1.154'}
+{'loss': '0.3094', 'grad_norm': '0.2292', 'learning_rate': '0.0002783', 'epoch': '1.346'}
+{'loss': '0.275', 'grad_norm': '0.5029', 'learning_rate': '0.0002703', 'epoch': '1.538'}
+{'loss': '0.3445', 'grad_norm': '0.346', 'learning_rate': '0.0002623', 'epoch': '1.731'}
+{'loss': '0.2815', 'grad_norm': '0.328', 'learning_rate': '0.0002543', 'epoch': '1.923'}
+{'eval_loss': '0.3488', 'eval_runtime': '2.664', 'eval_samples_per_second': '34.9', 'eval_steps_per_second': '2.252', 'epoch': '2'}
+{'loss': '0.2475', 'grad_norm': '0.3626', 'learning_rate': '0.0002463', 'epoch': '2.115'}
+{'loss': '0.2308', 'grad_norm': '0.3987', 'learning_rate': '0.0002382', 'epoch': '2.308'}
+{'loss': '0.2325', 'grad_norm': '0.3878', 'learning_rate': '0.0002302', 'epoch': '2.5'}
+{'loss': '0.2218', 'grad_norm': '0.5123', 'learning_rate': '0.0002222', 'epoch': '2.692'}
+{'loss': '0.2163', 'grad_norm': '0.3037', 'learning_rate': '0.0002142', 'epoch': '2.885'}
+{'eval_loss': '0.3743', 'eval_runtime': '2.646', 'eval_samples_per_second': '35.14', 'eval_steps_per_second': '2.267', 'epoch': '3'}
+{'loss': '0.1952', 'grad_norm': '0.3085', 'learning_rate': '0.0002061', 'epoch': '3.077'}
+{'loss': '0.1726', 'grad_norm': '0.4052', 'learning_rate': '0.0001981', 'epoch': '3.269'}
+{'loss': '0.1727', 'grad_norm': '0.474', 'learning_rate': '0.0001901', 'epoch': '3.462'}
+{'loss': '0.1482', 'grad_norm': '0.4215', 'learning_rate': '0.0001821', 'epoch': '3.654'}
+{'loss': '0.175', 'grad_norm': '0.5729', 'learning_rate': '0.0001741', 'epoch': '3.846'}
+{'eval_loss': '0.3938', 'eval_runtime': '2.666', 'eval_samples_per_second': '34.89', 'eval_steps_per_second': '2.251', 'epoch': '4'}
+{'loss': '0.1395', 'grad_norm': '0.2806', 'learning_rate': '0.000166', 'epoch': '4.038'}
+{'loss': '0.1063', 'grad_norm': '0.3904', 'learning_rate': '0.000158', 'epoch': '4.231'}
+{'loss': '0.1303', 'grad_norm': '0.429', 'learning_rate': '0.00015', 'epoch': '4.423'}
+{'loss': '0.134', 'grad_norm': '0.6036', 'learning_rate': '0.000142', 'epoch': '4.615'}
+{'loss': '0.1', 'grad_norm': '0.2994', 'learning_rate': '0.000134', 'epoch': '4.808'}
+{'loss': '0.1381', 'grad_norm': '0.816', 'learning_rate': '0.0001259', 'epoch': '5'}
+{'eval_loss': '0.4335', 'eval_runtime': '2.631', 'eval_samples_per_second': '35.35', 'eval_steps_per_second': '2.281', 'epoch': '5'}
+{'loss': '0.08131', 'grad_norm': '0.4864', 'learning_rate': '0.0001179', 'epoch': '5.192'}
+{'loss': '0.08662', 'grad_norm': '0.3855', 'learning_rate': '0.0001099', 'epoch': '5.385'}
+{'loss': '0.08383', 'grad_norm': '0.5591', 'learning_rate': '0.0001019', 'epoch': '5.577'}
+{'loss': '0.09098', 'grad_norm': '0.4693', 'learning_rate': '9.385e-05', 'epoch': '5.769'}
+{'loss': '0.07731', 'grad_norm': '0.3238', 'learning_rate': '8.583e-05', 'epoch': '5.962'}
+{'eval_loss': '0.4789', 'eval_runtime': '2.629', 'eval_samples_per_second': '35.37', 'eval_steps_per_second': '2.282', 'epoch': '6'}
+{'loss': '0.06627', 'grad_norm': '0.3281', 'learning_rate': '7.781e-05', 'epoch': '6.154'}
+{'loss': '0.06043', 'grad_norm': '0.515', 'learning_rate': '6.979e-05', 'epoch': '6.346'}
+{'loss': '0.0571', 'grad_norm': '0.3572', 'learning_rate': '6.176e-05', 'epoch': '6.538'}
+{'loss': '0.06026', 'grad_norm': '0.353', 'learning_rate': '5.374e-05', 'epoch': '6.731'}
+{'loss': '0.05176', 'grad_norm': '0.4076', 'learning_rate': '4.572e-05', 'epoch': '6.923'}
+{'eval_loss': '0.5236', 'eval_runtime': '2.635', 'eval_samples_per_second': '35.29', 'eval_steps_per_second': '2.277', 'epoch': '7'}
+{'loss': '0.04163', 'grad_norm': '0.3206', 'learning_rate': '3.77e-05', 'epoch': '7.115'}
+{'loss': '0.04352', 'grad_norm': '0.4451', 'learning_rate': '2.968e-05', 'epoch': '7.308'}
+{'loss': '0.04138', 'grad_norm': '0.3409', 'learning_rate': '2.166e-05', 'epoch': '7.5'}
+{'loss': '0.05263', 'grad_norm': '0.6405', 'learning_rate': '1.364e-05', 'epoch': '7.692'}
+{'loss': '0.04808', 'grad_norm': '0.6722', 'learning_rate': '5.615e-06', 'epoch': '7.885'}
+{'eval_loss': '0.5459', 'eval_runtime': '2.701', 'eval_samples_per_second': '34.43', 'eval_steps_per_second': '2.222', 'epoch': '8'}
+{'train_runtime': '263.1', 'train_samples_per_second': '12.47', 'train_steps_per_second': '1.581', 'train_loss': '0.1847', 'epoch': '8'}
+s30752_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.1956 -> 0.2200 (-12.5%, p 0.765); forgiven 0.1353 -> 0.1706 (-26.1%, p 0.765) in 5.1 min train 271s base 0s other_arm 0s load_tuned 5s transcribe_tuned 27s score 0s
+s30777_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 332 train chunks (79.9 min), 74 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.4521', 'grad_norm': '0.1161', 'learning_rate': '7.941e-05', 'epoch': '0.2381'}
+{'loss': '0.4983', 'grad_norm': '0.1626', 'learning_rate': '0.0001676', 'epoch': '0.4762'}
+{'loss': '0.4124', 'grad_norm': '0.1718', 'learning_rate': '0.0002559', 'epoch': '0.7143'}
+{'loss': '0.3672', 'grad_norm': '0.1803', 'learning_rate': '0.000295', 'epoch': '0.9524'}
+{'eval_loss': '0.4258', 'eval_runtime': '3.221', 'eval_samples_per_second': '22.97', 'eval_steps_per_second': '1.552', 'epoch': '1'}
+{'loss': '0.3055', 'grad_norm': '0.1587', 'learning_rate': '0.0002851', 'epoch': '1.19'}
+{'loss': '0.3018', 'grad_norm': '0.1805', 'learning_rate': '0.0002752', 'epoch': '1.429'}
+{'loss': '0.2551', 'grad_norm': '0.2809', 'learning_rate': '0.0002652', 'epoch': '1.667'}
+{'loss': '0.3063', 'grad_norm': '0.191', 'learning_rate': '0.0002553', 'epoch': '1.905'}
+{'eval_loss': '0.3615', 'eval_runtime': '2.229', 'eval_samples_per_second': '33.2', 'eval_steps_per_second': '2.243', 'epoch': '2'}
+{'loss': '0.2981', 'grad_norm': '0.2066', 'learning_rate': '0.0002454', 'epoch': '2.143'}
+{'loss': '0.2368', 'grad_norm': '0.2178', 'learning_rate': '0.0002354', 'epoch': '2.381'}
+{'loss': '0.2389', 'grad_norm': '0.2504', 'learning_rate': '0.0002255', 'epoch': '2.619'}
+{'loss': '0.2301', 'grad_norm': '0.4279', 'learning_rate': '0.0002156', 'epoch': '2.857'}
+{'eval_loss': '0.3722', 'eval_runtime': '2.23', 'eval_samples_per_second': '33.18', 'eval_steps_per_second': '2.242', 'epoch': '3'}
+{'loss': '0.2104', 'grad_norm': '0.2443', 'learning_rate': '0.0002056', 'epoch': '3.095'}
+{'loss': '0.1706', 'grad_norm': '0.2937', 'learning_rate': '0.0001957', 'epoch': '3.333'}
+{'loss': '0.1708', 'grad_norm': '0.3216', 'learning_rate': '0.0001858', 'epoch': '3.571'}
+{'loss': '0.1923', 'grad_norm': '0.385', 'learning_rate': '0.0001758', 'epoch': '3.81'}
+{'eval_loss': '0.4012', 'eval_runtime': '2.233', 'eval_samples_per_second': '33.14', 'eval_steps_per_second': '2.239', 'epoch': '4'}
+{'loss': '0.1836', 'grad_norm': '0.2973', 'learning_rate': '0.0001659', 'epoch': '4.048'}
+{'loss': '0.1534', 'grad_norm': '0.3641', 'learning_rate': '0.000156', 'epoch': '4.286'}
+{'loss': '0.1354', 'grad_norm': '0.382', 'learning_rate': '0.000146', 'epoch': '4.524'}
+{'loss': '0.1289', 'grad_norm': '0.4542', 'learning_rate': '0.0001361', 'epoch': '4.762'}
+{'loss': '0.147', 'grad_norm': '0.8155', 'learning_rate': '0.0001262', 'epoch': '5'}
+{'eval_loss': '0.4279', 'eval_runtime': '2.187', 'eval_samples_per_second': '33.84', 'eval_steps_per_second': '2.286', 'epoch': '5'}
+{'loss': '0.1004', 'grad_norm': '0.4488', 'learning_rate': '0.0001162', 'epoch': '5.238'}
+{'loss': '0.1124', 'grad_norm': '0.4978', 'learning_rate': '0.0001063', 'epoch': '5.476'}
+{'loss': '0.1126', 'grad_norm': '0.3282', 'learning_rate': '9.636e-05', 'epoch': '5.714'}
+{'loss': '0.1104', 'grad_norm': '0.5682', 'learning_rate': '8.642e-05', 'epoch': '5.952'}
+{'eval_loss': '0.4569', 'eval_runtime': '2.201', 'eval_samples_per_second': '33.61', 'eval_steps_per_second': '2.271', 'epoch': '6'}
+{'loss': '0.09348', 'grad_norm': '0.3734', 'learning_rate': '7.649e-05', 'epoch': '6.19'}
+{'loss': '0.07829', 'grad_norm': '0.3006', 'learning_rate': '6.656e-05', 'epoch': '6.429'}
+{'loss': '0.08173', 'grad_norm': '0.3883', 'learning_rate': '5.662e-05', 'epoch': '6.667'}
+{'loss': '0.08653', 'grad_norm': '0.565', 'learning_rate': '4.669e-05', 'epoch': '6.905'}
+{'eval_loss': '0.4825', 'eval_runtime': '2.273', 'eval_samples_per_second': '32.55', 'eval_steps_per_second': '2.2', 'epoch': '7'}
+{'loss': '0.08385', 'grad_norm': '0.4633', 'learning_rate': '3.675e-05', 'epoch': '7.143'}
+{'loss': '0.0637', 'grad_norm': '0.3938', 'learning_rate': '2.682e-05', 'epoch': '7.381'}
+{'loss': '0.06726', 'grad_norm': '0.3637', 'learning_rate': '1.689e-05', 'epoch': '7.619'}
+{'loss': '0.08076', 'grad_norm': '0.3223', 'learning_rate': '6.954e-06', 'epoch': '7.857'}
+{'eval_loss': '0.4982', 'eval_runtime': '2.278', 'eval_samples_per_second': '32.49', 'eval_steps_per_second': '2.195', 'epoch': '8'}
+{'train_runtime': '219.2', 'train_samples_per_second': '12.12', 'train_steps_per_second': '1.533', 'train_loss': '0.1936', 'epoch': '8'}
+s30777_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.2237 -> 0.2028 (+9.3%, p 0.510); forgiven 0.1535 -> 0.1367 (+11.0%, p 0.611) in 4.6 min train 227s base 0s other_arm 0s load_tuned 6s transcribe_tuned 44s score 0s
+s30813_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 320 train chunks (79.9 min), 44 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.5404', 'grad_norm': '0.1152', 'learning_rate': '8.437e-05', 'epoch': '0.25'}
+{'loss': '0.5224', 'grad_norm': '0.1315', 'learning_rate': '0.0001781', 'epoch': '0.5'}
+{'loss': '0.5252', 'grad_norm': '0.1553', 'learning_rate': '0.0002719', 'epoch': '0.75'}
+{'loss': '0.4682', 'grad_norm': '0.2352', 'learning_rate': '0.0002927', 'epoch': '1'}
+{'eval_loss': '0.4861', 'eval_runtime': '3.002', 'eval_samples_per_second': '14.65', 'eval_steps_per_second': '0.999', 'epoch': '1'}
+{'loss': '0.3842', 'grad_norm': '0.2108', 'learning_rate': '0.0002823', 'epoch': '1.25'}
+{'loss': '0.3298', 'grad_norm': '0.2076', 'learning_rate': '0.0002719', 'epoch': '1.5'}
+{'loss': '0.3414', 'grad_norm': '0.3069', 'learning_rate': '0.0002615', 'epoch': '1.75'}
+{'loss': '0.3335', 'grad_norm': '0.4674', 'learning_rate': '0.000251', 'epoch': '2'}
+{'eval_loss': '0.4396', 'eval_runtime': '1.45', 'eval_samples_per_second': '30.34', 'eval_steps_per_second': '2.069', 'epoch': '2'}
+{'loss': '0.3082', 'grad_norm': '0.3823', 'learning_rate': '0.0002406', 'epoch': '2.25'}
+{'loss': '0.2273', 'grad_norm': '0.2866', 'learning_rate': '0.0002302', 'epoch': '2.5'}
+{'loss': '0.2706', 'grad_norm': '0.3844', 'learning_rate': '0.0002198', 'epoch': '2.75'}
+{'loss': '0.2679', 'grad_norm': '0.3758', 'learning_rate': '0.0002094', 'epoch': '3'}
+{'eval_loss': '0.4408', 'eval_runtime': '1.462', 'eval_samples_per_second': '30.1', 'eval_steps_per_second': '2.052', 'epoch': '3'}
+{'loss': '0.2151', 'grad_norm': '0.2854', 'learning_rate': '0.000199', 'epoch': '3.25'}
+{'loss': '0.2354', 'grad_norm': '0.555', 'learning_rate': '0.0001885', 'epoch': '3.5'}
+{'loss': '0.2045', 'grad_norm': '0.3951', 'learning_rate': '0.0001781', 'epoch': '3.75'}
+{'loss': '0.2184', 'grad_norm': '0.3846', 'learning_rate': '0.0001677', 'epoch': '4'}
+{'eval_loss': '0.4733', 'eval_runtime': '1.489', 'eval_samples_per_second': '29.55', 'eval_steps_per_second': '2.014', 'epoch': '4'}
+{'loss': '0.1729', 'grad_norm': '0.4243', 'learning_rate': '0.0001573', 'epoch': '4.25'}
+{'loss': '0.1611', 'grad_norm': '0.6153', 'learning_rate': '0.0001469', 'epoch': '4.5'}
+{'loss': '0.1695', 'grad_norm': '0.3024', 'learning_rate': '0.0001365', 'epoch': '4.75'}
+{'loss': '0.2077', 'grad_norm': '0.4572', 'learning_rate': '0.000126', 'epoch': '5'}
+{'eval_loss': '0.4952', 'eval_runtime': '1.46', 'eval_samples_per_second': '30.14', 'eval_steps_per_second': '2.055', 'epoch': '5'}
+{'loss': '0.1436', 'grad_norm': '0.4923', 'learning_rate': '0.0001156', 'epoch': '5.25'}
+{'loss': '0.1213', 'grad_norm': '0.4677', 'learning_rate': '0.0001052', 'epoch': '5.5'}
+{'loss': '0.1453', 'grad_norm': '0.5186', 'learning_rate': '9.479e-05', 'epoch': '5.75'}
+{'loss': '0.1442', 'grad_norm': '0.4359', 'learning_rate': '8.437e-05', 'epoch': '6'}
+{'eval_loss': '0.5264', 'eval_runtime': '1.507', 'eval_samples_per_second': '29.19', 'eval_steps_per_second': '1.99', 'epoch': '6'}
+{'loss': '0.112', 'grad_norm': '0.442', 'learning_rate': '7.396e-05', 'epoch': '6.25'}
+{'loss': '0.1091', 'grad_norm': '0.5383', 'learning_rate': '6.354e-05', 'epoch': '6.5'}
+{'loss': '0.1045', 'grad_norm': '0.5632', 'learning_rate': '5.312e-05', 'epoch': '6.75'}
+{'loss': '0.1131', 'grad_norm': '0.4992', 'learning_rate': '4.271e-05', 'epoch': '7'}
+{'eval_loss': '0.5671', 'eval_runtime': '1.44', 'eval_samples_per_second': '30.56', 'eval_steps_per_second': '2.084', 'epoch': '7'}
+{'loss': '0.09147', 'grad_norm': '0.3243', 'learning_rate': '3.229e-05', 'epoch': '7.25'}
+{'loss': '0.09343', 'grad_norm': '0.3781', 'learning_rate': '2.187e-05', 'epoch': '7.5'}
+{'loss': '0.08062', 'grad_norm': '0.497', 'learning_rate': '1.146e-05', 'epoch': '7.75'}
+{'loss': '0.0943', 'grad_norm': '0.6666', 'learning_rate': '1.042e-06', 'epoch': '8'}
+{'eval_loss': '0.5875', 'eval_runtime': '1.406', 'eval_samples_per_second': '31.3', 'eval_steps_per_second': '2.134', 'epoch': '8'}
+{'train_runtime': '208.5', 'train_samples_per_second': '12.28', 'train_steps_per_second': '1.535', 'train_loss': '0.233', 'epoch': '8'}
+s30813_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.1607 -> 0.1354 (+15.7%, p 0.083); forgiven 0.1194 -> 0.0998 (+16.4%, p 0.487) in 4.3 min train 217s base 0s other_arm 0s load_tuned 6s transcribe_tuned 35s score 0s
+s30831_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 372 train chunks (79.9 min), 70 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.6022', 'grad_norm': '0.2277', 'learning_rate': '7.105e-05', 'epoch': '0.2128'}
+{'loss': '0.5025', 'grad_norm': '0.1919', 'learning_rate': '0.00015', 'epoch': '0.4255'}
+{'loss': '0.4026', 'grad_norm': '0.1301', 'learning_rate': '0.0002289', 'epoch': '0.6383'}
+{'loss': '0.4008', 'grad_norm': '0.1812', 'learning_rate': '0.0002991', 'epoch': '0.8511'}
+{'eval_loss': '0.2974', 'eval_runtime': '3.179', 'eval_samples_per_second': '22.02', 'eval_steps_per_second': '1.573', 'epoch': '1'}
+{'loss': '0.3987', 'grad_norm': '0.2936', 'learning_rate': '0.0002902', 'epoch': '1.064'}
+{'loss': '0.3578', 'grad_norm': '0.1778', 'learning_rate': '0.0002814', 'epoch': '1.277'}
+{'loss': '0.2344', 'grad_norm': '0.2995', 'learning_rate': '0.0002725', 'epoch': '1.489'}
+{'loss': '0.2743', 'grad_norm': '0.2626', 'learning_rate': '0.0002636', 'epoch': '1.702'}
+{'loss': '0.3032', 'grad_norm': '0.3517', 'learning_rate': '0.0002547', 'epoch': '1.915'}
+{'eval_loss': '0.2664', 'eval_runtime': '2.144', 'eval_samples_per_second': '32.64', 'eval_steps_per_second': '2.332', 'epoch': '2'}
+{'loss': '0.2848', 'grad_norm': '0.1714', 'learning_rate': '0.0002459', 'epoch': '2.128'}
+{'loss': '0.2429', 'grad_norm': '0.2384', 'learning_rate': '0.000237', 'epoch': '2.34'}
+{'loss': '0.2202', 'grad_norm': '0.2033', 'learning_rate': '0.0002281', 'epoch': '2.553'}
+{'loss': '0.2492', 'grad_norm': '0.4802', 'learning_rate': '0.0002192', 'epoch': '2.766'}
+{'loss': '0.2264', 'grad_norm': '0.2569', 'learning_rate': '0.0002104', 'epoch': '2.979'}
+{'eval_loss': '0.277', 'eval_runtime': '2.137', 'eval_samples_per_second': '32.76', 'eval_steps_per_second': '2.34', 'epoch': '3'}
+{'loss': '0.1773', 'grad_norm': '0.3269', 'learning_rate': '0.0002015', 'epoch': '3.191'}
+{'loss': '0.1785', 'grad_norm': '0.4133', 'learning_rate': '0.0001926', 'epoch': '3.404'}
+{'loss': '0.187', 'grad_norm': '0.4137', 'learning_rate': '0.0001837', 'epoch': '3.617'}
+{'loss': '0.1875', 'grad_norm': '0.2093', 'learning_rate': '0.0001749', 'epoch': '3.83'}
+{'eval_loss': '0.2928', 'eval_runtime': '2.108', 'eval_samples_per_second': '33.2', 'eval_steps_per_second': '2.371', 'epoch': '4'}
+{'loss': '0.1775', 'grad_norm': '0.2104', 'learning_rate': '0.000166', 'epoch': '4.043'}
+{'loss': '0.1419', 'grad_norm': '0.4032', 'learning_rate': '0.0001571', 'epoch': '4.255'}
+{'loss': '0.1534', 'grad_norm': '0.3672', 'learning_rate': '0.0001482', 'epoch': '4.468'}
+{'loss': '0.1372', 'grad_norm': '0.4884', 'learning_rate': '0.0001393', 'epoch': '4.681'}
+{'loss': '0.1227', 'grad_norm': '0.479', 'learning_rate': '0.0001305', 'epoch': '4.894'}
+{'eval_loss': '0.317', 'eval_runtime': '2.166', 'eval_samples_per_second': '32.32', 'eval_steps_per_second': '2.309', 'epoch': '5'}
+{'loss': '0.1249', 'grad_norm': '0.3022', 'learning_rate': '0.0001216', 'epoch': '5.106'}
+{'loss': '0.1018', 'grad_norm': '0.3805', 'learning_rate': '0.0001127', 'epoch': '5.319'}
+{'loss': '0.0994', 'grad_norm': '0.2715', 'learning_rate': '0.0001038', 'epoch': '5.532'}
+{'loss': '0.1204', 'grad_norm': '0.5381', 'learning_rate': '9.497e-05', 'epoch': '5.745'}
+{'loss': '0.1051', 'grad_norm': '0.7366', 'learning_rate': '8.609e-05', 'epoch': '5.957'}
+{'eval_loss': '0.3437', 'eval_runtime': '2.145', 'eval_samples_per_second': '32.64', 'eval_steps_per_second': '2.331', 'epoch': '6'}
+{'loss': '0.07737', 'grad_norm': '0.4106', 'learning_rate': '7.722e-05', 'epoch': '6.17'}
+{'loss': '0.07571', 'grad_norm': '0.5245', 'learning_rate': '6.834e-05', 'epoch': '6.383'}
+{'loss': '0.07554', 'grad_norm': '0.5088', 'learning_rate': '5.947e-05', 'epoch': '6.596'}
+{'loss': '0.07349', 'grad_norm': '0.5755', 'learning_rate': '5.059e-05', 'epoch': '6.809'}
+{'eval_loss': '0.3607', 'eval_runtime': '2.124', 'eval_samples_per_second': '32.95', 'eval_steps_per_second': '2.354', 'epoch': '7'}
+{'loss': '0.08766', 'grad_norm': '0.4457', 'learning_rate': '4.172e-05', 'epoch': '7.021'}
+{'loss': '0.05982', 'grad_norm': '0.3937', 'learning_rate': '3.284e-05', 'epoch': '7.234'}
+{'loss': '0.06718', 'grad_norm': '0.3925', 'learning_rate': '2.396e-05', 'epoch': '7.447'}
+{'loss': '0.06457', 'grad_norm': '0.3185', 'learning_rate': '1.509e-05', 'epoch': '7.66'}
+{'loss': '0.0566', 'grad_norm': '0.2613', 'learning_rate': '6.213e-06', 'epoch': '7.872'}
+{'eval_loss': '0.3828', 'eval_runtime': '2.103', 'eval_samples_per_second': '33.28', 'eval_steps_per_second': '2.377', 'epoch': '8'}
+{'train_runtime': '244.2', 'train_samples_per_second': '12.19', 'train_steps_per_second': '1.54', 'train_loss': '0.1965', 'epoch': '8'}
+s30831_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.2736 -> 0.2523 (+7.8%, p 0.000); forgiven 0.1452 -> 0.1357 (+6.6%, p 0.025) in 4.8 min train 253s base 0s other_arm 0s load_tuned 6s transcribe_tuned 29s score 0s
+s30843_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 397 train chunks (79.8 min), 118 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.5032', 'grad_norm': '0.1532', 'learning_rate': '6.75e-05', 'epoch': '0.2'}
+{'loss': '0.5251', 'grad_norm': '0.2534', 'learning_rate': '0.0001425', 'epoch': '0.4'}
+{'loss': '0.472', 'grad_norm': '0.2661', 'learning_rate': '0.0002175', 'epoch': '0.6'}
+{'loss': '0.4593', 'grad_norm': '0.6922', 'learning_rate': '0.0002925', 'epoch': '0.8'}
+{'loss': '0.4111', 'grad_norm': '0.361', 'learning_rate': '0.0002925', 'epoch': '1'}
+{'eval_loss': '0.4514', 'eval_runtime': '4.704', 'eval_samples_per_second': '25.09', 'eval_steps_per_second': '1.701', 'epoch': '1'}
+{'loss': '0.33', 'grad_norm': '0.2983', 'learning_rate': '0.0002842', 'epoch': '1.2'}
+{'loss': '0.298', 'grad_norm': '0.4912', 'learning_rate': '0.0002758', 'epoch': '1.4'}
+{'loss': '0.2793', 'grad_norm': '0.2696', 'learning_rate': '0.0002675', 'epoch': '1.6'}
+{'loss': '0.3231', 'grad_norm': '0.4829', 'learning_rate': '0.0002592', 'epoch': '1.8'}
+{'loss': '0.3094', 'grad_norm': '0.197', 'learning_rate': '0.0002508', 'epoch': '2'}
+{'eval_loss': '0.4305', 'eval_runtime': '3.458', 'eval_samples_per_second': '34.13', 'eval_steps_per_second': '2.314', 'epoch': '2'}
+{'loss': '0.2414', 'grad_norm': '0.4155', 'learning_rate': '0.0002425', 'epoch': '2.2'}
+{'loss': '0.228', 'grad_norm': '0.2977', 'learning_rate': '0.0002342', 'epoch': '2.4'}
+{'loss': '0.254', 'grad_norm': '0.4125', 'learning_rate': '0.0002258', 'epoch': '2.6'}
+{'loss': '0.2241', 'grad_norm': '0.2703', 'learning_rate': '0.0002175', 'epoch': '2.8'}
+{'loss': '0.2416', 'grad_norm': '0.4899', 'learning_rate': '0.0002092', 'epoch': '3'}
+{'eval_loss': '0.4353', 'eval_runtime': '3.438', 'eval_samples_per_second': '34.32', 'eval_steps_per_second': '2.327', 'epoch': '3'}
+{'loss': '0.1871', 'grad_norm': '0.3887', 'learning_rate': '0.0002008', 'epoch': '3.2'}
+{'loss': '0.1623', 'grad_norm': '0.3809', 'learning_rate': '0.0001925', 'epoch': '3.4'}
+{'loss': '0.1654', 'grad_norm': '0.3384', 'learning_rate': '0.0001842', 'epoch': '3.6'}
+{'loss': '0.1764', 'grad_norm': '0.3704', 'learning_rate': '0.0001758', 'epoch': '3.8'}
+{'loss': '0.1966', 'grad_norm': '0.3039', 'learning_rate': '0.0001675', 'epoch': '4'}
+{'eval_loss': '0.4533', 'eval_runtime': '3.401', 'eval_samples_per_second': '34.7', 'eval_steps_per_second': '2.353', 'epoch': '4'}
+{'loss': '0.1453', 'grad_norm': '0.3596', 'learning_rate': '0.0001592', 'epoch': '4.2'}
+{'loss': '0.1169', 'grad_norm': '0.5024', 'learning_rate': '0.0001508', 'epoch': '4.4'}
+{'loss': '0.1328', 'grad_norm': '0.4271', 'learning_rate': '0.0001425', 'epoch': '4.6'}
+{'loss': '0.1365', 'grad_norm': '0.4396', 'learning_rate': '0.0001342', 'epoch': '4.8'}
+{'loss': '0.1418', 'grad_norm': '0.5734', 'learning_rate': '0.0001258', 'epoch': '5'}
+{'eval_loss': '0.4878', 'eval_runtime': '3.418', 'eval_samples_per_second': '34.52', 'eval_steps_per_second': '2.34', 'epoch': '5'}
+{'loss': '0.1265', 'grad_norm': '0.4518', 'learning_rate': '0.0001175', 'epoch': '5.2'}
+{'loss': '0.1016', 'grad_norm': '0.2684', 'learning_rate': '0.0001092', 'epoch': '5.4'}
+{'loss': '0.09041', 'grad_norm': '0.4829', 'learning_rate': '0.0001008', 'epoch': '5.6'}
+{'loss': '0.1016', 'grad_norm': '0.4865', 'learning_rate': '9.25e-05', 'epoch': '5.8'}
+{'loss': '0.09624', 'grad_norm': '0.56', 'learning_rate': '8.417e-05', 'epoch': '6'}
+{'eval_loss': '0.5173', 'eval_runtime': '3.432', 'eval_samples_per_second': '34.38', 'eval_steps_per_second': '2.331', 'epoch': '6'}
+{'loss': '0.06587', 'grad_norm': '0.4172', 'learning_rate': '7.583e-05', 'epoch': '6.2'}
+{'loss': '0.06635', 'grad_norm': '0.4547', 'learning_rate': '6.75e-05', 'epoch': '6.4'}
+{'loss': '0.07397', 'grad_norm': '0.3444', 'learning_rate': '5.917e-05', 'epoch': '6.6'}
+{'loss': '0.08605', 'grad_norm': '0.3335', 'learning_rate': '5.083e-05', 'epoch': '6.8'}
+{'loss': '0.08074', 'grad_norm': '0.5199', 'learning_rate': '4.25e-05', 'epoch': '7'}
+{'eval_loss': '0.5586', 'eval_runtime': '3.431', 'eval_samples_per_second': '34.4', 'eval_steps_per_second': '2.332', 'epoch': '7'}
+{'loss': '0.05815', 'grad_norm': '0.3892', 'learning_rate': '3.417e-05', 'epoch': '7.2'}
+{'loss': '0.06397', 'grad_norm': '0.3104', 'learning_rate': '2.583e-05', 'epoch': '7.4'}
+{'loss': '0.06061', 'grad_norm': '0.4248', 'learning_rate': '1.75e-05', 'epoch': '7.6'}
+{'loss': '0.05672', 'grad_norm': '0.2641', 'learning_rate': '9.167e-06', 'epoch': '7.8'}
+{'loss': '0.0564', 'grad_norm': '0.2482', 'learning_rate': '8.333e-07', 'epoch': '8'}
+{'eval_loss': '0.581', 'eval_runtime': '3.442', 'eval_samples_per_second': '34.29', 'eval_steps_per_second': '2.325', 'epoch': '8'}
+{'train_runtime': '265.7', 'train_samples_per_second': '11.95', 'train_steps_per_second': '1.506', 'train_loss': '0.1961', 'epoch': '8'}
+s30843_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.3231 -> 0.2964 (+8.3%, p 0.000); forgiven 0.2102 -> 0.1892 (+10.0%, p 0.000) in 5.1 min train 274s base 0s other_arm 0s load_tuned 6s transcribe_tuned 27s score 0s
+s30859_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 343 train chunks (79.8 min), 75 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.3381', 'grad_norm': '0.07466', 'learning_rate': '7.714e-05', 'epoch': '0.2326'}
+{'loss': '0.3739', 'grad_norm': '0.137', 'learning_rate': '0.0001629', 'epoch': '0.4651'}
+{'loss': '0.341', 'grad_norm': '0.2233', 'learning_rate': '0.0002486', 'epoch': '0.6977'}
+{'loss': '0.2389', 'grad_norm': '0.1736', 'learning_rate': '0.0002961', 'epoch': '0.9302'}
+{'eval_loss': '0.2311', 'eval_runtime': '3.433', 'eval_samples_per_second': '21.85', 'eval_steps_per_second': '1.457', 'epoch': '1'}
+{'loss': '0.2277', 'grad_norm': '0.1398', 'learning_rate': '0.0002864', 'epoch': '1.163'}
+{'loss': '0.1713', 'grad_norm': '0.1374', 'learning_rate': '0.0002767', 'epoch': '1.395'}
+{'loss': '0.1624', 'grad_norm': '0.2574', 'learning_rate': '0.000267', 'epoch': '1.628'}
+{'loss': '0.2044', 'grad_norm': '0.3786', 'learning_rate': '0.0002573', 'epoch': '1.86'}
+{'eval_loss': '0.2029', 'eval_runtime': '2.212', 'eval_samples_per_second': '33.91', 'eval_steps_per_second': '2.261', 'epoch': '2'}
+{'loss': '0.1504', 'grad_norm': '0.1949', 'learning_rate': '0.0002476', 'epoch': '2.093'}
+{'loss': '0.1317', 'grad_norm': '0.1504', 'learning_rate': '0.0002379', 'epoch': '2.326'}
+{'loss': '0.1148', 'grad_norm': '0.1393', 'learning_rate': '0.0002282', 'epoch': '2.558'}
+{'loss': '0.1358', 'grad_norm': '0.3328', 'learning_rate': '0.0002184', 'epoch': '2.791'}
+{'eval_loss': '0.2154', 'eval_runtime': '2.252', 'eval_samples_per_second': '33.3', 'eval_steps_per_second': '2.22', 'epoch': '3'}
+{'loss': '0.09361', 'grad_norm': '0.1669', 'learning_rate': '0.0002087', 'epoch': '3.023'}
+{'loss': '0.08245', 'grad_norm': '0.1571', 'learning_rate': '0.000199', 'epoch': '3.256'}
+{'loss': '0.07512', 'grad_norm': '0.2479', 'learning_rate': '0.0001893', 'epoch': '3.488'}
+{'loss': '0.092', 'grad_norm': '0.2944', 'learning_rate': '0.0001796', 'epoch': '3.721'}
+{'loss': '0.09802', 'grad_norm': '0.3391', 'learning_rate': '0.0001699', 'epoch': '3.953'}
+{'eval_loss': '0.2317', 'eval_runtime': '2.208', 'eval_samples_per_second': '33.96', 'eval_steps_per_second': '2.264', 'epoch': '4'}
+{'loss': '0.05411', 'grad_norm': '0.2108', 'learning_rate': '0.0001602', 'epoch': '4.186'}
+{'loss': '0.07797', 'grad_norm': '0.4337', 'learning_rate': '0.0001505', 'epoch': '4.419'}
+{'loss': '0.04827', 'grad_norm': '0.2654', 'learning_rate': '0.0001408', 'epoch': '4.651'}
+{'loss': '0.06856', 'grad_norm': '0.3618', 'learning_rate': '0.0001311', 'epoch': '4.884'}
+{'eval_loss': '0.2506', 'eval_runtime': '2.259', 'eval_samples_per_second': '33.2', 'eval_steps_per_second': '2.213', 'epoch': '5'}
+{'loss': '0.0414', 'grad_norm': '0.1445', 'learning_rate': '0.0001214', 'epoch': '5.116'}
+{'loss': '0.03831', 'grad_norm': '0.2648', 'learning_rate': '0.0001117', 'epoch': '5.349'}
+{'loss': '0.03959', 'grad_norm': '0.3102', 'learning_rate': '0.0001019', 'epoch': '5.581'}
+{'loss': '0.04126', 'grad_norm': '0.2283', 'learning_rate': '9.223e-05', 'epoch': '5.814'}
+{'eval_loss': '0.2754', 'eval_runtime': '2.26', 'eval_samples_per_second': '33.19', 'eval_steps_per_second': '2.213', 'epoch': '6'}
+{'loss': '0.04082', 'grad_norm': '0.194', 'learning_rate': '8.252e-05', 'epoch': '6.047'}
+{'loss': '0.02896', 'grad_norm': '0.2694', 'learning_rate': '7.282e-05', 'epoch': '6.279'}
+{'loss': '0.0244', 'grad_norm': '0.2379', 'learning_rate': '6.311e-05', 'epoch': '6.512'}
+{'loss': '0.02539', 'grad_norm': '0.3216', 'learning_rate': '5.34e-05', 'epoch': '6.744'}
+{'loss': '0.02337', 'grad_norm': '0.3773', 'learning_rate': '4.369e-05', 'epoch': '6.977'}
+{'eval_loss': '0.3031', 'eval_runtime': '2.24', 'eval_samples_per_second': '33.48', 'eval_steps_per_second': '2.232', 'epoch': '7'}
+{'loss': '0.03185', 'grad_norm': '0.3258', 'learning_rate': '3.398e-05', 'epoch': '7.209'}
+{'loss': '0.02088', 'grad_norm': '0.2973', 'learning_rate': '2.427e-05', 'epoch': '7.442'}
+{'loss': '0.01554', 'grad_norm': '0.2897', 'learning_rate': '1.456e-05', 'epoch': '7.674'}
+{'loss': '0.0173', 'grad_norm': '0.2154', 'learning_rate': '4.854e-06', 'epoch': '7.907'}
+{'eval_loss': '0.3193', 'eval_runtime': '2.227', 'eval_samples_per_second': '33.68', 'eval_steps_per_second': '2.245', 'epoch': '8'}
+{'train_runtime': '224', 'train_samples_per_second': '12.25', 'train_steps_per_second': '1.536', 'train_loss': '0.1068', 'epoch': '8'}
+s30859_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.2538 -> 0.2344 (+7.6%, p 0.000); forgiven 0.1735 -> 0.1605 (+7.5%, p 0.000) in 4.7 min train 232s base 0s other_arm 0s load_tuned 6s transcribe_tuned 42s score 0s
+s30868_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 391 train chunks (80.0 min), 87 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.5203', 'grad_norm': '0.1356', 'learning_rate': '6.75e-05', 'epoch': '0.2041'}
+{'loss': '0.5364', 'grad_norm': '0.1277', 'learning_rate': '0.0001425', 'epoch': '0.4082'}
+{'loss': '0.4602', 'grad_norm': '0.1418', 'learning_rate': '0.0002175', 'epoch': '0.6122'}
+{'loss': '0.4614', 'grad_norm': '0.2', 'learning_rate': '0.0002925', 'epoch': '0.8163'}
+{'eval_loss': '0.2684', 'eval_runtime': '3.908', 'eval_samples_per_second': '22.26', 'eval_steps_per_second': '1.535', 'epoch': '1'}
+{'loss': '0.3865', 'grad_norm': '0.2315', 'learning_rate': '0.0002923', 'epoch': '1.02'}
+{'loss': '0.3127', 'grad_norm': '0.222', 'learning_rate': '0.0002838', 'epoch': '1.224'}
+{'loss': '0.3202', 'grad_norm': '0.321', 'learning_rate': '0.0002753', 'epoch': '1.429'}
+{'loss': '0.3023', 'grad_norm': '0.3207', 'learning_rate': '0.0002668', 'epoch': '1.633'}
+{'loss': '0.3453', 'grad_norm': '0.3828', 'learning_rate': '0.0002582', 'epoch': '1.837'}
+{'eval_loss': '0.2444', 'eval_runtime': '2.575', 'eval_samples_per_second': '33.78', 'eval_steps_per_second': '2.33', 'epoch': '2'}
+{'loss': '0.2822', 'grad_norm': '0.3495', 'learning_rate': '0.0002497', 'epoch': '2.041'}
+{'loss': '0.2531', 'grad_norm': '0.2298', 'learning_rate': '0.0002412', 'epoch': '2.245'}
+{'loss': '0.236', 'grad_norm': '0.3145', 'learning_rate': '0.0002327', 'epoch': '2.449'}
+{'loss': '0.2822', 'grad_norm': '0.3667', 'learning_rate': '0.0002241', 'epoch': '2.653'}
+{'loss': '0.2352', 'grad_norm': '0.5349', 'learning_rate': '0.0002156', 'epoch': '2.857'}
+{'eval_loss': '0.2555', 'eval_runtime': '2.531', 'eval_samples_per_second': '34.37', 'eval_steps_per_second': '2.37', 'epoch': '3'}
+{'loss': '0.2291', 'grad_norm': '0.6484', 'learning_rate': '0.0002071', 'epoch': '3.061'}
+{'loss': '0.191', 'grad_norm': '0.2628', 'learning_rate': '0.0001986', 'epoch': '3.265'}
+{'loss': '0.1937', 'grad_norm': '0.3524', 'learning_rate': '0.0001901', 'epoch': '3.469'}
+{'loss': '0.1926', 'grad_norm': '0.4033', 'learning_rate': '0.0001815', 'epoch': '3.673'}
+{'loss': '0.202', 'grad_norm': '0.4228', 'learning_rate': '0.000173', 'epoch': '3.878'}
+{'eval_loss': '0.2788', 'eval_runtime': '2.577', 'eval_samples_per_second': '33.76', 'eval_steps_per_second': '2.328', 'epoch': '4'}
+{'loss': '0.1836', 'grad_norm': '0.3243', 'learning_rate': '0.0001645', 'epoch': '4.082'}
+{'loss': '0.142', 'grad_norm': '0.4437', 'learning_rate': '0.000156', 'epoch': '4.286'}
+{'loss': '0.168', 'grad_norm': '0.5005', 'learning_rate': '0.0001474', 'epoch': '4.49'}
+{'loss': '0.1451', 'grad_norm': '0.5203', 'learning_rate': '0.0001389', 'epoch': '4.694'}
+{'loss': '0.1404', 'grad_norm': '0.5343', 'learning_rate': '0.0001304', 'epoch': '4.898'}
+{'eval_loss': '0.2966', 'eval_runtime': '2.582', 'eval_samples_per_second': '33.7', 'eval_steps_per_second': '2.324', 'epoch': '5'}
+{'loss': '0.1327', 'grad_norm': '0.5232', 'learning_rate': '0.0001219', 'epoch': '5.102'}
+{'loss': '0.1154', 'grad_norm': '0.3447', 'learning_rate': '0.0001134', 'epoch': '5.306'}
+{'loss': '0.1096', 'grad_norm': '0.4437', 'learning_rate': '0.0001048', 'epoch': '5.51'}
+{'loss': '0.1245', 'grad_norm': '0.3743', 'learning_rate': '9.631e-05', 'epoch': '5.714'}
+{'loss': '0.1188', 'grad_norm': '0.5576', 'learning_rate': '8.778e-05', 'epoch': '5.918'}
+{'eval_loss': '0.3158', 'eval_runtime': '2.565', 'eval_samples_per_second': '33.92', 'eval_steps_per_second': '2.339', 'epoch': '6'}
+{'loss': '0.08637', 'grad_norm': '0.3289', 'learning_rate': '7.926e-05', 'epoch': '6.122'}
+{'loss': '0.08787', 'grad_norm': '0.681', 'learning_rate': '7.074e-05', 'epoch': '6.327'}
+{'loss': '0.07444', 'grad_norm': '0.6174', 'learning_rate': '6.222e-05', 'epoch': '6.531'}
+{'loss': '0.09582', 'grad_norm': '0.3679', 'learning_rate': '5.369e-05', 'epoch': '6.735'}
+{'loss': '0.09142', 'grad_norm': '0.4257', 'learning_rate': '4.517e-05', 'epoch': '6.939'}
+{'eval_loss': '0.348', 'eval_runtime': '2.528', 'eval_samples_per_second': '34.41', 'eval_steps_per_second': '2.373', 'epoch': '7'}
+{'loss': '0.07252', 'grad_norm': '0.4484', 'learning_rate': '3.665e-05', 'epoch': '7.143'}
+{'loss': '0.06579', 'grad_norm': '0.3866', 'learning_rate': '2.812e-05', 'epoch': '7.347'}
+{'loss': '0.07456', 'grad_norm': '0.3588', 'learning_rate': '1.96e-05', 'epoch': '7.551'}
+{'loss': '0.07316', 'grad_norm': '0.4842', 'learning_rate': '1.108e-05', 'epoch': '7.755'}
+{'loss': '0.06865', 'grad_norm': '0.3624', 'learning_rate': '2.557e-06', 'epoch': '7.959'}
+{'eval_loss': '0.3638', 'eval_runtime': '2.604', 'eval_samples_per_second': '33.41', 'eval_steps_per_second': '2.304', 'epoch': '8'}
+{'train_runtime': '256.6', 'train_samples_per_second': '12.19', 'train_steps_per_second': '1.528', 'train_loss': '0.2072', 'epoch': '8'}
+s30868_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: WER 0.2211 -> 0.1825 (+17.5%, p 0.023); forgiven 0.1693 -> 0.1347 (+20.4%, p 0.103) in 5.1 min train 264s base 0s other_arm 0s load_tuned 6s transcribe_tuned 34s score 0s
+sctrl0of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: pool of 5 speakers, 382 chunks (79.9 min), dev 42; evaluates [23558, 30685, 30752, 30777, 30831, 30859]
+sctrl0of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 382 train chunks (79.9 min), 42 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.57', 'grad_norm': '0.1316', 'learning_rate': '6.923e-05', 'epoch': '0.2083'}
+{'loss': '0.6383', 'grad_norm': '0.1272', 'learning_rate': '0.0001462', 'epoch': '0.4167'}
+{'loss': '0.5624', 'grad_norm': '0.2436', 'learning_rate': '0.0002231', 'epoch': '0.625'}
+{'loss': '0.5311', 'grad_norm': '0.248', 'learning_rate': '0.0003', 'epoch': '0.8333'}
+{'eval_loss': '0.2877', 'eval_runtime': '2.699', 'eval_samples_per_second': '15.56', 'eval_steps_per_second': '1.112', 'epoch': '1'}
+{'loss': '0.5047', 'grad_norm': '0.2938', 'learning_rate': '0.0002913', 'epoch': '1.042'}
+{'loss': '0.3933', 'grad_norm': '0.1831', 'learning_rate': '0.0002826', 'epoch': '1.25'}
+{'loss': '0.3866', 'grad_norm': '0.3248', 'learning_rate': '0.0002739', 'epoch': '1.458'}
+{'loss': '0.3804', 'grad_norm': '0.3222', 'learning_rate': '0.0002652', 'epoch': '1.667'}
+{'loss': '0.3882', 'grad_norm': '0.2488', 'learning_rate': '0.0002565', 'epoch': '1.875'}
+{'eval_loss': '0.2595', 'eval_runtime': '1.419', 'eval_samples_per_second': '29.6', 'eval_steps_per_second': '2.114', 'epoch': '2'}
+{'loss': '0.4257', 'grad_norm': '0.2458', 'learning_rate': '0.0002478', 'epoch': '2.083'}
+{'loss': '0.2916', 'grad_norm': '0.2812', 'learning_rate': '0.0002391', 'epoch': '2.292'}
+{'loss': '0.344', 'grad_norm': '0.3968', 'learning_rate': '0.0002304', 'epoch': '2.5'}
+{'loss': '0.2944', 'grad_norm': '0.3599', 'learning_rate': '0.0002217', 'epoch': '2.708'}
+{'loss': '0.3368', 'grad_norm': '0.4686', 'learning_rate': '0.000213', 'epoch': '2.917'}
+{'eval_loss': '0.2663', 'eval_runtime': '1.424', 'eval_samples_per_second': '29.5', 'eval_steps_per_second': '2.107', 'epoch': '3'}
+{'loss': '0.2983', 'grad_norm': '0.3164', 'learning_rate': '0.0002043', 'epoch': '3.125'}
+{'loss': '0.236', 'grad_norm': '0.5635', 'learning_rate': '0.0001957', 'epoch': '3.333'}
+{'loss': '0.2823', 'grad_norm': '0.5069', 'learning_rate': '0.000187', 'epoch': '3.542'}
+{'loss': '0.2686', 'grad_norm': '0.44', 'learning_rate': '0.0001783', 'epoch': '3.75'}
+{'loss': '0.2562', 'grad_norm': '0.4841', 'learning_rate': '0.0001696', 'epoch': '3.958'}
+{'eval_loss': '0.2798', 'eval_runtime': '1.463', 'eval_samples_per_second': '28.7', 'eval_steps_per_second': '2.05', 'epoch': '4'}
+{'loss': '0.2206', 'grad_norm': '0.3865', 'learning_rate': '0.0001609', 'epoch': '4.167'}
+{'loss': '0.2085', 'grad_norm': '0.5183', 'learning_rate': '0.0001522', 'epoch': '4.375'}
+{'loss': '0.1911', 'grad_norm': '0.4641', 'learning_rate': '0.0001435', 'epoch': '4.583'}
+{'loss': '0.1855', 'grad_norm': '0.6005', 'learning_rate': '0.0001348', 'epoch': '4.792'}
+{'loss': '0.214', 'grad_norm': '0.4563', 'learning_rate': '0.0001261', 'epoch': '5'}
+{'eval_loss': '0.3019', 'eval_runtime': '1.427', 'eval_samples_per_second': '29.43', 'eval_steps_per_second': '2.102', 'epoch': '5'}
+{'loss': '0.1535', 'grad_norm': '0.3225', 'learning_rate': '0.0001174', 'epoch': '5.208'}
+{'loss': '0.14', 'grad_norm': '0.4923', 'learning_rate': '0.0001087', 'epoch': '5.417'}
+{'loss': '0.1687', 'grad_norm': '0.3865', 'learning_rate': '0.0001', 'epoch': '5.625'}
+{'loss': '0.1704', 'grad_norm': '0.6113', 'learning_rate': '9.13e-05', 'epoch': '5.833'}
+{'eval_loss': '0.323', 'eval_runtime': '1.483', 'eval_samples_per_second': '28.33', 'eval_steps_per_second': '2.023', 'epoch': '6'}
+{'loss': '0.1695', 'grad_norm': '0.4142', 'learning_rate': '8.261e-05', 'epoch': '6.042'}
+{'loss': '0.1473', 'grad_norm': '0.4283', 'learning_rate': '7.391e-05', 'epoch': '6.25'}
+{'loss': '0.1227', 'grad_norm': '0.6337', 'learning_rate': '6.522e-05', 'epoch': '6.458'}
+{'loss': '0.1449', 'grad_norm': '0.5117', 'learning_rate': '5.652e-05', 'epoch': '6.667'}
+{'loss': '0.1259', 'grad_norm': '0.5421', 'learning_rate': '4.783e-05', 'epoch': '6.875'}
+{'eval_loss': '0.3421', 'eval_runtime': '1.459', 'eval_samples_per_second': '28.79', 'eval_steps_per_second': '2.056', 'epoch': '7'}
+{'loss': '0.1259', 'grad_norm': '0.6197', 'learning_rate': '3.913e-05', 'epoch': '7.083'}
+{'loss': '0.1166', 'grad_norm': '0.4591', 'learning_rate': '3.043e-05', 'epoch': '7.292'}
+{'loss': '0.1308', 'grad_norm': '0.4721', 'learning_rate': '2.174e-05', 'epoch': '7.5'}
+{'loss': '0.0966', 'grad_norm': '0.5346', 'learning_rate': '1.304e-05', 'epoch': '7.708'}
+{'loss': '0.1095', 'grad_norm': '0.5513', 'learning_rate': '4.348e-06', 'epoch': '7.917'}
+{'eval_loss': '0.3557', 'eval_runtime': '1.441', 'eval_samples_per_second': '29.14', 'eval_steps_per_second': '2.082', 'epoch': '8'}
+{'train_runtime': '242.2', 'train_samples_per_second': '12.62', 'train_steps_per_second': '1.585', 'train_loss': '0.27', 'epoch': '8'}
+sctrl0of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 23558: WER 0.4420 -> 0.3998 (+9.6%, p 0.258); forgiven 0.2947 -> 0.2674 (+9.3%) in 45s
+sctrl0of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30685: WER 0.2330 -> 0.2273 (+2.5%, p 0.189); forgiven 0.1094 -> 0.1090 (+0.3%) in 28s
+sctrl0of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30752: WER 0.1956 -> 0.1810 (+7.4%, p 0.005); forgiven 0.1353 -> 0.1244 (+8.0%) in 17s
+sctrl0of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30777: WER 0.2237 -> 0.1874 (+16.2%, p 0.000); forgiven 0.1535 -> 0.1218 (+20.7%) in 36s
+sctrl0of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30831: WER 0.2736 -> 0.2591 (+5.3%, p 0.001); forgiven 0.1452 -> 0.1385 (+4.7%) in 29s
+sctrl0of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30859: WER 0.2538 -> 0.2375 (+6.4%, p 0.000); forgiven 0.1735 -> 0.1650 (+4.9%) in 34s
+sctrl1of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: pool of 6 speakers, 363 chunks (79.8 min), dev 82; evaluates [30701, 30718, 30813, 30843, 30868]
+sctrl1of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim: 363 train chunks (79.8 min), 82 dev, select on loss
+trainable params: 3,932,160 || all params: 1,547,422,720 || trainable%: 0.2541
+precision: bf16, base weights torch.bfloat16, grad checkpointing False, lr 0.0003, method lora
+{'loss': '0.5058', 'grad_norm': '0.1432', 'learning_rate': '7.297e-05', 'epoch': '0.2174'}
+{'loss': '0.5207', 'grad_norm': '0.1089', 'learning_rate': '0.0001541', 'epoch': '0.4348'}
+{'loss': '0.4473', 'grad_norm': '0.1276', 'learning_rate': '0.0002351', 'epoch': '0.6522'}
+{'loss': '0.4902', 'grad_norm': '0.2355', 'learning_rate': '0.0002982', 'epoch': '0.8696'}
+{'eval_loss': '0.3794', 'eval_runtime': '3.704', 'eval_samples_per_second': '22.14', 'eval_steps_per_second': '1.62', 'epoch': '1'}
+{'loss': '0.4266', 'grad_norm': '0.1746', 'learning_rate': '0.0002891', 'epoch': '1.087'}
+{'loss': '0.319', 'grad_norm': '0.1364', 'learning_rate': '0.0002801', 'epoch': '1.304'}
+{'loss': '0.3354', 'grad_norm': '0.2312', 'learning_rate': '0.000271', 'epoch': '1.522'}
+{'loss': '0.3003', 'grad_norm': '0.151', 'learning_rate': '0.0002619', 'epoch': '1.739'}
+{'loss': '0.3486', 'grad_norm': '0.2673', 'learning_rate': '0.0002529', 'epoch': '1.957'}
+{'eval_loss': '0.3426', 'eval_runtime': '2.422', 'eval_samples_per_second': '33.85', 'eval_steps_per_second': '2.477', 'epoch': '2'}
+{'loss': '0.2637', 'grad_norm': '0.2699', 'learning_rate': '0.0002438', 'epoch': '2.174'}
+{'loss': '0.2692', 'grad_norm': '0.4922', 'learning_rate': '0.0002347', 'epoch': '2.391'}
+{'loss': '0.2476', 'grad_norm': '0.5388', 'learning_rate': '0.0002257', 'epoch': '2.609'}
+{'loss': '0.2245', 'grad_norm': '0.2761', 'learning_rate': '0.0002166', 'epoch': '2.826'}
+{'eval_loss': '0.3509', 'eval_runtime': '2.407', 'eval_samples_per_second': '34.07', 'eval_steps_per_second': '2.493', 'epoch': '3'}
+{'loss': '0.2699', 'grad_norm': '0.2139', 'learning_rate': '0.0002076', 'epoch': '3.043'}
+{'loss': '0.2474', 'grad_norm': '0.4201', 'learning_rate': '0.0001985', 'epoch': '3.261'}
+{'loss': '0.1949', 'grad_norm': '0.3788', 'learning_rate': '0.0001894', 'epoch': '3.478'}
+{'loss': '0.1896', 'grad_norm': '0.2645', 'learning_rate': '0.0001804', 'epoch': '3.696'}
+{'loss': '0.1848', 'grad_norm': '0.3424', 'learning_rate': '0.0001713', 'epoch': '3.913'}
+{'eval_loss': '0.3698', 'eval_runtime': '2.395', 'eval_samples_per_second': '34.23', 'eval_steps_per_second': '2.505', 'epoch': '4'}
+{'loss': '0.1924', 'grad_norm': '0.4246', 'learning_rate': '0.0001622', 'epoch': '4.13'}
+{'loss': '0.1511', 'grad_norm': '0.5469', 'learning_rate': '0.0001532', 'epoch': '4.348'}
+{'loss': '0.1746', 'grad_norm': '0.4973', 'learning_rate': '0.0001441', 'epoch': '4.565'}
+{'loss': '0.1572', 'grad_norm': '0.5203', 'learning_rate': '0.000135', 'epoch': '4.783'}
+{'loss': '0.1389', 'grad_norm': '0.7343', 'learning_rate': '0.000126', 'epoch': '5'}
+{'eval_loss': '0.3975', 'eval_runtime': '2.425', 'eval_samples_per_second': '33.81', 'eval_steps_per_second': '2.474', 'epoch': '5'}
+{'loss': '0.1189', 'grad_norm': '0.4469', 'learning_rate': '0.0001169', 'epoch': '5.217'}
+{'loss': '0.1314', 'grad_norm': '0.6082', 'learning_rate': '0.0001079', 'epoch': '5.435'}
+{'loss': '0.1044', 'grad_norm': '0.5251', 'learning_rate': '9.879e-05', 'epoch': '5.652'}
+{'loss': '0.1209', 'grad_norm': '0.7859', 'learning_rate': '8.973e-05', 'epoch': '5.87'}
+{'eval_loss': '0.4151', 'eval_runtime': '2.474', 'eval_samples_per_second': '33.15', 'eval_steps_per_second': '2.426', 'epoch': '6'}
+{'loss': '0.1154', 'grad_norm': '0.3318', 'learning_rate': '8.066e-05', 'epoch': '6.087'}
+{'loss': '0.09653', 'grad_norm': '0.5242', 'learning_rate': '7.16e-05', 'epoch': '6.304'}
+{'loss': '0.09284', 'grad_norm': '0.3675', 'learning_rate': '6.254e-05', 'epoch': '6.522'}
+{'loss': '0.08258', 'grad_norm': '0.4336', 'learning_rate': '5.347e-05', 'epoch': '6.739'}
+{'loss': '0.09273', 'grad_norm': '0.4135', 'learning_rate': '4.441e-05', 'epoch': '6.957'}
+{'eval_loss': '0.4414', 'eval_runtime': '2.394', 'eval_samples_per_second': '34.25', 'eval_steps_per_second': '2.506', 'epoch': '7'}
+{'loss': '0.08861', 'grad_norm': '0.4361', 'learning_rate': '3.535e-05', 'epoch': '7.174'}
+{'loss': '0.07353', 'grad_norm': '0.4158', 'learning_rate': '2.628e-05', 'epoch': '7.391'}
+{'loss': '0.07772', 'grad_norm': '0.2859', 'learning_rate': '1.722e-05', 'epoch': '7.609'}
+{'loss': '0.06403', 'grad_norm': '0.3715', 'learning_rate': '8.157e-06', 'epoch': '7.826'}
+{'eval_loss': '0.4567', 'eval_runtime': '2.428', 'eval_samples_per_second': '33.77', 'eval_steps_per_second': '2.471', 'epoch': '8'}
+{'train_runtime': '239.1', 'train_samples_per_second': '12.14', 'train_steps_per_second': '1.539', 'train_loss': '0.215', 'epoch': '8'}
+sctrl1of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30701: WER 0.4059 -> 0.3938 (+3.0%, p 0.564); forgiven 0.2669 -> 0.2725 (-2.1%) in 58s
+sctrl1of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30718: WER 0.1995 -> 0.1622 (+18.7%, p 0.000); forgiven 0.1404 -> 0.1110 (+20.9%) in 41s
+sctrl1of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30813: WER 0.1607 -> 0.1478 (+8.0%, p 0.702); forgiven 0.1194 -> 0.1139 (+4.6%) in 35s
+sctrl1of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30843: WER 0.3231 -> 0.3386 (-4.8%, p 0.751); forgiven 0.2102 -> 0.2455 (-16.8%) in 35s
+sctrl1of2_armB_both_lora_b80_r8_lr0.0003_seed0_verbatim on 30868: WER 0.2211 -> 0.1840 (+16.8%, p 0.010); forgiven 0.1693 -> 0.1358 (+19.8%) in 29s
+242 rows (88 control evaluations) -> /workspace/deep-learning-project/src/training/outputs/results.csv
+ speaker        site     lr  targets   select  budget  seed  control  n_test  train_steps  wer_base  wer_tuned  delta_rel   ci_lo  ci_hi  p_boot  wer_base_f  wer_tuned_f  delta_rel_f  p_boot_f  improvement_from_insertions  style_not_speaker  control_delta_rel  personalization_rel
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+     NaN         NaN    NaN protocol     loss     NaN   NaN    False     NaN          NaN       NaN        NaN        NaN     NaN    NaN     NaN         NaN          NaN          NaN       NaN                          NaN              False                NaN                  NaN
+ 23558.0        both 0.0010 protocol     loss    20.0   0.0    False   341.0        144.0    0.4420     0.3040     0.3122  0.0899 0.2187   0.000      0.2947       0.2188       0.2577     0.000                       0.9803               True             0.2706               0.0416
+ 23558.0        both 0.0010 protocol     loss     5.0   0.0    False   341.0         40.0    0.4420     0.3290     0.2558  0.0617 0.1943   0.000      0.2947       0.2696       0.0852     0.587                       1.5064               True             0.2706              -0.0148
+ 23558.0        both 0.0001 protocol     loss    80.0   0.0    False   341.0        512.0    0.4420     0.2799     0.3669  0.1114 0.2459   0.000      0.2947       0.2101       0.2870     0.000                       0.9734               True             0.2800               0.0868
+ 23558.0        both 0.0003 protocol     loss    80.0   0.0    False   341.0        512.0    0.4420     0.2847     0.3560  0.1069 0.2406   0.000      0.2947       0.2077       0.2952     0.000                       0.9370               True             0.2713               0.0847
+ 23558.0        both 0.0003 protocol forgiven    80.0   0.0    False   341.0        512.0    0.4420     0.2792     0.3683  0.1116 0.2451   0.000      0.2947       0.2049       0.3049     0.000                       0.9253               True             0.2710               0.0973
+ 23558.0        both 0.0003 verbatim forgiven    80.0   0.0    False   341.0        512.0    0.4420     0.3472     0.2145  0.0517 0.1747   0.000      0.2947       0.2234       0.2420     0.000                       0.8971               True             0.1769               0.0376
+ 23558.0        both 0.0003 verbatim     loss    80.0   0.0    False   341.0        512.0    0.4420     0.3805     0.1393 -0.0287 0.1566   0.164      0.2947       0.2512       0.1476     0.259                       0.6597               True             0.0955               0.0438
+ 23558.0        both 0.0010 protocol     loss    80.0   0.0    False   341.0        512.0    0.4420     0.2847     0.3560  0.1082 0.2393   0.000      0.2947       0.2026       0.3125     0.000                       0.8628               True             0.2706               0.0854
+ 23558.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   341.0        512.0    0.4420     0.3085     0.3021  0.0853 0.2140   0.000      0.2947       0.2253       0.2355     0.000                       1.0311               True             0.1704               0.1317
+ 23558.0     encoder 0.0010 protocol     loss    80.0   0.0    False   341.0        512.0    0.4420     0.3019     0.3169  0.0826 0.2245   0.000      0.2947       0.2268       0.2306     0.005                       0.9600               True             0.2891               0.0279
+ 30685.0        both 0.0010 protocol     loss    20.0   0.0    False   224.0         88.0    0.2330     0.2039     0.1247  0.0166 0.0436   0.000      0.1094       0.1194      -0.0922     0.027                       1.5838               True             0.1053               0.0195
+ 30685.0        both 0.0010 protocol     loss     5.0   0.0    False   224.0         24.0    0.2330     0.2516    -0.0800 -0.0875 0.0226   0.687      0.1094       0.1656      -0.5146     0.000                      -1.2883              False             0.1053              -0.1853
+ 30685.0        both 0.0001 protocol     loss    80.0   0.0    False   224.0        328.0    0.2330     0.1955     0.1608  0.0232 0.0539   0.000      0.1094       0.1162      -0.0630     0.164                       1.4081               True             0.0894               0.0714
+ 30685.0        both 0.0003 protocol     loss    80.0   0.0    False   224.0        328.0    0.2330     0.1992     0.1449  0.0210 0.0476   0.000      0.1094       0.1134      -0.0369     0.356                       1.3532               True             0.0880               0.0570
+ 30685.0        both 0.0003 protocol forgiven    80.0   0.0    False   224.0        328.0    0.2330     0.1989     0.1464  0.0212 0.0484   0.000      0.1094       0.1136      -0.0384     0.359                       1.3498               True             0.0930               0.0534
+ 30685.0        both 0.0003 verbatim forgiven    80.0   0.0    False   224.0        328.0    0.2330     0.2234     0.0411  0.0000 0.0188   0.051      0.1094       0.1075       0.0169     0.647                       1.0877               True             0.0678              -0.0267
+ 30685.0        both 0.0003 verbatim     loss    80.0   0.0    False   224.0        328.0    0.2330     0.2216     0.0490  0.0030 0.0198   0.014      0.1094       0.1060       0.0307     0.376                       0.9559               True             0.0245               0.0245
+ 30685.0        both 0.0010 protocol     loss    80.0   0.0    False   224.0        328.0    0.2330     0.2503    -0.0743 -0.0713 0.0249   0.518      0.1094       0.1683      -0.5392     0.000                      -0.7864              False             0.1053              -0.1795
+ 30685.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   224.0        328.0    0.2330     0.2063     0.1146  0.0138 0.0406   0.000      0.1094       0.1191      -0.0891     0.048                       1.6478               True             0.1081               0.0065
+ 30685.0     encoder 0.0010 protocol     loss    80.0   0.0    False   224.0        328.0    0.2330     0.1969     0.1550  0.0233 0.0506   0.000      0.1094       0.1097      -0.0031     0.929                       1.2140               True             0.0642               0.0908
+ 30701.0        both 0.0010 protocol     loss    20.0   0.0    False   361.0         96.0    0.4059     0.3070     0.2435  0.0360 0.1877   0.000      0.2669       0.2200       0.1756     0.156                       1.0796               True             0.3138              -0.0703
+ 30701.0        both 0.0010 protocol     loss     5.0   0.0    False   361.0         40.0    0.4059     0.3047     0.2492  0.0476 0.1873   0.000      0.2669       0.2290       0.1421     0.238                       1.3232               True             0.3138              -0.0646
+ 30701.0        both 0.0001 protocol     loss    80.0   0.0    False   361.0        392.0    0.4059     0.2813     0.3070  0.0586 0.2118   0.000      0.2669       0.2109       0.2097     0.073                       1.0210               True             0.3131              -0.0061
+ 30701.0        both 0.0003 protocol     loss    80.0   0.0    False   361.0        392.0    0.4059     0.2959     0.2709  0.0450 0.1977   0.000      0.2669       0.2153       0.1935     0.098                       0.9776               True             0.2344               0.0365
+ 30701.0        both 0.0003 protocol forgiven    80.0   0.0    False   361.0        392.0    0.4059     0.2891     0.2876  0.0631 0.2022   0.000      0.2669       0.2194       0.1779     0.037                       1.2338               True             0.2914              -0.0038
+ 30701.0        both 0.0003 verbatim forgiven    80.0   0.0    False   361.0        392.0    0.4059     0.3275     0.1930  0.0296 0.1621   0.000      0.2669       0.2114       0.2080     0.002                       0.9035               True             0.1174               0.0756
+ 30701.0        both 0.0003 verbatim     loss    80.0   0.0    False   361.0        392.0    0.4059     0.3366     0.1706  0.0055 0.1558   0.030      0.2669       0.2156       0.1924     0.098                       0.7639               True             0.0296               0.1410
+ 30701.0        both 0.0010 protocol     loss    80.0   0.0    False   361.0        392.0    0.4059     0.2882     0.2899  0.0526 0.2074   0.000      0.2669       0.2123       0.2045     0.069                       1.0367               True             0.3138              -0.0239
+ 30701.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   361.0        392.0    0.4059     0.3044     0.2500  0.0348 0.1919   0.001      0.2669       0.2244       0.1594     0.222                       1.1793               True             0.1531               0.0969
+ 30701.0     encoder 0.0010 protocol     loss    80.0   0.0    False   361.0        392.0    0.4059     0.2788     0.3131  0.0717 0.2146   0.000      0.2669       0.2042       0.2351     0.000                       1.0449               True             0.2637               0.0494
+ 30718.0        both 0.0010 protocol     loss    20.0   0.0    False   296.0         72.0    0.1995     0.1823     0.0859 -0.0163 0.0790   0.696      0.1404       0.1431      -0.0187     0.734                       2.9683               True             0.1828              -0.0969
+ 30718.0        both 0.0010 protocol     loss     5.0   0.0    False   296.0         16.0    0.1995     0.2051    -0.0282 -0.0224 0.0052   0.576      0.1404       0.1500      -0.0678     0.138                       0.4032              False             0.1828              -0.2110
+ 30718.0        both 0.0001 protocol     loss    80.0   0.0    False   296.0        304.0    0.1995     0.1674     0.1610 -0.0028 0.0951   0.124      0.1404       0.1327       0.0549     0.744                       1.8616               True             0.2278              -0.0668
+ 30718.0        both 0.0003 protocol     loss    80.0   0.0    False   296.0        304.0    0.1995     0.1591     0.2024  0.0060 0.1031   0.006      0.1404       0.1242       0.1156     0.713                       1.5011               True             0.2233              -0.0209
+ 30718.0        both 0.0003 protocol forgiven    80.0   0.0    False   296.0        304.0    0.1995     0.1592     0.2019  0.0058 0.1030   0.007      0.1404       0.1236       0.1202     0.711                       1.4730               True             0.1592               0.0427
+ 30718.0        both 0.0003 verbatim forgiven    80.0   0.0    False   296.0        304.0    0.1995     0.1672     0.1619  0.0008 0.0916   0.035      0.1404       0.1178       0.1615     0.606                       1.1882               True             0.0468               0.1151
+ 30718.0        both 0.0003 verbatim     loss    80.0   0.0    False   296.0        304.0    0.1995     0.1683     0.1564 -0.0037 0.0912   0.127      0.1404       0.1168       0.1680     0.433                       1.0087               True             0.1869              -0.0305
+ 30718.0        both 0.0010 protocol     loss    80.0   0.0    False   296.0        304.0    0.1995     0.1785     0.1050 -0.0293 0.0870   0.509      0.1404       0.1423      -0.0136     0.903                       2.2121               True             0.1828              -0.0778
+ 30718.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   296.0        304.0    0.1995     0.1852     0.0719  0.0032 0.0259   0.011      0.1404       0.1485      -0.0575     0.099                       2.5190               True             0.1346              -0.0628
+ 30718.0     encoder 0.0010 protocol     loss    80.0   0.0    False   296.0        304.0    0.1995     0.1735     0.1305 -0.0095 0.0903   0.367      0.1404       0.1408      -0.0026     0.898                       2.4460               True             0.0919               0.0387
+ 30752.0        both 0.0010 protocol     loss    20.0   0.0    False   179.0         88.0    0.1956     0.1847     0.0556 -0.0012 0.0243   0.083      0.1353       0.1417      -0.0474     0.215                       2.8409               True             0.1288              -0.0732
+ 30752.0        both 0.0010 protocol     loss     5.0   0.0    False   179.0         24.0    0.1956     0.2484    -0.2702 -0.1376 0.0022   0.077      0.1353       0.1933      -0.4288     0.010                       0.7477               True             0.1288              -0.3990
+ 30752.0        both 0.0001 protocol     loss    80.0   0.0    False   179.0        416.0    0.1956     0.2165    -0.1073 -0.1532 0.0450   0.770      0.1353       0.1793      -0.3248     0.730                       0.6353               True             0.1086              -0.2159
+ 30752.0        both 0.0003 protocol     loss    80.0   0.0    False   179.0        416.0    0.1956     0.2119    -0.0833 -0.1476 0.0501   0.793      0.1353       0.1760      -0.3011     0.764                       0.6515               True             0.1250              -0.2083
+ 30752.0        both 0.0003 protocol forgiven    80.0   0.0    False   179.0        416.0    0.1956     0.1691     0.1351  0.0096 0.0458   0.001      0.1353       0.1326       0.0201     0.666                       1.5701               True             0.1275               0.0076
+ 30752.0        both 0.0003 verbatim forgiven    80.0   0.0    False   179.0        416.0    0.1956     0.2042    -0.0442 -0.0787 0.0334   0.821      0.1353       0.1560      -0.1533     0.771                       0.0571              False             0.0480              -0.0922
+ 30752.0        both 0.0003 verbatim     loss    80.0   0.0    False   179.0        416.0    0.1956     0.2200    -0.1250 -0.1566 0.0388   0.765      0.1353       0.1706      -0.2609     0.765                       1.2222               True             0.0745              -0.1995
+ 30752.0        both 0.0010 protocol     loss    80.0   0.0    False   179.0        416.0    0.1956     0.1600     0.1818  0.0183 0.0557   0.000      0.1353       0.1240       0.0839     0.046                       1.1528               True             0.1288               0.0530
+ 30752.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   179.0        416.0    0.1956     0.1657     0.1528  0.0155 0.0464   0.000      0.1353       0.1262       0.0675     0.112                       1.2645               True             0.1313               0.0215
+ 30752.0     encoder 0.0010 protocol     loss    80.0   0.0    False   179.0        416.0    0.1956     0.2072    -0.0593 -0.1306 0.0499   0.840      0.1353       0.1689      -0.2482     0.764                       0.7234               True             0.1162              -0.1755
+ 30777.0        both 0.0010 protocol     loss    20.0   0.0    False   268.0         88.0    0.2237     0.1850     0.1732  0.0069 0.0999   0.000      0.1535       0.1411       0.0812     0.748                       1.4511               True             0.2246              -0.0514
+ 30777.0        both 0.0010 protocol     loss     5.0   0.0    False   268.0         24.0    0.2237     0.2009     0.1022 -0.0191 0.0880   0.405      0.1535       0.1553      -0.0111     0.860                       1.9572               True             0.2246              -0.1224
+ 30777.0        both 0.0001 protocol     loss    80.0   0.0    False   268.0        336.0    0.2237     0.1792     0.1989  0.0128 0.1072   0.000      0.1535       0.1362       0.1131     0.719                       1.2775               True             0.2148              -0.0158
+ 30777.0        both 0.0003 protocol     loss    80.0   0.0    False   268.0        336.0    0.2237     0.1782     0.2033  0.0129 0.1091   0.000      0.1535       0.1325       0.1369     0.616                       1.1532               True             0.2306              -0.0273
+ 30777.0        both 0.0003 protocol forgiven    80.0   0.0    False   268.0        336.0    0.2237     0.2016     0.0989 -0.0337 0.0921   0.462      0.1535       0.1565      -0.0191     0.849                       1.6133               True             0.2240              -0.1251
+ 30777.0        both 0.0003 verbatim forgiven    80.0   0.0    False   268.0        336.0    0.2237     0.2038     0.0891 -0.0361 0.0864   0.530      0.1535       0.1374       0.1051     0.626                       0.5031               True             0.1689              -0.0798
+ 30777.0        both 0.0003 verbatim     loss    80.0   0.0    False   268.0        336.0    0.2237     0.2028     0.0934 -0.0351 0.0878   0.510      0.1535       0.1367       0.1099     0.611                       0.5263               True             0.1623              -0.0689
+ 30777.0        both 0.0010 protocol     loss    80.0   0.0    False   268.0        336.0    0.2237     0.1820     0.1863  0.0067 0.1074   0.002      0.1535       0.1383       0.0995     0.733                       1.3842               True             0.2246              -0.0383
+ 30777.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   268.0        336.0    0.2237     0.1938     0.1339 -0.0144 0.0960   0.223      0.1535       0.1465       0.0462     0.940                       1.5184               True             0.2202              -0.0863
+ 30777.0     encoder 0.0010 protocol     loss    80.0   0.0    False   268.0        336.0    0.2237     0.1803     0.1940  0.0102 0.1066   0.000      0.1535       0.1386       0.0971     0.731                       1.3465               True             0.2164              -0.0224
+ 30813.0        both 0.0010 protocol     loss    20.0   0.0    False   287.0        104.0    0.1607     0.1411     0.1219 -0.0088 0.0703   0.460      0.1194       0.1191       0.0025     0.932                       2.2500               True            -0.2253               0.3472
+ 30813.0        both 0.0010 protocol     loss     5.0   0.0    False   287.0         24.0    0.1607     0.1506     0.0628 -0.0550 0.0727   0.706      0.1194       0.1233      -0.0323     0.804                       1.4118               True            -0.2253               0.2881
+ 30813.0        both 0.0001 protocol     loss    80.0   0.0    False   287.0        320.0    0.1607     0.1644    -0.0231 -0.0337 0.0475   0.742      0.1194       0.1475      -0.2348     0.213                      -5.0000              False            -0.1801               0.1570
+ 30813.0        both 0.0003 protocol     loss    80.0   0.0    False   287.0        320.0    0.1607     0.1730    -0.0766 -0.0431 0.0382   0.512      0.1194       0.1562      -0.3081     0.144                      -4.1687              False            -0.2087               0.1320
+ 30813.0        both 0.0003 protocol forgiven    80.0   0.0    False   287.0        320.0    0.1607     0.1779    -0.1071 -0.0486 0.0323   0.437      0.1194       0.1620      -0.3565     0.106                      -3.0517              False            -0.0859              -0.0212
+ 30813.0        both 0.0003 verbatim forgiven    80.0   0.0    False   287.0        320.0    0.1607     0.1599     0.0046 -0.0057 0.0066   0.832      0.1194       0.1211      -0.0137     0.539                       5.0000               True             0.1265              -0.1219
+ 30813.0        both 0.0003 verbatim     loss    80.0   0.0    False   287.0        320.0    0.1607     0.1354     0.1570 -0.0010 0.0725   0.083      0.1194       0.0998       0.1640     0.487                       1.1765               True             0.0803               0.0766
+ 30813.0        both 0.0010 protocol     loss    80.0   0.0    False   287.0        320.0    0.1607     0.1755    -0.0923 -0.0449 0.0369   0.481      0.1194       0.1599      -0.3391     0.120                      -3.6500              False            -0.2253               0.1330
+ 30813.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   287.0        320.0    0.1607     0.1727    -0.0748 -0.0418 0.0377   0.515      0.1194       0.1509      -0.2634     0.185                      -3.7037              False            -0.0434              -0.0314
+ 30813.0     encoder 0.0010 protocol     loss    80.0   0.0    False   287.0        320.0    0.1607     0.1657    -0.0314 -0.0349 0.0460   0.670      0.1194       0.1472      -0.2323     0.217                      -5.0000              False             0.0120              -0.0434
+ 30831.0        both 0.0010 protocol     loss    20.0   0.0    False   223.0         88.0    0.2736     0.2410     0.1190  0.0136 0.0520   0.001      0.1452       0.1691      -0.1645     0.000                       2.1734               True             0.1499              -0.0309
+ 30831.0        both 0.0010 protocol     loss     5.0   0.0    False   223.0         16.0    0.2736     0.2531     0.0750  0.0009 0.0415   0.042      0.1452       0.1902      -0.3096     0.000                       3.7982               True             0.1499              -0.0750
+ 30831.0        both 0.0001 protocol     loss    80.0   0.0    False   223.0        376.0    0.2736     0.2278     0.1671  0.0262 0.0668   0.000      0.1452       0.1535      -0.0570     0.218                       1.4815               True             0.1403               0.0268
+ 30831.0        both 0.0003 protocol     loss    80.0   0.0    False   223.0        376.0    0.2736     0.2250     0.1774  0.0289 0.0706   0.000      0.1452       0.1490      -0.0259     0.551                       1.3721               True             0.1458               0.0316
+ 30831.0        both 0.0003 protocol forgiven    80.0   0.0    False   223.0        376.0    0.2736     0.2267     0.1713  0.0267 0.0690   0.000      0.1452       0.1507      -0.0376     0.401                       1.3855               True             0.1382               0.0330
+ 30831.0        both 0.0003 verbatim forgiven    80.0   0.0    False   223.0        376.0    0.2736     0.2525     0.0770  0.0102 0.0329   0.000      0.1452       0.1353       0.0687     0.018                       0.9018               True             0.0626               0.0144
+ 30831.0        both 0.0003 verbatim     loss    80.0   0.0    False   223.0        376.0    0.2736     0.2523     0.0777  0.0101 0.0332   0.000      0.1452       0.1357       0.0661     0.025                       0.9027               True             0.0530               0.0248
+ 30831.0        both 0.0010 protocol     loss    80.0   0.0    False   223.0        376.0    0.2736     0.2265     0.1719  0.0274 0.0682   0.000      0.1452       0.1481      -0.0194     0.690                       1.2920               True             0.1499               0.0220
+ 30831.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   223.0        376.0    0.2736     0.2262     0.1733  0.0270 0.0694   0.000      0.1452       0.1477      -0.0168     0.738                       1.3532               True             0.1651               0.0083
+ 30831.0     encoder 0.0010 protocol     loss    80.0   0.0    False   223.0        376.0    0.2736     0.2258     0.1747  0.0274 0.0700   0.000      0.1452       0.1490      -0.0259     0.558                       1.3701               True             0.1362               0.0385
+ 30843.0        both 0.0010 protocol     loss    20.0   0.0    False   238.0        120.0    0.3231     0.2919     0.0965  0.0175 0.0449   0.000      0.2102       0.2102       0.0000     1.000                       1.4183               True             0.0852               0.0114
+ 30843.0        both 0.0010 protocol     loss     5.0   0.0    False   238.0         40.0    0.3231     0.2911     0.0991  0.0186 0.0456   0.000      0.2102       0.2192      -0.0427     0.144                       1.5287               True             0.0852               0.0139
+ 30843.0        both 0.0001 protocol     loss    80.0   0.0    False   238.0        400.0    0.3231     0.2689     0.1678  0.0407 0.0682   0.000      0.2102       0.1920       0.0863     0.002                       0.9398               True             0.1047               0.0631
+ 30843.0        both 0.0003 protocol     loss    80.0   0.0    False   238.0        400.0    0.3231     0.2665     0.1754  0.0425 0.0717   0.000      0.2102       0.1853       0.1183     0.000                       0.7914               True             0.1136               0.0618
+ 30843.0        both 0.0003 protocol forgiven    80.0   0.0    False   238.0        400.0    0.3231     0.2652     0.1792  0.0443 0.0731   0.000      0.2102       0.1839       0.1251     0.000                       0.7782               True             0.1174               0.0618
+ 30843.0        both 0.0003 verbatim forgiven    80.0   0.0    False   238.0        400.0    0.3231     0.2956     0.0852  0.0168 0.0389   0.000      0.2102       0.1874       0.1086     0.000                       0.5185               True             0.0801               0.0050
+ 30843.0        both 0.0003 verbatim     loss    80.0   0.0    False   238.0        400.0    0.3231     0.2964     0.0826  0.0163 0.0379   0.000      0.2102       0.1892       0.0999     0.000                       0.5344               True            -0.0479               0.1306
+ 30843.0        both 0.0010 protocol     loss    80.0   0.0    False   238.0        400.0    0.3231     0.2699     0.1647  0.0385 0.0702   0.000      0.2102       0.2004       0.0466     0.136                       1.1264               True             0.0852               0.0795
+ 30843.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   238.0        400.0    0.3231     0.2917     0.0972  0.0192 0.0428   0.000      0.2102       0.2059       0.0204     0.424                       1.1364               True             0.0637               0.0334
+ 30843.0     encoder 0.0010 protocol     loss    80.0   0.0    False   238.0        400.0    0.3231     0.2718     0.1590  0.0375 0.0661   0.000      0.2102       0.1912       0.0902     0.002                       0.8889               True             0.0997               0.0593
+ 30859.0        both 0.0010 protocol     loss    20.0   0.0    False   317.0         64.0    0.2538     0.2423     0.0455 -0.0009 0.0253   0.076      0.1735       0.1849      -0.0657     0.018                       3.1585               True             0.1048              -0.0593
+ 30859.0        both 0.0010 protocol     loss     5.0   0.0    False   317.0         16.0    0.2538     0.2504     0.0133 -0.0044 0.0122   0.435      0.1735       0.1822      -0.0503     0.016                       5.0000               True             0.1048              -0.0915
+ 30859.0        both 0.0001 protocol     loss    80.0   0.0    False   317.0        344.0    0.2538     0.2273     0.1042  0.0122 0.0402   0.000      0.1735       0.1666       0.0397     0.272                       1.0904               True             0.0859               0.0183
+ 30859.0        both 0.0003 protocol     loss    80.0   0.0    False   317.0        344.0    0.2538     0.2314     0.0881  0.0011 0.0389   0.043      0.1735       0.1698       0.0211     0.625                       1.0189               True             0.1120              -0.0238
+ 30859.0        both 0.0003 protocol forgiven    80.0   0.0    False   317.0        344.0    0.2538     0.2368     0.0671 -0.0183 0.0410   0.301      0.1735       0.1764      -0.0170     0.924                       1.0496               True             0.1147              -0.0477
+ 30859.0        both 0.0003 verbatim forgiven    80.0   0.0    False   317.0        344.0    0.2538     0.2442     0.0377  0.0008 0.0195   0.039      0.1735       0.1722       0.0073     0.720                       1.1176               True             0.0516              -0.0139
+ 30859.0        both 0.0003 verbatim     loss    80.0   0.0    False   317.0        344.0    0.2538     0.2344     0.0765  0.0112 0.0291   0.000      0.1735       0.1605       0.0746     0.000                       0.6522               True             0.0643               0.0122
+ 30859.0        both 0.0010 protocol     loss    80.0   0.0    False   317.0        344.0    0.2538     0.2281     0.1014  0.0125 0.0396   0.000      0.1735       0.1742      -0.0041     0.910                       1.6831               True             0.1048              -0.0033
+ 30859.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   317.0        344.0    0.2538     0.2387     0.0593  0.0059 0.0249   0.001      0.1735       0.1708       0.0154     0.507                       1.4766               True             0.0604              -0.0011
+ 30859.0     encoder 0.0010 protocol     loss    80.0   0.0    False   317.0        344.0    0.2538     0.2248     0.1142  0.0171 0.0422   0.000      0.1735       0.1663       0.0414     0.079                       1.2184               True             0.1170              -0.0028
+ 30868.0        both 0.0010 protocol     loss    20.0   0.0    False   202.0        120.0    0.2211     0.2293    -0.0368 -0.0612 0.0692   0.724      0.1693       0.2049      -0.2103     0.283                      -5.0000              False             0.1596              -0.1964
+ 30868.0        both 0.0010 protocol     loss     5.0   0.0    False   202.0         24.0    0.2211     0.2106     0.0479 -0.0285 0.0819   0.789      0.1693       0.1783      -0.0535     0.606                       4.9420               True             0.1596              -0.1117
+ 30868.0        both 0.0001 protocol     loss    80.0   0.0    False   202.0        392.0    0.2211     0.1768     0.2006  0.0064 0.1151   0.002      0.1693       0.1464       0.1351     0.617                       1.4464               True             0.1825               0.0180
+ 30868.0        both 0.0003 protocol     loss    80.0   0.0    False   202.0        392.0    0.2211     0.1757     0.2054  0.0077 0.1177   0.000      0.1693       0.1444       0.1469     0.566                       1.3615               True             0.0611               0.1443
+ 30868.0        both 0.0003 protocol forgiven    80.0   0.0    False   202.0        392.0    0.2211     0.1878     0.1506 -0.0050 0.1036   0.172      0.1693       0.1544       0.0879     0.737                       1.8018               True             0.0569               0.0937
+ 30868.0        both 0.0003 verbatim forgiven    80.0   0.0    False   202.0        392.0    0.2211     0.2190     0.0097 -0.0771 0.0883   0.969      0.1693       0.1707      -0.0082     0.947                       0.5714               True            -0.1048               0.1145
+ 30868.0        both 0.0003 verbatim     loss    80.0   0.0    False   202.0        392.0    0.2211     0.1825     0.1749  0.0023 0.1113   0.023      0.1693       0.1347       0.2040     0.103                       1.0238               True             0.1679               0.0069
+ 30868.0        both 0.0010 protocol     loss    80.0   0.0    False   202.0        392.0    0.2211     0.1782     0.1943  0.0051 0.1177   0.010      0.1693       0.1464       0.1351     0.642                       1.3750               True             0.1596               0.0347
+ 30868.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0    False   202.0        392.0    0.2211     0.1737     0.2144  0.0100 0.1199   0.000      0.1693       0.1426       0.1578     0.482                       1.2977               True             0.0666               0.1478
+ 30868.0     encoder 0.0010 protocol     loss    80.0   0.0    False   202.0        392.0    0.2211     0.1851     0.1631 -0.0005 0.1072   0.064      0.1693       0.1504       0.1115     0.717                       1.6043               True             0.1430               0.0201
+ 23558.0        both 0.0001 protocol     loss    80.0   0.0     True   341.0        384.0    0.4420     0.3182     0.2800  0.0754 0.2033   0.000      0.2947       0.2316       0.2143     0.000                       1.1047               True             0.2800               0.0000
+ 30685.0        both 0.0001 protocol     loss    80.0   0.0     True   224.0        384.0    0.2330     0.2122     0.0894  0.0084 0.0340   0.000      0.1094       0.1198      -0.0952     0.027                       1.7500               True             0.0894               0.0000
+ 30752.0        both 0.0001 protocol     loss    80.0   0.0     True   179.0        384.0    0.1956     0.1743     0.1086  0.0068 0.0382   0.005      0.1353       0.1328       0.0182     0.682                       1.5581               True             0.1086               0.0000
+ 30777.0        both 0.0001 protocol     loss    80.0   0.0     True   268.0        384.0    0.2237     0.1757     0.2148  0.0165 0.1122   0.000      0.1535       0.1302       0.1521     0.555                       1.1425               True             0.2148               0.0000
+ 30831.0        both 0.0001 protocol     loss    80.0   0.0     True   223.0        384.0    0.2736     0.2352     0.1403  0.0208 0.0562   0.000      0.1452       0.1492      -0.0272     0.520                       1.4020               True             0.1403               0.0000
+ 30859.0        both 0.0001 protocol     loss    80.0   0.0     True   317.0        384.0    0.2538     0.2320     0.0859  0.0108 0.0341   0.000      0.1735       0.1743      -0.0049     0.904                       1.7871               True             0.0859               0.0000
+ 23558.0        both 0.0003 protocol     loss    80.0   0.0     True   341.0        384.0    0.4420     0.3221     0.2713  0.0734 0.2000   0.000      0.2947       0.2312       0.2154     0.000                       1.0640               True             0.2713               0.0000
+ 30685.0        both 0.0003 protocol     loss    80.0   0.0     True   224.0        384.0    0.2330     0.2125     0.0880  0.0093 0.0326   0.000      0.1094       0.1162      -0.0630     0.151                       1.6148               True             0.0880               0.0000
+ 30752.0        both 0.0003 protocol     loss    80.0   0.0     True   179.0        384.0    0.1956     0.1711     0.1250  0.0091 0.0414   0.000      0.1353       0.1269       0.0620     0.168                       1.2828               True             0.1250               0.0000
+ 30777.0        both 0.0003 protocol     loss    80.0   0.0     True   268.0        384.0    0.2237     0.1721     0.2306  0.0202 0.1160   0.000      0.1535       0.1238       0.1935     0.079                       0.9929               True             0.2306               0.0000
+ 30831.0        both 0.0003 protocol     loss    80.0   0.0     True   223.0        384.0    0.2736     0.2337     0.1458  0.0232 0.0575   0.000      0.1452       0.1447       0.0039     0.921                       1.2736               True             0.1458               0.0000
+ 30859.0        both 0.0003 protocol     loss    80.0   0.0     True   317.0        384.0    0.2538     0.2254     0.1120  0.0174 0.0408   0.000      0.1735       0.1660       0.0430     0.084                       1.2970               True             0.1120               0.0000
+ 23558.0        both 0.0003 protocol forgiven    80.0   0.0     True   341.0        384.0    0.4420     0.3222     0.2710  0.0732 0.1997   0.000      0.2947       0.2303       0.2187     0.000                       1.0387               True             0.2710               0.0000
+ 30685.0        both 0.0003 protocol forgiven    80.0   0.0     True   224.0        384.0    0.2330     0.2113     0.0930  0.0095 0.0350   0.000      0.1094       0.1161      -0.0614     0.162                       1.5581               True             0.0930               0.0000
+ 30752.0        both 0.0003 protocol forgiven    80.0   0.0     True   179.0        384.0    0.1956     0.1706     0.1275  0.0095 0.0418   0.000      0.1353       0.1267       0.0639     0.158                       1.2574               True             0.1275               0.0000
+ 30777.0        both 0.0003 protocol forgiven    80.0   0.0     True   268.0        384.0    0.2237     0.1736     0.2240  0.0184 0.1145   0.000      0.1535       0.1246       0.1887     0.113                       0.9878               True             0.2240               0.0000
+ 30831.0        both 0.0003 protocol forgiven    80.0   0.0     True   223.0        384.0    0.2736     0.2357     0.1382  0.0212 0.0553   0.000      0.1452       0.1473      -0.0142     0.744                       1.3532               True             0.1382               0.0000
+ 30859.0        both 0.0003 protocol forgiven    80.0   0.0     True   317.0        384.0    0.2538     0.2247     0.1147  0.0179 0.0417   0.000      0.1735       0.1653       0.0470     0.048                       1.2657               True             0.1147               0.0000
+ 23558.0        both 0.0003 verbatim forgiven    80.0   0.0     True   341.0        384.0    0.4420     0.3638     0.1769  0.0350 0.1566   0.000      0.2947       0.2405       0.1839     0.000                       1.0102               True             0.1769               0.0000
+ 30685.0        both 0.0003 verbatim forgiven    80.0   0.0     True   224.0        384.0    0.2330     0.2172     0.0678  0.0083 0.0237   0.000      0.1094       0.1038       0.0507     0.074                       0.7872               True             0.0678               0.0000
+ 30752.0        both 0.0003 verbatim forgiven    80.0   0.0     True   179.0        384.0    0.1956     0.1862     0.0480 -0.0002 0.0202   0.061      0.1353       0.1319       0.0255     0.406                       1.3421               True             0.0480               0.0000
+ 30777.0        both 0.0003 verbatim forgiven    80.0   0.0     True   268.0        384.0    0.2237     0.1859     0.1689  0.0093 0.1002   0.000      0.1535       0.1227       0.2006     0.006                       0.8511               True             0.1689               0.0000
+ 30831.0        both 0.0003 verbatim forgiven    80.0   0.0     True   223.0        384.0    0.2736     0.2564     0.0626  0.0082 0.0267   0.000      0.1452       0.1421       0.0220     0.468                       1.0879               True             0.0626               0.0000
+ 30859.0        both 0.0003 verbatim forgiven    80.0   0.0     True   317.0        384.0    0.2538     0.2407     0.0516  0.0049 0.0227   0.001      0.1735       0.1714       0.0122     0.507                       1.1828               True             0.0516               0.0000
+ 23558.0        both 0.0003 verbatim     loss    80.0   0.0     True   341.0        384.0    0.4420     0.3998     0.0955 -0.0384 0.1334   0.258      0.2947       0.2674       0.0928     0.505                       0.7879               True             0.0955               0.0000
+ 30685.0        both 0.0003 verbatim     loss    80.0   0.0     True   224.0        384.0    0.2330     0.2273     0.0245 -0.0026 0.0138   0.189      0.1094       0.1090       0.0031     0.953                       1.0588               True             0.0245               0.0000
+ 30752.0        both 0.0003 verbatim     loss    80.0   0.0     True   179.0        384.0    0.1956     0.1810     0.0745  0.0049 0.0254   0.005      0.1353       0.1244       0.0803     0.012                       0.8644               True             0.0745               0.0000
+ 30777.0        both 0.0003 verbatim     loss    80.0   0.0     True   268.0        384.0    0.2237     0.1874     0.1623  0.0075 0.0960   0.000      0.1535       0.1218       0.2070     0.007                       0.8013               True             0.1623               0.0000
+ 30831.0        both 0.0003 verbatim     loss    80.0   0.0     True   223.0        384.0    0.2736     0.2591     0.0530  0.0068 0.0230   0.001      0.1452       0.1385       0.0466     0.017                       0.7273               True             0.0530               0.0000
+ 30859.0        both 0.0003 verbatim     loss    80.0   0.0     True   317.0        384.0    0.2538     0.2375     0.0643  0.0077 0.0268   0.000      0.1735       0.1650       0.0487     0.031                       0.9741               True             0.0643               0.0000
+ 23558.0        both 0.0010 protocol     loss    80.0   0.0     True   341.0        384.0    0.4420     0.3224     0.2706  0.0720 0.2004   0.000      0.2947       0.2328       0.2100     0.000                       1.1364               True             0.2706               0.0000
+ 30685.0        both 0.0010 protocol     loss    80.0   0.0     True   224.0        384.0    0.2330     0.2085     0.1053  0.0120 0.0386   0.000      0.1094       0.1194      -0.0922     0.028                       1.6644               True             0.1053               0.0000
+ 30752.0        both 0.0010 protocol     loss    80.0   0.0     True   179.0        384.0    0.1956     0.1704     0.1288  0.0095 0.0422   0.000      0.1353       0.1331       0.0164     0.723                       1.5980               True             0.1288               0.0000
+ 30777.0        both 0.0010 protocol     loss    80.0   0.0     True   268.0        384.0    0.2237     0.1735     0.2246  0.0193 0.1143   0.000      0.1535       0.1268       0.1744     0.270                       1.0803               True             0.2246               0.0000
+ 30831.0        both 0.0010 protocol     loss    80.0   0.0     True   223.0        384.0    0.2736     0.2325     0.1499  0.0225 0.0604   0.000      0.1452       0.1501      -0.0337     0.422                       1.4312               True             0.1499               0.0000
+ 30859.0        both 0.0010 protocol     loss    80.0   0.0     True   317.0        384.0    0.2538     0.2272     0.1048  0.0125 0.0419   0.000      0.1735       0.1777      -0.0243     0.446                       1.7989               True             0.1048               0.0000
+ 23558.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   341.0        384.0    0.4420     0.3667     0.1704 -0.0085 0.1728   0.079      0.2947       0.2762       0.0629     0.692                       1.1486               True             0.1704               0.0000
+ 30685.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   224.0        384.0    0.2330     0.2078     0.1081  0.0121 0.0391   0.000      0.1094       0.1162      -0.0630     0.152                       1.5600               True             0.1081               0.0000
+ 30752.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   179.0        384.0    0.1956     0.1699     0.1313  0.0096 0.0439   0.004      0.1353       0.1306       0.0347     0.476                       1.5769               True             0.1313               0.0000
+ 30777.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   268.0        384.0    0.2237     0.1744     0.2202  0.0185 0.1126   0.000      0.1535       0.1263       0.1775     0.188                       1.0199               True             0.2202               0.0000
+ 30831.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   223.0        384.0    0.2736     0.2284     0.1651  0.0288 0.0627   0.000      0.1452       0.1392       0.0415     0.291                       1.1292               True             0.1651               0.0000
+ 30859.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   317.0        384.0    0.2538     0.2385     0.0604 -0.0177 0.0390   0.301      0.1735       0.1828      -0.0535     0.673                       1.6514               True             0.0604               0.0000
+ 23558.0     encoder 0.0010 protocol     loss    80.0   0.0     True   341.0        384.0    0.4420     0.3142     0.2891  0.0795 0.2120   0.000      0.2947       0.2285       0.2246     0.000                       1.0801               True             0.2891               0.0000
+ 30685.0     encoder 0.0010 protocol     loss    80.0   0.0     True   224.0        384.0    0.2330     0.2180     0.0642  0.0025 0.0278   0.021      0.1094       0.1203      -0.0998     0.020                       2.0337               True             0.0642               0.0000
+ 30752.0     encoder 0.0010 protocol     loss    80.0   0.0     True   179.0        384.0    0.1956     0.1728     0.1162  0.0086 0.0389   0.000      0.1353       0.1316       0.0274     0.547                       1.4891               True             0.1162               0.0000
+ 30777.0     encoder 0.0010 protocol     loss    80.0   0.0     True   268.0        384.0    0.2237     0.1753     0.2164  0.0164 0.1135   0.000      0.1535       0.1252       0.1847     0.164                       1.0455               True             0.2164               0.0000
+ 30831.0     encoder 0.0010 protocol     loss    80.0   0.0     True   223.0        384.0    0.2736     0.2363     0.1362  0.0201 0.0571   0.000      0.1452       0.1439       0.0091     0.808                       1.2727               True             0.1362               0.0000
+ 30859.0     encoder 0.0010 protocol     loss    80.0   0.0     True   317.0        384.0    0.2538     0.2241     0.1170  0.0189 0.0422   0.000      0.1735       0.1669       0.0381     0.090                       1.2512               True             0.1170               0.0000
+ 30701.0        both 0.0001 protocol     loss    80.0   0.0     True   361.0        368.0    0.4059     0.2788     0.3131  0.0730 0.2145   0.000      0.2669       0.2099       0.2137     0.001                       1.1711               True             0.3131               0.0000
+ 30718.0        both 0.0001 protocol     loss    80.0   0.0     True   296.0        368.0    0.1995     0.1540     0.2278  0.0100 0.1102   0.001      0.1404       0.1205       0.1421     0.669                       1.4531               True             0.2278               0.0000
+ 30813.0        both 0.0001 protocol     loss    80.0   0.0     True   287.0        368.0    0.1607     0.1896    -0.1801 -0.0793 0.0308   0.287      0.1194       0.1736      -0.4534     0.065                      -1.4000              False            -0.1801               0.0000
+ 30843.0        both 0.0001 protocol     loss    80.0   0.0     True   238.0        368.0    0.3231     0.2893     0.1047  0.0153 0.0524   0.002      0.2102       0.2251      -0.0708     0.046                       1.9940               True             0.1047               0.0000
+ 30868.0        both 0.0001 protocol     loss    80.0   0.0     True   202.0        368.0    0.2211     0.1808     0.1825  0.0024 0.1132   0.023      0.1693       0.1541       0.0898     0.740                       1.6730               True             0.1825               0.0000
+ 30701.0        both 0.0003 protocol     loss    80.0   0.0     True   361.0        368.0    0.4059     0.3107     0.2344  0.0103 0.1912   0.031      0.2669       0.2399       0.1011     0.557                       1.1799               True             0.2344               0.0000
+ 30718.0        both 0.0003 protocol     loss    80.0   0.0     True   296.0        368.0    0.1995     0.1549     0.2233  0.0092 0.1094   0.000      0.1404       0.1211       0.1376     0.667                       1.4807               True             0.2233               0.0000
+ 30813.0        both 0.0003 protocol     loss    80.0   0.0     True   287.0        368.0    0.1607     0.1942    -0.2087 -0.1045 0.0322   0.302      0.1194       0.1756      -0.4708     0.076                      -0.7478              False            -0.2087               0.0000
+ 30843.0        both 0.0003 protocol     loss    80.0   0.0     True   238.0        368.0    0.3231     0.2864     0.1136  0.0196 0.0527   0.000      0.2102       0.2188      -0.0407     0.242                       1.6722               True             0.1136               0.0000
+ 30868.0        both 0.0003 protocol     loss    80.0   0.0     True   202.0        368.0    0.2211     0.2076     0.0611 -0.0656 0.0983   0.681      0.1693       0.1786      -0.0553     0.738                       2.8409               True             0.0611               0.0000
+ 30701.0        both 0.0003 protocol forgiven    80.0   0.0     True   361.0        368.0    0.4059     0.2876     0.2914  0.0539 0.2060   0.000      0.2669       0.2176       0.1849     0.119                       1.1278               True             0.2914               0.0000
+ 30718.0        both 0.0003 protocol forgiven    80.0   0.0     True   296.0        368.0    0.1995     0.1677     0.1592 -0.0149 0.0996   0.227      0.1404       0.1338       0.0472     0.884                       1.8171               True             0.1592               0.0000
+ 30813.0        both 0.0003 protocol forgiven    80.0   0.0     True   287.0        368.0    0.1607     0.1745    -0.0859 -0.0458 0.0377   0.486      0.1194       0.1567      -0.3118     0.137                      -3.1935              False            -0.0859               0.0000
+ 30843.0        both 0.0003 protocol forgiven    80.0   0.0     True   238.0        368.0    0.3231     0.2852     0.1174  0.0212 0.0551   0.000      0.2102       0.2179      -0.0369     0.280                       1.6667               True             0.1174               0.0000
+ 30868.0        both 0.0003 protocol forgiven    80.0   0.0     True   202.0        368.0    0.2211     0.2086     0.0569 -0.0668 0.0967   0.688      0.1693       0.1802      -0.0644     0.726                       3.1463               True             0.0569               0.0000
+ 30701.0        both 0.0003 verbatim forgiven    80.0   0.0     True   361.0        368.0    0.4059     0.3582     0.1174 -0.0128 0.1304   0.140      0.2669       0.2382       0.1075     0.465                       1.0583               True             0.1174               0.0000
+ 30718.0        both 0.0003 verbatim forgiven    80.0   0.0     True   296.0        368.0    0.1995     0.1901     0.0468  0.0018 0.0168   0.014      0.1404       0.1384       0.0142     0.521                       1.6408               True             0.0468               0.0000
+ 30813.0        both 0.0003 verbatim forgiven    80.0   0.0     True   287.0        368.0    0.1607     0.1403     0.1265 -0.0059 0.0679   0.399      0.1194       0.1058       0.1143     0.711                       1.4380               True             0.1265               0.0000
+ 30843.0        both 0.0003 verbatim forgiven    80.0   0.0     True   238.0        368.0    0.3231     0.2972     0.0801  0.0134 0.0376   0.000      0.2102       0.2106      -0.0019     0.946                       1.3543               True             0.0801               0.0000
+ 30868.0        both 0.0003 verbatim forgiven    80.0   0.0     True   202.0        368.0    0.2211     0.2443    -0.1048 -0.0884 0.0105   0.519      0.1693       0.2000      -0.1813     0.149                       0.6954               True            -0.1048               0.0000
+ 30701.0        both 0.0003 verbatim     loss    80.0   0.0     True   361.0        368.0    0.4059     0.3938     0.0296 -0.0672 0.0596   0.564      0.2669       0.2725      -0.0208     0.929                       0.6410               True             0.0296               0.0000
+ 30718.0        both 0.0003 verbatim     loss    80.0   0.0     True   296.0        368.0    0.1995     0.1622     0.1869  0.0063 0.0964   0.000      0.1404       0.1110       0.2093     0.063                       1.0803               True             0.1869               0.0000
+ 30813.0        both 0.0003 verbatim     loss    80.0   0.0     True   287.0        368.0    0.1607     0.1478     0.0803 -0.0150 0.0612   0.702      0.1194       0.1139       0.0460     0.799                       2.2299               True             0.0803               0.0000
+ 30843.0        both 0.0003 verbatim     loss    80.0   0.0     True   238.0        368.0    0.3231     0.3386    -0.0479 -0.0968 0.0299   0.751      0.2102       0.2455      -0.1678     0.529                       0.2237              False            -0.0479               0.0000
+ 30868.0        both 0.0003 verbatim     loss    80.0   0.0     True   202.0        368.0    0.2211     0.1840     0.1679  0.0028 0.1071   0.010      0.1693       0.1358       0.1976     0.068                       0.9421               True             0.1679               0.0000
+ 30701.0        both 0.0010 protocol     loss    80.0   0.0     True   361.0        368.0    0.4059     0.2785     0.3138  0.0728 0.2150   0.000      0.2669       0.2146       0.1958     0.005                       1.1973               True             0.3138               0.0000
+ 30718.0        both 0.0010 protocol     loss    80.0   0.0     True   296.0        368.0    0.1995     0.1630     0.1828 -0.0001 0.1017   0.051      0.1404       0.1318       0.0614     0.763                       1.8831               True             0.1828               0.0000
+ 30813.0        both 0.0010 protocol     loss    80.0   0.0     True   287.0        368.0    0.1607     0.1969    -0.2253 -0.1145 0.0323   0.301      0.1194       0.1835      -0.5366     0.058                      -0.7828              False            -0.2253               0.0000
+ 30843.0        both 0.0010 protocol     loss    80.0   0.0     True   238.0        368.0    0.3231     0.2956     0.0852  0.0053 0.0486   0.018      0.2102       0.2330      -0.1086     0.015                       2.4815               True             0.0852               0.0000
+ 30868.0        both 0.0010 protocol     loss    80.0   0.0     True   202.0        368.0    0.2211     0.1859     0.1596 -0.0027 0.1063   0.107      0.1693       0.1598       0.0562     0.786                       1.9652               True             0.1596               0.0000
+ 30701.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   361.0        368.0    0.4059     0.3437     0.1531 -0.0385 0.1650   0.213      0.2669       0.2768      -0.0370     0.890                       1.5806               True             0.1531               0.0000
+ 30718.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   296.0        368.0    0.1995     0.1726     0.1346  0.0140 0.0412   0.000      0.1404       0.1368       0.0258     0.502                       1.6014               True             0.1346               0.0000
+ 30813.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   287.0        368.0    0.1607     0.1676    -0.0434 -0.0385 0.0451   0.635      0.1194       0.1492      -0.2497     0.201                      -5.0000              False            -0.0434               0.0000
+ 30843.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   238.0        368.0    0.3231     0.3025     0.0637  0.0002 0.0388   0.049      0.2102       0.2363      -0.1242     0.001                       3.0198               True             0.0637               0.0000
+ 30868.0 decoder_mlp 0.0003 protocol     loss    80.0   0.0     True   202.0        368.0    0.2211     0.2064     0.0666 -0.0637 0.0988   0.677      0.1693       0.1793      -0.0589     0.732                       2.7708               True             0.0666               0.0000
+ 30701.0     encoder 0.0010 protocol     loss    80.0   0.0     True   361.0        368.0    0.4059     0.2988     0.2637  0.0448 0.1966   0.000      0.2669       0.2325       0.1288     0.337                       1.4179               True             0.2637               0.0000
+ 30718.0     encoder 0.0010 protocol     loss    80.0   0.0     True   296.0        368.0    0.1995     0.1812     0.0919  0.0072 0.0301   0.003      0.1404       0.1440      -0.0252     0.436                       2.2129               True             0.0919               0.0000
+ 30813.0     encoder 0.0010 protocol     loss    80.0   0.0     True   287.0        368.0    0.1607     0.1587     0.0120 -0.0276 0.0516   0.989      0.1194       0.1430      -0.1975     0.293                       5.0000               True             0.0120               0.0000
+ 30843.0     encoder 0.0010 protocol     loss    80.0   0.0     True   238.0        368.0    0.3231     0.2909     0.0997  0.0172 0.0485   0.001      0.2102       0.2224      -0.0582     0.057                       1.8291               True             0.0997               0.0000
+ 30868.0     encoder 0.0010 protocol     loss    80.0   0.0     True   202.0        368.0    0.2211     0.1895     0.1430 -0.0055 0.1035   0.238      0.1693       0.1558       0.0798     0.745                       1.8689               True             0.1430               0.0000
+[Sun Sep 20 23:34:36 UTC 2026] run D exit 0; summary + backup
+[2026-09-20 23:34:45] results: uploaded
+[2026-09-20 23:35:17] runs: uploaded
+[2026-09-20 23:35:19] results.csv: uploaded
+[2026-09-20 23:35:20] run_next.log: uploaded
+[2026-09-20 23:35:21] run_d.log: uploaded
+[Sun Sep 20 23:35:21 UTC 2026] RUN D DONE

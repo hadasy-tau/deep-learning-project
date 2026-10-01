@@ -26,17 +26,29 @@ from roster import OUT, CACHE
 COMMITTEES = 'ivrit-ai/knesset-committees'
 SR = 16000
 
-def sample(df, per_speaker=12, min_segments=8, min_s=3.0, seed=0):
+def sample(df, per_speaker=12, min_segments=8, min_s=3.0, seed=0, speakers=None, others=0):
     """Stratified over speakers and knessets, longest-first within a speaker so the
     embedding has something to work with.  Speakers with too little audio are
-    reported rather than sampled -- a centroid from three segments is not one."""
+    reported rather than sampled -- a centroid from three segments is not one.
+
+    speakers / others: focus the gate on a few speakers (the adaptation panel) at
+    `per_speaker` segments each, plus `others` randomly chosen MK speakers at 12
+    each as the reference population a contaminated segment could be near."""
     mk = df[(df.label == 'mk') & (df.duration_s >= min_s)]
     counts = mk.groupby('speaker_id').size()
     thin = counts[counts < min_segments]
+    quota = {}
+    if speakers is not None:
+        rng = np.random.default_rng(seed)
+        pool = [s for s in counts[counts >= min_segments].index if s not in set(speakers)]
+        quota = {s: per_speaker for s in speakers}
+        quota.update({s: 12 for s in rng.choice(pool, size=min(others, len(pool)), replace=False)})
+        mk = mk[mk.speaker_id.isin(quota)]
     out = []
     for sid, g in mk[mk.speaker_id.isin(counts[counts >= min_segments].index)].groupby('speaker_id'):
+        n = quota.get(sid, per_speaker)
         for _, kg in g.groupby('knesset'):
-            out.append(kg.nlargest(max(1, per_speaker // kg.knesset.nunique()), 'duration_s'))
+            out.append(kg.nlargest(max(1, n // g.knesset.nunique()), 'duration_s'))
     return pd.concat(out).sample(frac=1, random_state=seed).reset_index(drop=True), thin
 
 def fetch_audio(session, start, end, token):
@@ -101,11 +113,14 @@ if __name__ == '__main__':
     ap.add_argument('--per-speaker', type=int, default=12)
     ap.add_argument('--min-segments', type=int, default=8)
     ap.add_argument('--segments', default=os.path.join(OUT, 'segments.parquet'))
+    ap.add_argument('--speakers', nargs='*', type=int, help='focus on these speaker ids (the panel)')
+    ap.add_argument('--others', type=int, default=60, help='with --speakers: how many other MK speakers form the reference population')
+    ap.add_argument('--tag', default='', help='suffix for the output files')
     a = ap.parse_args()
     token = os.environ.get('HF_TOKEN') or open(os.path.join(CACHE, 'hf_write_token')).read().strip()
 
     df = pd.read_parquet(a.segments)
-    rows, thin = sample(df, a.per_speaker, a.min_segments)
+    rows, thin = sample(df, a.per_speaker, a.min_segments, speakers=a.speakers, others=a.others)
     print(f'sampling {len(rows)} segments over {rows.speaker_id.nunique()} speakers; '
           f'{len(thin)} speakers below {a.min_segments} segments are not covered')
     E, keep = embed(rows, token)
@@ -120,8 +135,8 @@ if __name__ == '__main__':
     if len(flagged):
         print('\nflagged:')
         print(flagged.nsmallest(30, 'margin').to_string(index=False))
-    res.to_parquet(os.path.join(OUT, 'audio_check.parquet'), index=False)
-    open(os.path.join(OUT, 'audio_report.txt'), 'w', encoding='utf-8').write(
+    res.to_parquet(os.path.join(OUT, f'audio_check{a.tag}.parquet'), index=False)
+    open(os.path.join(OUT, f'audio_report{a.tag}.txt'), 'w', encoding='utf-8').write(
         f'{len(flagged)}/{len(res)} = {len(flagged)/len(res):.3%} closer to another speaker\n\n'
         + res.groupby('label_path').margin.describe().round(3).to_string()
         + ('\n\n' + flagged.nsmallest(30, 'margin').to_string(index=False) if len(flagged) else ''))

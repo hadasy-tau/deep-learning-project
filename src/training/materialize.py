@@ -18,6 +18,10 @@ run on different machines:
             WAV under outputs/panel_audio/<speaker_id>/<chunk_id>.wav, deletes the
             shard.  ~80 GB pass through, ~3 GB stay.  Resumable: existing WAVs are
             skipped, so a dropped link costs one shard.
+  plan-v2   laptop.  The high-quality plan: test, dev and train all from chunks
+            at quality >= 0.95 that also pass the word rule (word_quality.py,
+            which must run first), 30843 swapped for her alternate 556.  Writes
+            panel_plan_v2.parquet.  extract/verify/upload take --plan to use it.
   verify    the split invariants (no session on two sides, test/dev/train sizes,
             nested budgets are prefixes) and every WAV present and readable.
   upload / download   the WAV folder to / from a private HF dataset, so the GPU
@@ -39,13 +43,14 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np, pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
-sys.path.insert(0, os.path.join(HERE, '..')); sys.path.insert(0, os.path.join(ROOT, 'src', 'inference'))
+sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, '..')); sys.path.insert(0, os.path.join(ROOT, 'src', 'inference'))
 from common import make_splits, read_wav, SR
 
 PANEL  = os.path.join(ROOT, 'src', 'evaluation', 'outputs', 'committees_panel.csv')
 INDEX  = os.path.join(ROOT, 'src', 'inference', 'cache', 'index.parquet')
 SUBSET = os.path.join(ROOT, 'src', 'inference', 'subset_stage1.parquet')
 PLAN   = os.path.join(HERE, 'panel_plan.parquet')
+PLAN_V2 = os.path.join(HERE, 'panel_plan_v2.parquet')   # quality-filtered train/dev, v1's test (plan_v2)
 AUDIO  = os.path.join(HERE, 'outputs', 'panel_audio')          # git-ignored (src/training/outputs/)
 DL     = os.path.join(HERE, 'outputs', '_shards')
 
@@ -103,6 +108,48 @@ def plan(panel_path=PANEL, index_path=INDEX, out=PLAN, budget_min=BUDGET_MIN, de
             'text', 'shard', 'part', 'filename', 'start', 'end', 'in_subset', 'train_order', 'budget_cum_min']
     P = P[cols]; P.to_parquet(out, index=False)
     log(f'plan: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers, {P.shard.nunique()} shards -> {out}')
+    return P
+
+def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_FLOOR_MIN, index_path=INDEX):
+    """The high-quality plan (docs/training_plan_v3.md, step 1): every split is drawn
+    from chunks at quality >= 0.95 that also pass the word rule (word_quality.word_ok:
+    few clearly misaligned words, no run of them), for the panel with
+    word_quality.PANEL_SWAPS applied (30843 -> her alternate 556).  Per speaker,
+    session-disjoint by date: the newest sessions until test_min (45 min, the v1
+    floor), then dev_min, then the budget, newest first -- so nested budgets are
+    prefixes.  The session that crosses a target is inside it, as in plan()."""
+    import word_quality as WQ
+    W = pd.read_parquet(WQ.OUT); W = W[WQ.word_ok(W)]
+    idx = pd.read_parquet(index_path, columns=['chunk_id', 'speaker_id', 'session', 'session_date', 'knesset', 'duration_s', 'quality', 'text', 'shard'])
+    cand = idx[idx.chunk_id.isin(set(W.chunk_id)) & (idx.quality >= WQ.MIN_QUALITY) & idx.speaker_id.isin(WQ.panel_speakers())].copy()
+    sub_ids = set(pd.read_parquet(SUBSET, columns=['chunk_id']).chunk_id)
+    rows = []
+    for sid, d in cand.groupby('speaker_id'):
+        per = d.groupby('session').agg(date=('session_date', 'first'), dur=('duration_s', 'sum')).sort_values(['date', 'session'], ascending=False)
+        cum = (per.dur / 60).cumsum().values; part = {}; start = 0
+        for name, want in (('test', test_min), ('dev', dev_min), ('train', budget_min)):
+            got = cum[start:] - (cum[start - 1] if start else 0.0)
+            k = int(np.argmax(got >= want)) if (got >= want).any() else len(got) - 1
+            if not len(got) or got[k] < want:
+                log(f'  {sid}: only {got[-1] if len(got) else 0:.0f} high-quality {name} minutes (< {want}); raise word_quality.RAW_TARGET_MIN')
+            part.update({per.index[i]: name for i in range(start, start + k + 1)}); start += k + 1
+        sel = d[d.session.isin(part)].copy(); sel['part'] = sel.session.map(part)
+        sel['session_id'] = sel.session; sel['session'] = sel.session_date + '_' + sel.session_id.astype(str)
+        rows.append(sel)
+    P = pd.concat(rows, ignore_index=True)
+    P['session_offset_s'] = P.chunk_id.map(_offset_s)
+    P = P.sort_values(['speaker_id', 'session', 'session_offset_s'], ascending=[True, False, True], kind='stable').reset_index(drop=True)
+    P['filename'] = P.speaker_id.astype(str) + '/' + P.chunk_id.str.replace('.flac', '.wav', regex=False)
+    P['start'], P['end'] = 0.0, P.duration_s; P['in_subset'] = P.chunk_id.isin(sub_ids)
+    tr = P[P.part == 'train']
+    P['train_order'] = np.nan; P.loc[tr.index, 'train_order'] = tr.groupby('speaker_id').cumcount().astype(float)
+    P['budget_cum_min'] = np.nan; P.loc[tr.index, 'budget_cum_min'] = tr.groupby('speaker_id').duration_s.cumsum() / 60
+    cols = ['chunk_id', 'speaker_id', 'session', 'session_id', 'session_date', 'knesset', 'session_offset_s', 'duration_s', 'quality',
+            'text', 'shard', 'part', 'filename', 'start', 'end', 'in_subset', 'train_order', 'budget_cum_min']
+    P = P[cols]; P.to_parquet(out, index=False)
+    P1 = pd.read_parquet(PLAN)
+    log(f'plan v2: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers, '
+        f'{int((~P.chunk_id.isin(set(P1.chunk_id))).sum()):,} chunks not in v1 (to extract) -> {out}')
     return P
 
 def plan_summary(P):
@@ -182,6 +229,13 @@ def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=T
         chk((tr.budget_cum_min.diff().fillna(tr.budget_cum_min).round(6) == (tr.duration_s / 60).round(6)).all() and (tr.session.values[:-1] >= tr.session.values[1:]).all(),
             f'{sid}: train order is latest-session-first; nested budgets are prefixes')
     chk((P.start == 0).all() and np.allclose(P.end, P.duration_s), 'start/end are offsets inside each chunk wav')
+    if os.path.abspath(plan_path) != os.path.abspath(PLAN):   # the high-quality plan: every split passes the filter
+        import word_quality as WQ
+        W = pd.read_parquet(WQ.OUT); ok_ids = set(W[WQ.word_ok(W)].chunk_id)
+        chk((P.quality >= WQ.MIN_QUALITY).all() and P.chunk_id.isin(ok_ids).all(), f'every chunk (test, dev, train) has quality >= {WQ.MIN_QUALITY} and passes the word rule')
+        chk(sorted(P.speaker_id.unique()) == sorted(WQ.panel_speakers()), f'speakers are the panel with {WQ.PANEL_SWAPS} applied')
+        bad = [(s, x) for s, xs in WQ.EXCLUDE_SESSIONS.items() for x in xs if ((P.speaker_id == s) & (P.session_id == x)).any()]
+        chk(not bad, f'excluded sessions absent {sorted(WQ.EXCLUDE_SESSIONS.items())}')
     if not check_audio:
         return ok
     print('=== audio ===')
@@ -202,6 +256,9 @@ def upload(repo, audio_dir=AUDIO, plan_path=PLAN):
     from huggingface_hub import HfApi
     api = HfApi(); api.create_repo(repo, repo_type='dataset', private=True, exist_ok=True)
     P = pd.read_parquet(plan_path)
+    name = os.path.basename(plan_path)
+    selection = ('alignment quality >= 0.7' if name == 'panel_plan.parquet' else
+                 'alignment quality >= 0.95 with the word rule of src/training/word_quality.py (high-quality data only, every split)')
     card = f"""---
 license: cc-by-sa-4.0
 language: [he]
@@ -210,31 +267,34 @@ pretty_name: Knesset Committees Panel
 # Knesset Committees Panel
 
 The audio the adaptation stage trains and tests on: {len(P):,} chunks ({P.duration_s.sum()/3600:.1f} h) of
-{P.speaker_id.nunique()} Knesset members, cut from `Hadasy/knesset-committees-chunks` at alignment quality >= 0.7,
-as 16 kHz 16-bit mono WAV under `panel_audio/<speaker_id>/<chunk_id>.wav`. `panel_plan.parquet` is the
+{P.speaker_id.nunique()} Knesset members, cut from `Hadasy/knesset-committees-chunks` at {selection},
+as 16 kHz 16-bit mono WAV under `panel_audio/<speaker_id>/<chunk_id>.wav`. `{name}` is the
 table: one row per chunk with the reference text, session and date, and the split (`part`: test = the
 speaker's newest sessions, then dev, the rest train; session-disjoint by date; train ordered latest-first so
 nested budgets are prefixes). Built by `src/training/materialize.py` in hadasy-tau/deep-learning-project;
 why these speakers is `docs/adaptation_plan.md` there. Source audio: ivrit.ai; references: the Knesset protocols.
 """
     api.upload_file(path_or_fileobj=card.encode('utf-8'), path_in_repo='README.md', repo_id=repo, repo_type='dataset')
-    api.upload_file(path_or_fileobj=plan_path, path_in_repo='panel_plan.parquet', repo_id=repo, repo_type='dataset')
+    api.upload_file(path_or_fileobj=plan_path, path_in_repo=os.path.basename(plan_path), repo_id=repo, repo_type='dataset')
     api.upload_folder(folder_path=audio_dir, path_in_repo='panel_audio', repo_id=repo, repo_type='dataset')
     log(f'uploaded card + plan + wavs to {repo}')
 
 def download(repo, audio_dir=AUDIO):
     from huggingface_hub import snapshot_download
-    snapshot_download(repo, repo_type='dataset', allow_patterns=['panel_audio/*', 'panel_plan.parquet'], local_dir=os.path.dirname(audio_dir))
+    snapshot_download(repo, repo_type='dataset', allow_patterns=['panel_audio/*', 'panel_plan*.parquet'], local_dir=os.path.dirname(audio_dir))
     log(f'downloaded {repo} under {os.path.dirname(audio_dir)}')
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest='cmd', required=True)
-    sub.add_parser('plan'); e = sub.add_parser('extract'); e.add_argument('--max-shards', type=int); e.add_argument('--prefetch', type=int, default=2); e.add_argument('--shards', nargs='+')
+    sub.add_parser('plan'); sub.add_parser('plan-v2')
+    e = sub.add_parser('extract'); e.add_argument('--max-shards', type=int); e.add_argument('--prefetch', type=int, default=2); e.add_argument('--shards', nargs='+')
     v = sub.add_parser('verify'); v.add_argument('--no-audio', action='store_true')
     for c in ('upload', 'download'): sub.add_parser(c).add_argument('--repo', required=True)
+    for c in sub.choices.values(): c.add_argument('--plan', default=PLAN, help='the plan table (panel_plan_v2.parquet for the filtered plan)')
     a = ap.parse_args()
     if a.cmd == 'plan': print(plan_summary(plan()).to_string())
-    elif a.cmd == 'extract': extract(max_shards=a.max_shards, prefetch=a.prefetch, shards=a.shards)
-    elif a.cmd == 'verify': sys.exit(0 if verify(check_audio=not a.no_audio) else 1)
-    elif a.cmd == 'upload': upload(a.repo)
+    elif a.cmd == 'plan-v2': print(plan_summary(plan_v2()).to_string())
+    elif a.cmd == 'extract': extract(plan_path=a.plan, max_shards=a.max_shards, prefetch=a.prefetch, shards=a.shards)
+    elif a.cmd == 'verify': sys.exit(0 if verify(plan_path=a.plan, check_audio=not a.no_audio) else 1)
+    elif a.cmd == 'upload': upload(a.repo, plan_path=a.plan)
     elif a.cmd == 'download': download(a.repo)

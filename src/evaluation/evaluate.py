@@ -40,20 +40,29 @@ def load(arm='B', adapter=None, device=None):
     return model.to(device).eval(), proc, device
 
 
-def transcribe_short(model, proc, chunks, audio_dir, batch=8, device='cpu'):
-    """Short-form: one <=30 s chunk per example. D7's primary protocol."""
+def transcribe_short(model, proc, chunks, audio_dir, batch=32, device='cpu'):
+    """Short-form: one <=30 s chunk per example. D7's primary protocol.
+
+    Greedy decoding, the checkpoint's own generation config; batch is a
+    throughput knob only.  Measured on an A100 (2026-09-20, 224 chunks of
+    whisper-large-v3 in fp16): 138 s at batch 8, 42 s at 32, 24 s at 64.
+    """
     import torch
     with torch.no_grad():
         return _transcribe_short(model, proc, chunks, audio_dir, batch, device)
 
 def _transcribe_short(model, proc, chunks, audio_dir, batch, device):
     out = []
+    # The log-mel on the GPU when there is one: the numpy path is a 30 s STFT per
+    # chunk on the CPU (8 ms with a sane thread count, 1.4 s on a 255-core box
+    # with the default pool -- see train.py); on the device it is 10 ms a batch.
+    fe_kw = dict(device=device) if str(device).startswith('cuda') else {}
     for i in range(0, len(chunks), batch):
         rows = chunks.iloc[i:i + batch]
         wavs = [read_wav(os.path.join(audio_dir, r.filename), r.start, r.end)
                 for r in rows.itertuples()]
-        feats = proc.feature_extractor(wavs, sampling_rate=16000,
-                                       return_tensors='pt').input_features.to(device, model.dtype)
+        feats = proc.feature_extractor(wavs, sampling_rate=16000, return_tensors='pt',
+                                       **fe_kw).input_features.to(device, model.dtype)
         ids = model.generate(feats, language='he', task='transcribe')
         out += proc.batch_decode(ids, skip_special_tokens=True)
     return out
