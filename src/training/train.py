@@ -183,8 +183,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     ignored); validation loss every eval_steps, constant lr after WARMUP_STEPS,
     the best checkpoint restored at the end.
     patience: stop after this many validations without improvement (None = run
-    to max_steps; the tuning runs do that and apply patience afterwards from the
-    logged curve, see run_panel.patience_pick).
+    to max_steps).  Fixed at 4 in the plan, tuning runs included -- not tuned.
     dropout: Whisper's own `dropout` (0 in this checkpoint); LoRA's stays 0.05.
     augment: a key of AUGMENTS -- SpecAugment via the model config, tempo and
     noise on the training waveforms only.

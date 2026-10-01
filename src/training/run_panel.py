@@ -33,16 +33,14 @@ Two additions from docs/training_handoff.md § Before the second run:
 
 Step mode and tuning (docs/training_plan_v3.md).  --max-steps switches train.py to a
 fixed number of optimiser steps for every budget, validation every 20 steps and
-optional early stopping (--patience); --dropouts and --augments are swept like
---lrs and --ranks; --plan panel_plan_v2.parquet trains on the quality-filtered
-data.  --tune trains and validates only -- the test set is never transcribed --
-and --tuning-report turns the logged validation curves into outputs/tuning.csv,
-applying each patience value afterwards (patience_pick).  --summary also writes
-outputs/results_q95.csv: every scored row re-scored on its test chunks with
-quality >= 0.95, from the saved transcriptions.
+early stopping after --patience validations without improvement (4 by default);
+--dropouts and --augments are swept like --lrs and --ranks; --plan
+panel_plan_v2.parquet trains and tests on the high-quality data.  --tune trains and
+validates only -- the test set is never transcribed -- and --tuning-report
+collects the validation results into outputs/tuning.csv.
 
     python src/training/run_panel.py --tune --plan src/training/panel_plan_v2.parquet --max-steps 400 \
-        --speakers 30685 23558 30718 30868 30859 30752 --budgets 5 80 --lrs 1e-4 3e-4 1e-3 --seeds 0
+        --speakers 30685 23558 30718 30859 --budgets 5 80 --lrs 1e-4 3e-4 1e-3 --seeds 0
     python src/training/run_panel.py --tuning-report
 
 Needs the materialized audio (materialize.py extract or download) and a GPU
@@ -59,7 +57,6 @@ sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, '..')); sys.path
 PLAN, AUDIO = os.path.join(HERE, 'panel_plan.parquet'), os.path.join(HERE, 'outputs', 'panel_audio')
 RUNS, RESULTS = os.path.join(HERE, 'runs'), os.path.join(HERE, 'outputs', 'results')
 TUNE_RUNS, TUNING = os.path.join(HERE, 'runs_tune'), os.path.join(HERE, 'outputs', 'tuning.csv')
-Q95 = 0.95                                  # the high-quality line for the second view of the test set
 
 def load_plan(plan_path=PLAN, speakers=None):
     P = pd.read_parquet(plan_path)
@@ -102,11 +99,13 @@ def compare(test, hb, ht, ha):
         res.update({k + '_f': v for k, v in pf.items() if k not in ('n_segments', 'n_words')}, base_f=_fshares(fb), tuned_f=_fshares(ft))
     return res
 
-def base_hyps(arm, speaker, test, audio_dir, batch, model_override=None):
-    """The base model on the speaker's test chunks, cached per (arm, speaker)."""
+def base_hyps(arm, speaker, test, audio_dir, batch, model_override=None, data=''):
+    """The base model on the speaker's test chunks, cached per (arm, speaker, plan):
+    `data` names a plan other than v1 ('hq'), so its different test set gets its own
+    cache instead of overwriting the second run's."""
     import evaluate as EV
     tag = (model_override or EV.ARMS[arm]).replace('/', '__')
-    path = os.path.join(RESULTS, f'base_{arm}_{speaker}_{tag}.json')
+    path = os.path.join(RESULTS, f'base_{arm}_{speaker}_{tag}' + (f'_{data}' if data else '') + '.json')
     if os.path.exists(path):
         d = json.load(open(path, encoding='utf-8'))
         if d['chunk_ids'] == list(test.chunk_id): return d['hyps']
@@ -208,9 +207,10 @@ def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_overr
     phase['train'] = time.time() - t0
     spk = P[P.speaker_id == c['speaker']]      # scoring: the protocol test text
     test = spk[spk.part == 'test'].reset_index(drop=True)
-    t = time.time(); hb = base_hyps(c['arm'], c['speaker'], test, audio_dir, eval_batch, model_override); phase['base'] = time.time() - t
+    data = step.get('data', '')
+    t = time.time(); hb = base_hyps(c['arm'], c['speaker'], test, audio_dir, eval_batch, model_override, data); phase['base'] = time.time() - t
     # arm A's (the other arm's) transcription of the same chunks, for the forgiven-shared count; cached per speaker
-    t = time.time(); ha = base_hyps(OTHER_ARM[c['arm']], c['speaker'], test, audio_dir, eval_batch) if forgiven else None; phase['other_arm'] = time.time() - t
+    t = time.time(); ha = base_hyps(OTHER_ARM[c['arm']], c['speaker'], test, audio_dir, eval_batch, data=data) if forgiven else None; phase['other_arm'] = time.time() - t
     t = time.time(); model, proc, device = EV.load(c['arm'], adapter=adapter); phase['load_tuned'] = time.time() - t
     t = time.time(); ht = EV.transcribe_short(model, proc, test, audio_dir, batch=eval_batch, device=device); del model; phase['transcribe_tuned'] = time.time() - t
     t = time.time(); cmp = compare(test, hb, ht, ha); phase['score'] = time.time() - t
@@ -279,7 +279,8 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
         model, proc, device = EV.load(arm, adapter=adapter)
         for s in todo:
             t1 = time.time(); test = P[(P.speaker_id == s) & (P.part == 'test')].reset_index(drop=True)
-            hb = base_hyps(arm, s, test, audio_dir, eval_batch); ha = base_hyps(OTHER_ARM[arm], s, test, audio_dir, eval_batch) if forgiven else None
+            data = step.get('data', '')
+            hb = base_hyps(arm, s, test, audio_dir, eval_batch, data=data); ha = base_hyps(OTHER_ARM[arm], s, test, audio_dir, eval_batch, data=data) if forgiven else None
             ht = EV.transcribe_short(model, proc, test, audio_dir, batch=eval_batch, device=device)
             cmp = compare(test, hb, ht, ha)
             res = dict(cell=f'{name}__eval{s}', speaker=s, arm=arm, site=site, method=method, budget=budget, rank=rank, lr=lr, seed=seed,
@@ -298,57 +299,37 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
 
 # ---- tuning: validation only ---------------------------------------------------------
 def run_tune(c, P, audio_dir, batch, grad_accum, step, model_override=None):
-    """Train one cell to max_steps with no early stopping and keep only its
-    validation curve (train_meta.json under runs_tune/).  The test set is not
-    read.  Patience is applied afterwards, from the curve (patience_pick)."""
+    """Train one cell with the recipe's early stopping and keep only its validation
+    curve (train_meta.json under runs_tune/).  The test set is not read."""
     import train as T
     if model_override:
         for a in T.ARMS: T.ARMS[a] = model_override
     c = {**c, 'lr': c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']]}
-    step = {**step, 'patience': None}
     spk = P[P.speaker_id == c['speaker']]
     return T.train_cell(spk, audio_dir, TUNE_RUNS, c['speaker'], arm=c['arm'], site=c['site'], method=c['method'], budget=c['budget'],
                         rank=c['rank'], lr=c['lr'], seed=c['seed'], batch=batch, grad_accum=grad_accum, tag=full_tag('protocol', 'loss', step),
                         keep_adapter=False, **step_kw(step))
 
-def patience_pick(evals, patience=None):
-    """What early stopping with this patience would have kept, from a full curve:
-    (best loss, its step, the step training stops at).  Same rule as
-    transformers' EarlyStoppingCallback: an evaluation counts as an improvement
-    only if it is strictly below the best so far."""
-    best, best_step, waited = float('inf'), None, 0
-    for e in evals:
-        if e['eval_loss'] < best:
-            best, best_step, waited = e['eval_loss'], e['step'], 0
-        else:
-            waited += 1
-            if patience and waited >= patience:
-                return best, best_step, e['step']
-    return best, best_step, (evals[-1]['step'] if evals else None)
-
-def tuning_report(patiences=(2, 4, 8), out=TUNING):
-    """One row per (tuning run, patience): the settings, the untuned and the kept
-    validation loss, and rel_drop = the relative drop between them -- the
-    tuning criterion (docs/training_plan_v3.md, step 3).  Prints the mean over
-    speakers per recipe, budget and patience, with how many speakers improved."""
+def tuning_report(out=TUNING):
+    """One row per tuning run: the settings, the untuned and the best validation
+    loss, and rel_drop = the relative drop between them -- the tuning criterion
+    (docs/training_plan_v3.md, step 3).  Prints the mean over speakers per recipe
+    and budget, with how many speakers each recipe helped."""
     rows = []
     for d in sorted(glob.glob(os.path.join(TUNE_RUNS, '*', 'train_meta.json'))):
         m = json.load(open(d)); name = os.path.basename(os.path.dirname(d))
-        if not m.get('max_steps') or m.get('base_eval_loss') is None: continue
-        head = name.split('_')                        # s<speaker>_arm<A>_<site>_<method>_b<budget>_r<rank>_lr<lr>_seed<seed>[_tag]
-        spk, budget = head[0][1:], int(head[4][1:]); rank = int(head[5][1:]); lr = float(head[6][2:])
-        recipe = name.split('_seed', 1)[1].split('_', 1)[1] if '_' in name.split('_seed', 1)[1] else ''
-        for pat in (None,) + tuple(patiences):
-            best, best_step, stop = patience_pick(m['evals'], pat)
-            rows.append(dict(run=name, speaker=spk, budget=budget, lr=lr, rank=rank, dropout=m.get('dropout') or 0.0,
-                             augment=m.get('augment', 'none'), recipe=recipe, patience=pat or 0, base_loss=m['base_eval_loss'],
-                             best_loss=best, rel_drop=1 - best / m['base_eval_loss'], best_step=best_step, stop_step=stop,
-                             train_minutes=m.get('train_minutes')))
+        if not m.get('max_steps') or m.get('base_eval_loss') is None or not m.get('evals'): continue
+        head = name.split('_')                        # s<speaker>_arm<A>_<site>_<method>_b<budget>_r<rank>_lr<lr>_seed<seed>_<tag>
+        best = min(m['evals'], key=lambda e: e['eval_loss'])
+        rows.append(dict(run=name, speaker=head[0][1:], budget=int(head[4][1:]), lr=float(head[6][2:]), rank=int(head[5][1:]),
+                         dropout=m.get('dropout') or 0.0, augment=m.get('augment', 'none'), patience=m.get('patience'),
+                         base_loss=m['base_eval_loss'], best_loss=best['eval_loss'], rel_drop=1 - best['eval_loss'] / m['base_eval_loss'],
+                         best_step=best.get('step'), stop_step=m.get('global_step'), train_minutes=m.get('train_minutes')))
     if not rows: print('no tuning runs yet'); return None
     T = pd.DataFrame(rows); T.to_csv(out, index=False, float_format='%.5g')
-    g = T.groupby(['budget', 'lr', 'rank', 'dropout', 'augment', 'patience'])
-    S = g.agg(speakers=('speaker', 'nunique'), mean_rel_drop=('rel_drop', 'mean'), mean_stop_step=('stop_step', 'mean')).reset_index()
-    print(f'{len(T)} rows -> {out}'); print(S.round(4).to_string(index=False))
+    S = (T.groupby(['budget', 'lr', 'rank', 'dropout', 'augment'])
+          .agg(speakers=('speaker', 'nunique'), mean_rel_drop=('rel_drop', 'mean'), mean_stop_step=('stop_step', 'mean')).reset_index())
+    print(f'{len(T)} runs -> {out}'); print(S.round(4).to_string(index=False))
     return T
 
 # ---- the results tables ----------------------------------------------------------------
@@ -356,30 +337,6 @@ def _recipe(cell):
     """The name suffix after the seed, identical for a recipe's own cells and its controls."""
     tail = cell.split('__eval')[0].split('_seed', 1)[1]
     return tail.split('_', 1)[1] if '_' in tail else ''
-
-def _rows_q95(rows, plan_path=PLAN):
-    """Every scored row again, on the test chunks with quality >= Q95 only, from
-    the saved hypotheses (tuned: <cell>.hyps.json; base and arm A: the base_*
-    caches).  No transcription."""
-    import evaluate as EV
-    P = pd.read_parquet(plan_path); P = P[P.part == 'test'].set_index('chunk_id')
-    out = []
-    for r in rows:
-        hp = os.path.join(RESULTS, r['cell'] + '.hyps.json')
-        if not os.path.exists(hp): continue
-        ht = json.load(open(hp, encoding='utf-8')); ids = ht['chunk_ids']
-        def cached(arm):
-            f = glob.glob(os.path.join(RESULTS, f"base_{arm}_{r['speaker']}_*.json"))
-            d = json.load(open(f[0], encoding='utf-8')) if f else None
-            return dict(zip(d['chunk_ids'], d['hyps'])) if d else None
-        hb, ha = cached(r['arm']), cached(OTHER_ARM[r['arm']])
-        keep = [i for i, c in enumerate(ids) if c in P.index and P.at[c, 'quality'] >= Q95]
-        if hb is None or not keep: continue
-        test = P.loc[[ids[i] for i in keep]].reset_index()
-        cmp = compare(test, [hb[ids[i]] for i in keep], [ht['hyps'][i] for i in keep],
-                      [ha[ids[i]] for i in keep] if (ha is not None and 'wer_base_f' in r) else None)
-        out.append({**r, **cmp, 'n_test': len(test), 'test_minutes': float(test.duration_s.sum() / 60)})
-    return out
 
 def _table(rows, control_budget=80):
     R = pd.json_normalize(rows)
@@ -412,7 +369,7 @@ def _table(rows, control_budget=80):
         if 'delta_abs_f' in R: R['personalization_abs_f'] = R.delta_abs_f - R.control_delta_abs_f
     return R
 
-def summary(out=os.path.join(HERE, 'outputs', 'results.csv'), q95=True, plan_path=PLAN):
+def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
     rows = [json.load(open(f, encoding='utf-8')) for f in sorted(glob.glob(os.path.join(RESULTS, '*.json'))) if not f.endswith('.hyps.json') and not os.path.basename(f).startswith(('base_', 'hyps_'))]
     if not rows: print('no results yet'); return None
     R = _table(rows)
@@ -420,12 +377,6 @@ def summary(out=os.path.join(HERE, 'outputs', 'results.csv'), q95=True, plan_pat
     cols = [c for c in ['speaker', 'site', 'lr', 'targets', 'select', 'budget', 'seed', 'control', 'n_test', 'train_steps', 'wer_base', 'wer_tuned', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot', 'wer_base_f', 'wer_tuned_f', 'delta_rel_f', 'p_boot_f',
                         'improvement_from_insertions', 'style_not_speaker', 'control_delta_rel', 'personalization_rel'] if c in R]
     print(R[cols].round(4).to_string(index=False))
-    if q95:                                    # the second view of the test set, same columns
-        Q = _rows_q95(rows, plan_path)          # test chunks are the same in every plan; quality comes from the plan
-        if Q:
-            q = _table(Q)[[c for c in R.columns]]
-            qout = os.path.join(os.path.dirname(out), 'results_q95.csv')
-            q.to_csv(qout, index=False, float_format='%.5g'); print(f'{len(q)} rows on test chunks with quality >= {Q95} -> {qout}')
     return R
 
 if __name__ == '__main__':
@@ -444,22 +395,22 @@ if __name__ == '__main__':
     ap.add_argument('--build-targets', action='store_true', help='write outputs/targets_verbatim.parquet from the cached train/dev transcriptions, then exit')
     ap.add_argument('--targets', choices=['protocol', 'verbatim'], default='protocol', help='training target text (docs/training_next.md A1)')
     ap.add_argument('--select', choices=['loss', 'forgiven'], default='loss', help='checkpoint selection: dev loss, or dev forgiven-shared WER (A2)')
-    ap.add_argument('--plan', default=PLAN, help='the data plan; panel_plan_v2.parquet = quality-filtered train/dev (docs/training_plan_v3.md)')
+    ap.add_argument('--plan', default=PLAN, help='the data plan; panel_plan_v2.parquet = the high-quality plan (docs/training_plan_v3.md)')
     ap.add_argument('--max-steps', type=int, help='step mode: this many optimiser steps for every budget (docs/training_plan_v3.md)')
     ap.add_argument('--eval-steps', type=int, default=20, help='step mode: validate every N steps')
-    ap.add_argument('--patience', type=int, help='step mode: stop after N validations without improvement')
+    ap.add_argument('--patience', type=int, default=4, help='step mode: stop after N validations without improvement (fixed, not tuned)')
     ap.add_argument('--dropouts', nargs='+', type=float, default=[None], help="step mode: Whisper's `dropout` (0 in the checkpoint)")
     ap.add_argument('--augments', nargs='+', default=['none'], choices=['none', 'specaug', 'specaug+tempo', 'specaug+tempo+noise'])
     ap.add_argument('--control-budgets', nargs='+', type=int, help='train the control at each of these budgets (default: --control-budget)')
     ap.add_argument('--tune', action='store_true', help='train + validate only, no test (runs_tune/); then --tuning-report')
     ap.add_argument('--tuning-report', action='store_true', help='write outputs/tuning.csv from the tuning runs and print the comparison')
     a = ap.parse_args()
-    if a.summary: summary(plan_path=a.plan); sys.exit(0)
+    if a.summary: summary(); sys.exit(0)
     if a.tuning_report: tuning_report(); sys.exit(0)
-    if (a.dropouts != [None] or a.augments != ['none'] or a.patience or a.tune) and not a.max_steps:
-        ap.error('--dropouts, --augments, --patience and --tune are step-mode settings: give --max-steps')
+    if (a.dropouts != [None] or a.augments != ['none'] or a.tune) and not a.max_steps:
+        ap.error('--dropouts, --augments and --tune are step-mode settings: give --max-steps')
     P = load_plan(a.plan, speakers=a.speakers)
-    data_tag = '' if os.path.abspath(a.plan) == os.path.abspath(PLAN) else 'q95'
+    data_tag = '' if os.path.abspath(a.plan) == os.path.abspath(PLAN) else 'hq'
     steps = [dict(max_steps=a.max_steps, eval_steps=a.eval_steps, patience=a.patience, dropout=d, augment=g, data=data_tag)
              for d in a.dropouts for g in a.augments] if a.max_steps else [{}]
     if a.transcribe_parts: transcribe_parts(P, a.audio, a.eval_batch); sys.exit(0)
@@ -473,7 +424,7 @@ if __name__ == '__main__':
         import train as T
         for st in steps:
             for c in C: print('  ' + ('[tune] ' if a.tune else '') + T.cell_name(c['speaker'], c['arm'], c['site'], c['method'], c['budget'], c['rank'], c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']], c['seed'],
-                                                full_tag(a.targets, a.select, {**st, 'patience': None} if a.tune else st)))
+                                                full_tag(a.targets, a.select, st)))
         if a.control_folds:
             for k, f in enumerate(control_folds(sorted(int(s) for s in P.speaker_id.unique()), a.control_folds, a.seeds[0])): print(f'  ctrl{k}of{a.control_folds}: evaluates {f}')
         sys.exit(0)
@@ -490,4 +441,4 @@ if __name__ == '__main__':
                     for lr in a.lrs:
                         run_control(P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, folds=a.control_folds, budget=cb, arm=a.arms[0], site=site,
                                     method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], forgiven=not a.no_forgiven, targets=a.targets, select=a.select, step=st)
-    summary(plan_path=a.plan)
+    summary()

@@ -13,10 +13,10 @@ chunk's span and summarises them:
   low_run     longest run of consecutive words below LOW_P
   min_p       the lowest word probability
 
-Candidates are chunks at quality >= MIN_QUALITY in sessions that are NOT the
-speaker's personal-test sessions (panel_plan.parquet's test is kept as it is),
-newest session first, until RAW_TARGET_MIN minutes of candidates -- enough for
-dev + the 80-minute budget after the word rule removes some.
+Candidates are the speaker's chunks at quality >= MIN_QUALITY, newest session
+first, until RAW_TARGET_MIN minutes -- enough for test (45 min) + dev (15) + the
+80-minute budget after the word rule removes about a third.  Every split of
+panel_plan_v2 is drawn from them: the project works only with high-quality data.
 
 The rule itself (word_ok) lives here so plan and verify share it; its
 threshold MAX_LOW_SHARE was fixed from `report()` before any training
@@ -32,7 +32,6 @@ import numpy as np, pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(HERE, 'word_quality.parquet')
 PANEL = os.path.join(ROOT, 'src', 'evaluation', 'outputs', 'committees_panel.csv')
-PLAN_V1 = os.path.join(HERE, 'panel_plan.parquet')
 INDEX = os.path.join(ROOT, 'src', 'inference', 'cache', 'index.parquet')
 
 MIN_QUALITY = 0.95      # ivrit.ai's "high quality" line for a segment's median word probability
@@ -40,8 +39,17 @@ LOW_P = 0.5             # a word below this is clearly misaligned (half the word
 MAX_RUN = 3             # a run of this many low words in a row drops the chunk
 MAX_LOW_SHARE = 0.10    # at most this share of low words; fixed from report() (see the module docstring)
 MAX_COUNT_GAP = 0.2     # |aligned words - reference words| / reference words above this: the span is not verifiable
-RAW_TARGET_MIN = 200    # candidate minutes per speaker (>= 0.95), before the word rule
+RAW_TARGET_MIN = 250    # candidate minutes per speaker (>= 0.95), before the word rule (~65% pass it)
 EXCLUDE_SESSIONS = {30843: {2235355}}   # the audio gate: this dev session is mostly another voice (docs/training_run2.md)
+# 30843 has ~124 high-quality minutes, short of test + dev + train (140); her S2
+# alternate takes her place, as the panel file provides (docs/training_plan_v3.md).
+PANEL_SWAPS = {30843: 556}
+
+
+def panel_speakers(panel_path=PANEL):
+    panel = pd.read_csv(panel_path, index_col=0)
+    core = [int(s) for s in panel[~panel.profile.str.contains('alt')].index]
+    return [PANEL_SWAPS.get(s, s) for s in core]
 
 
 def span(chunk_id):
@@ -77,16 +85,12 @@ def word_ok(W, max_low_share=MAX_LOW_SHARE):
     return (gap <= MAX_COUNT_GAP) & (W.low_share <= max_low_share) & (W.low_run < MAX_RUN)
 
 
-def candidates(index_path=INDEX, panel_path=PANEL, plan_v1=PLAN_V1, target_min=RAW_TARGET_MIN):
-    panel = pd.read_csv(panel_path, index_col=0); core = panel[~panel.profile.str.contains('alt')].index
+def candidates(index_path=INDEX, panel_path=PANEL, target_min=RAW_TARGET_MIN):
     idx = pd.read_parquet(index_path, columns=['chunk_id', 'speaker_id', 'session', 'session_date', 'duration_s', 'quality', 'text'])
-    idx = idx[idx.speaker_id.isin(core) & (idx.quality >= MIN_QUALITY)]
-    P1 = pd.read_parquet(plan_v1)
+    idx = idx[idx.speaker_id.isin(panel_speakers(panel_path)) & (idx.quality >= MIN_QUALITY)]
     out = []
     for sid, d in idx.groupby('speaker_id'):
-        test = P1[(P1.speaker_id == sid) & (P1.part == 'test')]
-        first_test = test.session_date.min()
-        d = d[~d.session.isin(set(test.session_id)) & (d.session_date <= first_test) & ~d.session.isin(EXCLUDE_SESSIONS.get(int(sid), set()))]
+        d = d[~d.session.isin(EXCLUDE_SESSIONS.get(int(sid), set()))]
         per = d.groupby('session').agg(date=('session_date', 'first'), mins=('duration_s', lambda s: s.sum() / 60)).sort_values(['date'], ascending=False)
         n = int(np.searchsorted(per.mins.cumsum().values, target_min)) + 1
         out.append(d[d.session.isin(per.index[:n])])
@@ -131,8 +135,9 @@ def build(out=OUT, workers=6):
 def report(W=None, index_path=INDEX, shares=(0.0, 0.05, 0.10, 0.15, 0.20)):
     """Minutes that survive per speaker under each candidate MAX_LOW_SHARE: the
     table the threshold is chosen from (strictest value leaving every speaker
-    >= 15 min dev + 80 min train)."""
+    >= 45 min test + 15 min dev + 80 min train)."""
     W = pd.read_parquet(OUT) if W is None else W
+    W = W[W.speaker_id.isin(panel_speakers())]
     dur = pd.read_parquet(index_path, columns=['chunk_id', 'duration_s']).set_index('chunk_id').duration_s
     W = W.assign(mins=W.chunk_id.map(dur) / 60)
     gap = (W.n_aligned - W.n_ref).abs() / W.n_ref.clip(lower=1)
@@ -140,7 +145,7 @@ def report(W=None, index_path=INDEX, shares=(0.0, 0.05, 0.10, 0.15, 0.20)):
           f'median low_share {W.low_share.median():.3f}; runs of >= {MAX_RUN} low words in {(W.low_run >= MAX_RUN).mean():.1%}')
     t = pd.DataFrame({f'<= {s:.2f}': W[word_ok(W, s)].groupby('speaker_id').mins.sum() for s in shares})
     t.insert(0, 'all >= 0.95', W.groupby('speaker_id').mins.sum())
-    print('minutes kept per speaker (candidates only; need >= 95):'); print(t.round(0).to_string())
+    print('minutes kept per speaker (candidates only; need >= 140):'); print(t.round(0).to_string())
     return t
 
 

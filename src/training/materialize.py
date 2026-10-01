@@ -18,9 +18,9 @@ run on different machines:
             WAV under outputs/panel_audio/<speaker_id>/<chunk_id>.wav, deletes the
             shard.  ~80 GB pass through, ~3 GB stay.  Resumable: existing WAVs are
             skipped, so a dropped link costs one shard.
-  plan-v2   laptop.  The quality-filtered plan: v1's test unchanged, dev and
-            train from older sessions at quality >= 0.95 that also pass the
-            word rule (word_quality.py, which must run first).  Writes
+  plan-v2   laptop.  The high-quality plan: test, dev and train all from chunks
+            at quality >= 0.95 that also pass the word rule (word_quality.py,
+            which must run first), 30843 swapped for her alternate 556.  Writes
             panel_plan_v2.parquet.  extract/verify/upload take --plan to use it.
   verify    the split invariants (no session on two sides, test/dev/train sizes,
             nested budgets are prefixes) and every WAV present and readable.
@@ -110,50 +110,46 @@ def plan(panel_path=PANEL, index_path=INDEX, out=PLAN, budget_min=BUDGET_MIN, de
     log(f'plan: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers, {P.shard.nunique()} shards -> {out}')
     return P
 
-def plan_v2(plan_v1=PLAN, out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, index_path=INDEX):
-    """The quality-filtered plan (docs/training_plan_v3.md, step 1).
-
-    test   the v1 plan's test rows, unchanged -- same chunks, same wavs, the
-           cached base transcriptions still apply, results stay comparable.
-           Reported two ways later: all of it (quality >= 0.7) and quality >= 0.95.
-    dev    the newest non-test sessions, filtered chunks only, until dev_min.
-    train  the older sessions, filtered chunks only, newest first, until the
-           budget -- so nested budgets remain prefixes.
-    Filtered = quality >= 0.95 (ivrit.ai's "high quality") and the word rule
-    (word_quality.word_ok): few clearly misaligned words, no run of them."""
+def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_FLOOR_MIN, index_path=INDEX):
+    """The high-quality plan (docs/training_plan_v3.md, step 1): every split is drawn
+    from chunks at quality >= 0.95 that also pass the word rule (word_quality.word_ok:
+    few clearly misaligned words, no run of them), for the panel with
+    word_quality.PANEL_SWAPS applied (30843 -> her alternate 556).  Per speaker,
+    session-disjoint by date: the newest sessions until test_min (45 min, the v1
+    floor), then dev_min, then the budget, newest first -- so nested budgets are
+    prefixes.  The session that crosses a target is inside it, as in plan()."""
     import word_quality as WQ
-    P1 = pd.read_parquet(plan_v1); W = pd.read_parquet(WQ.OUT)
-    W = W[WQ.word_ok(W)]
+    W = pd.read_parquet(WQ.OUT); W = W[WQ.word_ok(W)]
     idx = pd.read_parquet(index_path, columns=['chunk_id', 'speaker_id', 'session', 'session_date', 'knesset', 'duration_s', 'quality', 'text', 'shard'])
-    cand = idx[idx.chunk_id.isin(set(W.chunk_id)) & (idx.quality >= WQ.MIN_QUALITY)].copy()
+    cand = idx[idx.chunk_id.isin(set(W.chunk_id)) & (idx.quality >= WQ.MIN_QUALITY) & idx.speaker_id.isin(WQ.panel_speakers())].copy()
     sub_ids = set(pd.read_parquet(SUBSET, columns=['chunk_id']).chunk_id)
-    def fill(mins, want):                                  # as in plan(): the session that crosses the target is inside
-        cum = np.cumsum(mins); k = int(np.argmax(cum >= want)) if (cum >= want).any() else len(cum) - 1
-        return set(range(k + 1)), float(cum[k])
-    rows = [P1[P1.part == 'test'].drop(columns=['train_order', 'budget_cum_min'])]
+    rows = []
     for sid, d in cand.groupby('speaker_id'):
         per = d.groupby('session').agg(date=('session_date', 'first'), dur=('duration_s', 'sum')).sort_values(['date', 'session'], ascending=False)
-        mins = (per.dur / 60).values
-        dk, _ = fill(mins, dev_min); rest = [i for i in range(len(per)) if i not in dk]
-        tk, got = fill(mins[rest], budget_min) if rest else (set(), 0.0)
-        if got < budget_min: log(f'  {sid}: only {got:.0f} filtered train minutes (< {budget_min}); run word_quality.py with a larger RAW_TARGET_MIN')
-        part = {per.index[i]: 'dev' for i in dk}; part.update({per.index[rest[i]]: 'train' for i in tk})
+        cum = (per.dur / 60).cumsum().values; part = {}; start = 0
+        for name, want in (('test', test_min), ('dev', dev_min), ('train', budget_min)):
+            got = cum[start:] - (cum[start - 1] if start else 0.0)
+            k = int(np.argmax(got >= want)) if (got >= want).any() else len(got) - 1
+            if not len(got) or got[k] < want:
+                log(f'  {sid}: only {got[-1] if len(got) else 0:.0f} high-quality {name} minutes (< {want}); raise word_quality.RAW_TARGET_MIN')
+            part.update({per.index[i]: name for i in range(start, start + k + 1)}); start += k + 1
         sel = d[d.session.isin(part)].copy(); sel['part'] = sel.session.map(part)
         sel['session_id'] = sel.session; sel['session'] = sel.session_date + '_' + sel.session_id.astype(str)
-        sel['session_offset_s'] = sel.chunk_id.map(_offset_s)
-        sel['filename'] = sel.speaker_id.astype(str) + '/' + sel.chunk_id.str.replace('.flac', '.wav', regex=False)
-        sel['start'], sel['end'] = 0.0, sel.duration_s; sel['in_subset'] = sel.chunk_id.isin(sub_ids)
         rows.append(sel)
     P = pd.concat(rows, ignore_index=True)
+    P['session_offset_s'] = P.chunk_id.map(_offset_s)
     P = P.sort_values(['speaker_id', 'session', 'session_offset_s'], ascending=[True, False, True], kind='stable').reset_index(drop=True)
+    P['filename'] = P.speaker_id.astype(str) + '/' + P.chunk_id.str.replace('.flac', '.wav', regex=False)
+    P['start'], P['end'] = 0.0, P.duration_s; P['in_subset'] = P.chunk_id.isin(sub_ids)
     tr = P[P.part == 'train']
     P['train_order'] = np.nan; P.loc[tr.index, 'train_order'] = tr.groupby('speaker_id').cumcount().astype(float)
     P['budget_cum_min'] = np.nan; P.loc[tr.index, 'budget_cum_min'] = tr.groupby('speaker_id').duration_s.cumsum() / 60
     cols = ['chunk_id', 'speaker_id', 'session', 'session_id', 'session_date', 'knesset', 'session_offset_s', 'duration_s', 'quality',
             'text', 'shard', 'part', 'filename', 'start', 'end', 'in_subset', 'train_order', 'budget_cum_min']
     P = P[cols]; P.to_parquet(out, index=False)
+    P1 = pd.read_parquet(PLAN)
     log(f'plan v2: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers, '
-        f'{int((~P.chunk_id.isin(set(P1.chunk_id))).sum()):,} chunks not in v1 -> {out}')
+        f'{int((~P.chunk_id.isin(set(P1.chunk_id))).sum()):,} chunks not in v1 (to extract) -> {out}')
     return P
 
 def plan_summary(P):
@@ -233,12 +229,11 @@ def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=T
         chk((tr.budget_cum_min.diff().fillna(tr.budget_cum_min).round(6) == (tr.duration_s / 60).round(6)).all() and (tr.session.values[:-1] >= tr.session.values[1:]).all(),
             f'{sid}: train order is latest-session-first; nested budgets are prefixes')
     chk((P.start == 0).all() and np.allclose(P.end, P.duration_s), 'start/end are offsets inside each chunk wav')
-    if os.path.abspath(plan_path) != os.path.abspath(PLAN):   # a filtered plan: test is v1's, train/dev pass the filter
+    if os.path.abspath(plan_path) != os.path.abspath(PLAN):   # the high-quality plan: every split passes the filter
         import word_quality as WQ
-        P1 = pd.read_parquet(PLAN); W = pd.read_parquet(WQ.OUT)
-        chk(set(P[P.part == 'test'].chunk_id) == set(P1[P1.part == 'test'].chunk_id), 'test chunks identical to panel_plan.parquet')
-        td = P[P.part != 'test']; ok_ids = set(W[WQ.word_ok(W)].chunk_id)
-        chk((td.quality >= WQ.MIN_QUALITY).all() and td.chunk_id.isin(ok_ids).all(), f'every train/dev chunk has quality >= {WQ.MIN_QUALITY} and passes the word rule')
+        W = pd.read_parquet(WQ.OUT); ok_ids = set(W[WQ.word_ok(W)].chunk_id)
+        chk((P.quality >= WQ.MIN_QUALITY).all() and P.chunk_id.isin(ok_ids).all(), f'every chunk (test, dev, train) has quality >= {WQ.MIN_QUALITY} and passes the word rule')
+        chk(sorted(P.speaker_id.unique()) == sorted(WQ.panel_speakers()), f'speakers are the panel with {WQ.PANEL_SWAPS} applied')
         bad = [(s, x) for s, xs in WQ.EXCLUDE_SESSIONS.items() for x in xs if ((P.speaker_id == s) & (P.session_id == x)).any()]
         chk(not bad, f'excluded sessions absent {sorted(WQ.EXCLUDE_SESSIONS.items())}')
     if not check_audio:
