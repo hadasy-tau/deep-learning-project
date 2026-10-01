@@ -162,12 +162,12 @@ For whoever runs the training next, a person or a fresh Claude session on a GPU 
 - **Code:** PR [hadasy-tau/deep-learning-project#23](https://github.com/hadasy-tau/deep-learning-project/pull/23) (`training-plan-v3` → `main`). Train from `main` once it's merged, otherwise from the branch. It includes Dolev's second run.
 - **Data plan:** `src/training/panel_plan_v2.parquet` (6,462 clips, 27.9 h, 11 speakers), built and verified. It's committed, along with `word_quality.parquet`.
 - **Audio:** extracted on Hadas's laptop on 2026-10-01 into `src/training/outputs/panel_audio/<speaker>/<clip>.wav` (git-ignored): all 6,462 WAVs, 3.1 GB, 46 minutes for 186 shards at about 80 Mbit/s. `verify` passed every check, including 200 sampled WAVs with the right duration and non-silent audio. Nothing has been trained on it yet.
-- **Access:** `Dolevabudi/knesset-committees-panel` is Dolev's private v1 audio, not readable from Hadas's account. `Dolevabudi/knesset-committees-adapters` holds the second run's adapters and the 462 per-experiment result files, which were removed from git. The corpus `Hadasy/knesset-committees-chunks` and the plan-v3 audio `Hadasy/knesset-committees-panel-hq` are Hadas's, both private.
+- **Access:** `Dolevabudi/knesset-committees-panel` is Dolev's private v1 audio, not readable from Hadas's account. `Dolevabudi/knesset-committees-adapters` holds the second run's adapters and the 462 per-experiment result files, which were removed from git. The corpus `Hadasy/knesset-committees-chunks` is Hadas's. The plan-v3 audio is `knesset-asr/knesset-committees-panel-hq`, in the shared organization. Both are private.
 
 ### 1. Get the audio onto the GPU box, one of two ways
-- **(a) From HuggingFace (recommended).** The laptop's WAVs are uploaded to the private dataset **`Hadasy/knesset-committees-panel-hq`**: all 6,462 WAVs, 3.0 GB, plus `panel_plan_v2.parquet` and a card. It needs an HF token that can read it (Hadas's account, or one she adds as a collaborator). This takes a few minutes:
+- **(a) From HuggingFace (recommended).** The laptop's WAVs are uploaded to the private dataset **`knesset-asr/knesset-committees-panel-hq`**, in the project's HF organization `knesset-asr` (Hadas and Dolev are members): all 6,462 WAVs, 3.0 GB, plus `panel_plan_v2.parquet` and a card. It needs an HF token with read access to the `knesset-asr` organization. A fine-grained token scoped only to a personal account gets a 404. This takes a few minutes:
   ```bash
-  python src/training/materialize.py download --repo Hadasy/knesset-committees-panel-hq   # -> src/training/outputs/panel_audio/
+  python src/training/materialize.py download --repo knesset-asr/knesset-committees-panel-hq   # -> src/training/outputs/panel_audio/
   ```
   It is private because the audio comes from ivrit.ai's gated `ivrit-ai/knesset-committees`. Making it public would hand the audio to people who never accepted ivrit.ai's terms, so ask them first.
 - **(b) Extract on the box itself.** It needs read access to `Hadasy/knesset-committees-chunks`. 186 shards pass through, about 125 GB; each is deleted after use, and the run is resumable. That's under an hour on a datacenter link, CPU only.
@@ -189,7 +189,7 @@ pip install -r src/training/requirements.txt         # torch: the box's CUDA whe
 hf auth login                                        # typed interactively; never paste a token into a chat or a file
 source src/training/box/env.sh                       # RunPod: caches on the container disk, BLAS thread cap
 # a pod can be preempted: mirror results every 30 min to a private dataset YOU can write to
-nohup python src/training/backup.py --repo <your-private-dataset> --every 30 > backup.log 2>&1 &
+nohup python src/training/backup.py --repo knesset-asr/<a new private dataset, e.g. knesset-committees-v3-results> --every 30 > backup.log 2>&1 &
 ```
 
 ### 3. Two sanity checks (about 15 minutes)
