@@ -11,7 +11,7 @@ against Stage 1's long-form VoxKnesset numbers, off the ct2 dump's
 `model_transcription` column; the project runs on the committees corpus now and
 that column has no counterpart, so there is nothing left to reproduce.
 """
-import os, sys
+import os, sys, zlib
 import numpy as np, pandas as pd
 from rapidfuzz.distance import Levenshtein
 # torch and transformers are imported inside the functions that need them, so
@@ -22,6 +22,26 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from common import read_wav, normalize_he
 
 ARMS = {'A': 'openai/whisper-large-v3', 'B': 'ivrit-ai/whisper-large-v3'}
+
+# The loop guard (docs/training_run2.md § Conclusion, item 6).  Greedy decoding sometimes
+# loops ("של פרסים של פרסים ..."): one chunk then costs ~200 insertions and decides a cell.
+# A hypothesis is a loop when its text compresses too well -- Whisper's own test, zlib
+# ratio over the UTF-8 bytes -- and only those chunks are decoded again, greedily, with
+# no n-gram of LOOP_NGRAM tokens allowed twice.  The second decode is kept only if it
+# compresses less.  Every other chunk keeps its plain greedy output.
+# Threshold measured on the second run's 58,720 test hypotheses (base A and B, own and
+# control adapters): Whisper's 2.4 is an English number -- Hebrew prose reaches 2.4-2.6,
+# 351 outputs there with a median of 0 excess words; above 3.0 sit 136 outputs carrying
+# 10,800 excess words (median 4.3x the reference length), and the 2.8-3.0 band is mixed.
+# Outputs far longer than the reference but under 3.0 are mostly real speech the
+# protocol left out, which the guard must not touch.
+LOOP_CR, LOOP_NGRAM = 3.0, 6
+DECODE = f'greedy+loopguard(cr>{LOOP_CR},ngram{LOOP_NGRAM})'   # stored with every hypothesis cache and result
+
+
+def compression_ratio(text):
+    b = text.strip().encode('utf-8')
+    return len(b) / len(zlib.compress(b)) if b else 0.0
 
 
 def load(arm='B', adapter=None, device=None):
@@ -43,9 +63,11 @@ def load(arm='B', adapter=None, device=None):
 def transcribe_short(model, proc, chunks, audio_dir, batch=32, device='cpu'):
     """Short-form: one <=30 s chunk per example. D7's primary protocol.
 
-    Greedy decoding, the checkpoint's own generation config; batch is a
-    throughput knob only.  Measured on an A100 (2026-09-20, 224 chunks of
-    whisper-large-v3 in fp16): 138 s at batch 8, 42 s at 32, 24 s at 64.
+    Greedy decoding, the checkpoint's own generation config, and the loop guard
+    above -- identical for the base, the own adapter and the control, which is
+    what keeps their comparison fair.  batch is a throughput knob only.  Measured
+    on an A100 (2026-09-20, 224 chunks of whisper-large-v3 in fp16): 138 s at
+    batch 8, 42 s at 32, 24 s at 64.
     """
     import torch
     with torch.no_grad():
@@ -64,7 +86,15 @@ def _transcribe_short(model, proc, chunks, audio_dir, batch, device):
         feats = proc.feature_extractor(wavs, sampling_rate=16000, return_tensors='pt',
                                        **fe_kw).input_features.to(device, model.dtype)
         ids = model.generate(feats, language='he', task='transcribe')
-        out += proc.batch_decode(ids, skip_special_tokens=True)
+        hyps = proc.batch_decode(ids, skip_special_tokens=True)
+        loops = [j for j, h in enumerate(hyps) if compression_ratio(h) > LOOP_CR]
+        if loops:
+            ids = model.generate(feats[loops], language='he', task='transcribe', no_repeat_ngram_size=LOOP_NGRAM)
+            kept = 0
+            for j, h in zip(loops, proc.batch_decode(ids, skip_special_tokens=True)):
+                if compression_ratio(h) < compression_ratio(hyps[j]): hyps[j] = h; kept += 1
+            print(f'loop guard: {len(loops)} of {len(hyps)} chunks decoded again, {kept} replaced', flush=True)
+        out += hyps
     return out
 
 
@@ -184,3 +214,14 @@ if __name__ == '__main__':
     assert abs(same['delta_abs']) < 1e-12 and same['p_boot'] > 0.9, same
     print(f"paired_bootstrap(): OK  (delta_rel {r['delta_rel']:.3f}, "
           f"p {r['p_boot']:.4f}; null p {same['p_boot']:.3f})")
+
+    # the loop guard's test: two loops from the second run's outputs above the line,
+    # ordinary committee Hebrew -- including a real "לא, לא, לא" -- below it
+    loop = 'אדרות של ' * 16
+    prose = ('לא, לא, לא, אני יודעת מה זה אשרת לימודים. היא בדיוק דיברה פה על הסוגיה הזאת '
+             'של ויזת סטודנט והיא לא יודעת. תסבירי לי מה זה אשרת לימודים, איך היא משיגה אותה.')
+    assert compression_ratio(loop) > LOOP_CR, compression_ratio(loop)
+    assert compression_ratio('תודה רבה. בבקשה, אדוני. ' + 'בבקשה, אדוני. ' * 6) > LOOP_CR
+    assert compression_ratio(prose) < LOOP_CR, compression_ratio(prose)
+    assert compression_ratio('') == 0.0
+    print(f'compression_ratio(): OK  (loop {compression_ratio(loop):.1f}, prose {compression_ratio(prose):.2f})')
