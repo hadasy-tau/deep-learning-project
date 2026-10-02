@@ -4,17 +4,18 @@
 # cell, a finished adapter, a tuning run and a cached base transcription are all skipped on a
 # rerun, so after a crash or a preemption run the same stage again.
 #
-#   bash src/training/box/pod_v3.sh setup      # deps, ffmpeg, GPU and HF login checks, model weights, self-checks
+#   bash src/training/box/pod_v3.sh setup      # deps, GPU and HF login checks, model weights, self-checks
 #   bash src/training/box/pod_v3.sh data       # panel audio from HF, fill any gap from the corpus, verify both plans
 #   bash src/training/box/pod_v3.sh backup     # mirror results to $RESULTS_REPO every 30 min (background)
-#   bash src/training/box/pod_v3.sh gate       # the audio gate on 30601 -> outputs/gate_30601.txt
 #   bash src/training/box/pod_v3.sh sanity     # overfit check + one timed tuning run (price the plan)
 #   bash src/training/box/pod_v3.sh tune       # stages A, B, C on validation only, each picked by v3_decide.py
 #   bash src/training/box/pod_v3.sh base       # base WER on the high-quality test vs the error map (hard stop)
 #   bash src/training/box/pod_v3.sh final      # 5 / 20 / 80 min, seed 0, controls at every budget, both tests
 #   bash src/training/box/pod_v3.sh seeds      # seeds 1 and 2 at 80 min, own adapters and their controls
 #   bash src/training/box/pod_v3.sh summary    # outputs/results.csv, one last backup
-#   bash src/training/box/pod_v3.sh all        # sanity -> tune (gate alongside) -> base -> final -> seeds -> summary
+#   bash src/training/box/pod_v3.sh all        # sanity -> tune -> base -> final -> seeds -> summary
+#
+# The panel is the 12 speakers of panel_plan_v2.parquet (30601 deferred, docs/training_plan_v3.md § 1).
 #
 # Several GPUs: GPUS=N (default: every GPU the pod has).  The work is hundreds of independent
 # ~3-minute jobs, so N GPUs finish in about 1/N of the time at the same GPU-hours, i.e. the same
@@ -33,17 +34,16 @@ PANEL_REPO=knesset-asr/knesset-committees-panel-hq
 RESULTS_REPO=${RESULTS_REPO:-knesset-asr/knesset-committees-v3-results}
 TUNE_SPK="30685 23558 30718 30859"
 OUT=src/training/outputs; LOGS=$OUT/logs; mkdir -p "$LOGS"
-GATE_FILE=$OUT/gate_30601.txt
 RP="$PY src/training/run_panel.py"
 D="$PY src/training/box/v3_decide.py"
 STEP="--plan $V2 --max-steps 400 --eval-batch 64"        # step mode, early stopping fixed at 4 validations
-GPUS=${GPUS:-$(nvidia-smi -L 2>/dev/null | wc -l | tr -d ' ')}; [ "${GPUS:-0}" -ge 1 ] 2>/dev/null || GPUS=1
+detect_gpus() { local n; n=$(nvidia-smi -L 2>/dev/null | grep -c '^GPU') || true; echo "${n:-0}"; }   # 0 without nvidia-smi
+GPUS=${GPUS:-$(detect_gpus)}; [ "${GPUS:-0}" -ge 1 ] 2>/dev/null || GPUS=1
 
 say() { echo "[$(date '+%F %T')] $*"; }
 
-speakers() {   # every plan speaker, minus 30601 if the audio gate failed him
-    $PY -c "import pandas as pd; print(' '.join(str(s) for s in sorted(pd.read_parquet('$V2').speaker_id.unique())))" |
-        { if grep -qx FAIL "$GATE_FILE" 2>/dev/null; then tr ' ' '\n' | grep -vx 30601 | paste -sd' ' -; else cat; fi; }
+speakers() {   # every speaker of the plan
+    $PY -c "import pandas as pd; print(' '.join(str(s) for s in sorted(pd.read_parquet('$V2').speaker_id.unique())))"
 }
 
 group() {      # group <i> <n> <items...>: the i-th of n round-robin shares of the items
@@ -70,7 +70,6 @@ on_gpus() {    # on_gpus <label> <job>...: job j goes to GPU j mod $GPUS; each G
 
 stage_setup() {
     nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-    command -v ffmpeg >/dev/null || { apt-get update -qq && apt-get install -y -qq ffmpeg; }
     pip install -q -r src/training/requirements.txt
     # a RunPod PyTorch template ships torch + torchaudio for its CUDA; requirements must not have replaced them
     $PY -c "import torch, torchaudio; assert torch.cuda.is_available(), 'torch sees no GPU'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.device_count(), 'x', torch.cuda.get_device_name(0))"
@@ -96,18 +95,8 @@ stage_backup() {
     if pgrep -f "backup.py --repo $RESULTS_REPO" >/dev/null; then say "backup already running"; return; fi
     # the log pattern is quoted: backup.py expands it on every pass, so per-GPU logs written later are included
     setsid nohup $PY src/training/backup.py --repo "$RESULTS_REPO" --every 30 \
-        --logs "$LOGS/*.log" "$OUT/recipe_v3.json" "$GATE_FILE" > "$LOGS/backup.out" 2>&1 < /dev/null &
+        --logs "$LOGS/*.log" "$OUT/recipe_v3.json" > "$LOGS/backup.out" 2>&1 < /dev/null &
     say "backup to $RESULTS_REPO every 30 min (log: $LOGS/backup.out)"
-}
-
-stage_gate() {
-    local seg=src/preprocessing/speaker_index/outputs
-    [ -f $seg/segments.parquet ] || $PY -c "from huggingface_hub import hf_hub_download; hf_hub_download('knesset-asr/knesset-committees-speakers', 'segments.parquet', repo_type='dataset', local_dir='$seg')"
-    # validate_audio.py reads the token from the environment; taken from the login, never printed
-    HF_TOKEN=$($PY -c "from huggingface_hub import get_token; print(get_token())") \
-        $PY src/preprocessing/speaker_index/validate_audio.py --speakers 30601 --per-speaker 40 --others 60 --tag _30601
-    if $D gate; then echo PASS > "$GATE_FILE"; else echo FAIL > "$GATE_FILE"; fi
-    say "gate: $(cat "$GATE_FILE")"
 }
 
 stage_sanity() {
@@ -162,7 +151,6 @@ control_job() {   # control_job <seed> <budget>: the 2-fold control over ALL the
 }
 
 stage_final() {
-    [ -f "$GATE_FILE" ] || { say "final: the audio gate has not run (stage gate)"; exit 1; }
     # every job line is built through a checked assignment: bash does not stop on an error inside $(...)
     local jobs=() line out c5 c20 c80
     out=$(own_jobs 0 5 20 80) || exit 1
@@ -174,7 +162,6 @@ stage_final() {
 }
 
 stage_seeds() {
-    [ -f "$GATE_FILE" ] || { say "seeds: the audio gate has not run (stage gate)"; exit 1; }
     local jobs=() line out s c1 c2
     for s in 1 2; do
         out=$(own_jobs $s 80) || exit 1
@@ -188,19 +175,15 @@ stage_seeds() {
 
 stage_summary() {
     $RP --summary
-    $PY src/training/backup.py --repo "$RESULTS_REPO" --once --logs "$LOGS/*.log" "$OUT/recipe_v3.json" "$GATE_FILE"
+    $PY src/training/backup.py --repo "$RESULTS_REPO" --once --logs "$LOGS/*.log" "$OUT/recipe_v3.json"
 }
 
 run() { say "== $1"; "stage_$1" 2>&1 | tee -a "$LOGS/$1.log"; }       # pipefail: the stage's failure is run's
 
 case "${1:-}" in
-    setup|data|backup|gate|sanity|tune|base|final|seeds|summary) run "$1" ;;
+    setup|data|backup|sanity|tune|base|final|seeds|summary) run "$1" ;;
     all)
-        # the gate is light (ECAPA): it shares the last GPU with a tuning worker; final waits for its verdict
-        [ -f "$GATE_FILE" ] || { ( export CUDA_VISIBLE_DEVICES=$((GPUS - 1)); run gate ) & GATE_PID=$!; }
-        run sanity; run tune
-        if [ -n "${GATE_PID:-}" ]; then wait "$GATE_PID" || say "gate crashed: see $LOGS/gate.log; final will refuse until it has a verdict"; fi
-        run base; run final; run seeds; run summary
+        run sanity; run tune; run base; run final; run seeds; run summary
         say "all: done -- docs/pod_runbook_v3.md § What to report" ;;
-    *) sed -n '2,26p' "$0"; exit 1 ;;
+    *) awk 'NR > 1 && !/^#/ { exit } NR > 1' "$0"; exit 1 ;;     # the header comment is the usage
 esac

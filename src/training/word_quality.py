@@ -43,10 +43,13 @@ RAW_TARGET_MIN = 250    # candidate minutes per speaker (>= 0.95), before the wo
 EXCLUDE_SESSIONS = {30843: {2235355}}   # the audio gate: this dev session is mostly another voice (docs/training_run2.md)
 # Plan v3 first swapped 30843 for 556: 30843 has about 120 high-quality minutes, short of
 # 45 test + 15 dev + 80 train.  Revised 2026-10-02 (docs/training_plan_v3.md § 1): 30843
-# stays, with a shorter test and dev (materialize.SPLIT_MIN), and two speakers are added --
-# 556, the S2 alternate, and 30601, a "hard and left behind" speaker from outside the
-# panel (WER_B 0.455, the fine-tune removes 18% of arm A's error).
-PANEL_ADD = [556, 30601]
+# stays, with a shorter test and dev (materialize.SPLIT_MIN), and 556, the S2 alternate, is
+# added.  30601, a "hard and left behind" speaker from outside the panel (WER_B 0.455, the
+# fine-tune removes 18% of arm A's error), was added and then deferred the same day: the
+# panel trains on 12 speakers.  His word scores stay in word_quality.parquet; adding him
+# back here and rebuilding plan-v2 and plan-test07 brings him in, after the audio gate
+# (his quality-filter footprint is high).
+PANEL_ADD = [556]
 
 
 def panel_speakers(panel_path=PANEL):
