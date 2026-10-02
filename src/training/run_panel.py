@@ -343,7 +343,14 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
         if not todo:
             print(f'skip (scored): {name} on {evals}'); out += [json.load(open(os.path.join(RESULTS, f'{name}__eval{s}.json'), encoding='utf-8')) for s in evals]; continue
         t0 = time.time()
-        tr = pool_budget(Pt, trainers, budget, 'train', seed); dev = pool_budget(Pt, trainers, dev_min, 'dev', seed)
+        # Committee meetings have several panel members in them: a trainer's session can be the very meeting an
+        # evaluated speaker is tested on (same topic, names, room).  Keep every session of the evaluated speakers'
+        # test and dev out of the control's pool, or the control is scored partly on audio it trained on.
+        held = set(P[P.speaker_id.isin(evals) & P.part.isin(['test', 'dev'])].session_id)
+        if T07 is not None: held |= set(T07[T07.speaker_id.isin(evals)].session_id)
+        Pc = Pt[~Pt.session_id.isin(held)]
+        tr = pool_budget(Pc, trainers, budget, 'train', seed); dev = pool_budget(Pc, trainers, dev_min, 'dev', seed)
+        assert not set(tr.session_id) & held and not set(dev.session_id) & held
         print(f'{name}: pool of {len(trainers)} speakers, {len(tr)} chunks ({tr.duration_s.sum()/60:.1f} min), dev {len(dev)}; evaluates {evals}', flush=True)
         skw = select_kw(P, dev, select, audio_dir, eval_batch, arm)
         adapter = T.train_cell(Pt, audio_dir, RUNS, label, arm=arm, site=site, method=method, budget=budget, rank=rank, lr=lr, seed=seed,
