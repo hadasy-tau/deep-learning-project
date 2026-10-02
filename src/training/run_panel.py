@@ -172,12 +172,14 @@ def base_hyps(arm, speaker, test, audio_dir, batch, model_override=None, data=''
     path = os.path.join(RESULTS, f'base_{arm}_{speaker}_{tag}' + (f'_{data}' if data else '') + '.json')
     if os.path.exists(path):
         d = json.load(open(path, encoding='utf-8'))
-        if d['chunk_ids'] == list(test.chunk_id): return d['hyps']
+        # a cache decoded differently (the second run's, before the loop guard) is stale:
+        # base and tuned must go through the same decoding
+        if d['chunk_ids'] == list(test.chunk_id) and d.get('decode') == EV.DECODE: return d['hyps']
     model, proc, device = EV.load(arm)
     hyps = EV.transcribe_short(model, proc, test, audio_dir, batch=batch, device=device)
     del model
     os.makedirs(RESULTS, exist_ok=True)
-    json.dump(dict(chunk_ids=list(test.chunk_id), hyps=hyps), open(path, 'w', encoding='utf-8'), ensure_ascii=False)
+    json.dump(dict(chunk_ids=list(test.chunk_id), hyps=hyps, decode=EV.DECODE), open(path, 'w', encoding='utf-8'), ensure_ascii=False)
     return hyps
 
 OTHER_ARM = {'A': 'B', 'B': 'A'}
@@ -192,14 +194,14 @@ def part_hyps(arm, speaker, part, rows, audio_dir, batch, model=None):
     path = os.path.join(RESULTS, f'hyps_{arm}_{speaker}_{part}_{tag}.json')
     if os.path.exists(path):
         d = json.load(open(path, encoding='utf-8'))
-        if d['chunk_ids'] == list(rows.chunk_id): return d['hyps']
+        if d['chunk_ids'] == list(rows.chunk_id) and d.get('decode') == EV.DECODE: return d['hyps']
     own = model is None
     if own: model = EV.load(arm)
     m, proc, device = model
     hyps = EV.transcribe_short(m, proc, rows, audio_dir, batch=batch, device=device)
     if own: del m
     os.makedirs(RESULTS, exist_ok=True)
-    json.dump(dict(chunk_ids=list(rows.chunk_id), hyps=hyps), open(path, 'w', encoding='utf-8'), ensure_ascii=False)
+    json.dump(dict(chunk_ids=list(rows.chunk_id), hyps=hyps, decode=EV.DECODE), open(path, 'w', encoding='utf-8'), ensure_ascii=False)
     return hyps
 
 def transcribe_parts(P, audio_dir, batch=64, arms=('A', 'B'), parts=('train', 'dev')):
@@ -287,7 +289,7 @@ def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_overr
     res = dict(cell=name, **c, targets=targets, select=select, adapter=adapter, train_minutes=float(tr.duration_s.sum() / 60), train_chunks=int(len(tr)),
                train_steps=meta.get('global_step'), train_epochs=meta.get('epochs', epochs), best_eval_loss=meta.get('best_eval_loss'), best_epoch=meta.get('best_epoch'),
                n_test=int(len(test)), test_minutes=float(test.duration_s.sum() / 60), **cmp,
-               seconds_train=phase['train'], seconds_total=time.time() - t0, seconds_phase=phase, model=T.ARMS[c['arm']])
+               seconds_train=phase['train'], seconds_total=time.time() - t0, seconds_phase=phase, model=T.ARMS[c['arm']], decode=EV.DECODE)
     os.makedirs(RESULTS, exist_ok=True)
     json.dump(res, open(out_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False, default=float)
     json.dump(dict(chunk_ids=list(test.chunk_id), hyps=ht), open(os.path.join(RESULTS, name + '.hyps.json'), 'w', encoding='utf-8'), ensure_ascii=False)
@@ -361,7 +363,7 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
                        adapter=adapter, train_minutes=float(tr.duration_s.sum() / 60), train_chunks=int(len(tr)), train_steps=meta.get('global_step'),
                        train_epochs=meta.get('epochs', epochs), best_eval_loss=meta.get('best_eval_loss'),
                        n_test=int(len(test)), test_minutes=float(test.duration_s.sum() / 60), **cmp,
-                       seconds_train=t_train, seconds_eval=time.time() - t1, model=T.ARMS[arm])
+                       seconds_train=t_train, seconds_eval=time.time() - t1, model=T.ARMS[arm], decode=EV.DECODE)
             json.dump(res, open(os.path.join(RESULTS, f'{name}__eval{s}.json'), 'w', encoding='utf-8'), indent=2, ensure_ascii=False, default=float)
             json.dump(dict(chunk_ids=list(test.chunk_id), hyps=ht), open(os.path.join(RESULTS, f'{name}__eval{s}.hyps.json'), 'w', encoding='utf-8'), ensure_ascii=False)
             f = f'; forgiven {cmp["wer_base_f"]:.4f} -> {cmp["wer_tuned_f"]:.4f} ({cmp["delta_rel_f"]:+.1%})' if ha is not None else ''

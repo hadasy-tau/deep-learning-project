@@ -4,7 +4,6 @@ Written 2026-09-29 and revised 2026-10-01, after the second run (`docs/training_
 The project narrows to three things that decide whether the personalization result can be
 trusted. Parked from `docs/training_next.md`:
 
-- the looping-output decoding fix;
 - extra seeds;
 - similar-speaker groups;
 - the word-for-word test set.
@@ -12,6 +11,7 @@ trusted. Parked from `docs/training_next.md`:
 **Rules for the whole plan:**
 - **High-quality data only** for training and validation (§ 1). The test is scored twice: on the high-quality clips, and on every clip of the same test sessions at quality ≥ 0.7 (§ 4, *Two test sets*).
 - **The test set is read once, at the end.** Every choice is made on validation (the `dev` split in the code).
+- **Every transcription goes through the loop guard** (added 2026-10-02, `evaluate.py`): a hypothesis whose text compresses more than 3.0 (zlib, Whisper's own test, with the threshold measured on the second run's 58,720 hypotheses) is decoded again with no 6-token n-gram repeated, and the new one is kept if it compresses less. Identical for base, own adapter and control; caches record their decoding (`decode`), so a pre-guard cache is redone rather than mixed in. First parked, then brought in: in the second run one looping chunk (~200 errors) decided whole cells.
 - `results.csv` keeps its format. New rows carry `hq` in their cell name. Tuning results go to `outputs/tuning.csv`.
 
 ## 1. Labels: only clips whose protocol matches the audio
@@ -127,7 +127,7 @@ Nothing is computed only for display. Every number a plot could need is written 
 
 | file | one per | holds |
 |---|---|---|
-| `outputs/results.csv` (from `outputs/results/<cell>.json`) | scored cell or control evaluation | the settings, train minutes, steps and best checkpoint, test size, base and tuned WER and CER, the gain with its 95% interval and p-values, the substitution/deletion/insertion shares and looping outputs, the style flag, the control's gain and **personalization** = own gain − control's gain |
+| `outputs/results.csv` (from `outputs/results/<cell>.json`) | scored cell or control evaluation | the settings, train minutes, steps and best checkpoint, test size, base and tuned WER and CER, the gain with its 95% interval and p-values, the substitution/deletion/insertion shares and looping outputs, the style flag, the control's gain and **personalization** = own gain − control's gain, with its own paired bootstrap (`personalization_ci_lo`, `_ci_hi`, `_p`; `_f` and `test07.*` alike) |
 | `outputs/results/<cell>.hyps.json`, `base_*_hq.json` | cell; speaker | every test clip's transcription by the tuned and the base model, for re-scoring and per-clip analysis without a GPU |
 | `outputs/results/<cell>.test07.hyps.json`, `base_{A,B}_*_test07.json` | cell; speaker | the same on the ≥ 0.7 test set; arm A's for the forgiven count |
 | `runs/<cell>/train_meta.json`, `runs_tune/<cell>/train_meta.json` | trained adapter (final run and tuning) | `settings` (speaker, budget, lr, rank, alpha, LoRA dropout, Whisper dropout, augmentation, batch, schedule, seed); `train_log`: the **training loss**, gradient norm and learning rate every 5 steps; `evals`: the **validation loss** every 20 steps; `base_eval_loss` (the untuned model's); `best_step`, `global_step`, `stopped_early`; `trainable_params`, `train_runtime_s`, `peak_gpu_mem_gb`; the train and validation clip IDs |
@@ -273,7 +273,7 @@ python src/training/run_panel.py --summary                       # outputs/resul
 
 ### 6. Reading the results
 - **New rows** are the ones with `hq` in `cell`.
-- **The headline column** is `personalization_rel`, the own adapter's gain minus the control's gain at the same budget. A gain whose interval (`ci_lo`, `ci_hi`) crosses zero isn't a result.
+- **The headline column** is `personalization_rel`, the own adapter's gain minus the control's gain at the same budget. Its interval is `personalization_ci_lo`, `personalization_ci_hi` (absolute WER) with `personalization_p`: a paired bootstrap of the control's hypotheses against the own adapter's on the same clips. A personalization whose interval crosses zero isn't a result, and neither is a gain whose (`ci_lo`, `ci_hi`) does. For scale: in the second run, re-scored this way, 1–4 of 11 speakers per recipe had a significant personal effect at 80 minutes, mostly 30843 and 23558.
 - **Report both test sets side by side:** `personalization_rel` (≥ 0.95) and `test07.personalization_rel` (≥ 0.7), plus `test07.personalization_rel_f`. On the ≥ 0.7 set, trust a gain only if the forgiven count agrees. `test07.bands.*` says on which clips it was earned.
 - **If `--test07-plan` was missed**, rerun the same command with it: scored cells are not retrained; their ≥ 0.7 scores are added from the saved adapters.
 - **`style_not_speaker`** marks gains that are mostly fewer insertions. On high-quality clips these should be rare. If they aren't, say so.
