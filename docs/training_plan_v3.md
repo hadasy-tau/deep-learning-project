@@ -111,6 +111,7 @@ Rate is tuned first because it mattered most in the second run. With alpha = 2 Ã
 
 - **Cells:** the chosen recipe at 5, 20 and 80 minutes, all 13 speakers, seed 0.
 - **The control:** a random group of the *other* panel speakers, in 2 folds, trained on the same number of minutes and evaluated on every speaker it never heard. It runs at **each** budget (`--control-folds 2 --control-budgets 5 20 80`). Personalization = the own adapter's gain âˆ’ the control's gain, on the same test clips (`run_panel._table`). This is the comparison that tells "learned this voice" apart from "learned committee Hebrew".
+  - **No shared meetings** (fixed 2026-10-02). A committee meeting often has several panel members in it, so a trainer's session can be the very meeting an evaluated speaker is tested on. In the first version, the 80-minute control trained on 2 of 30843's test meetings (about 4 of the 30 test minutes) and 1 of 30831's. The control's pool now excludes every session of the evaluated speakers' test (both test sets) and dev.
 - **Not in this plan:** comparing *similar*-speaker groups against random groups of the same size (`training_next.md`, "sharing"). It can follow on the chosen recipe: about 44 short runs.
 - **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is off there (`--forgiven` turns it back on). On high-quality clips the protocol matches the audio, which is what it was a workaround for.
 
