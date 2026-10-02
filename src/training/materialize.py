@@ -20,7 +20,7 @@ run on different machines:
             skipped, so a dropped link costs one shard.
   plan-v2   laptop.  The high-quality plan: test, dev and train all from chunks
             at quality >= 0.95 that also pass the word rule (word_quality.py,
-            which must run first), 30843 swapped for her alternate 556.  Writes
+            which must run first), the panel plus 556 and 30601.  Writes
             panel_plan_v2.parquet.  extract/verify/upload take --plan to use it.
   plan-test07  laptop.  The second test set (docs/training_plan_v3.md § 4): plan
             v2's own test sessions, every chunk at quality >= 0.7 and no word
@@ -61,6 +61,9 @@ AUDIO  = os.path.join(HERE, 'outputs', 'panel_audio')          # git-ignored (sr
 DL     = os.path.join(HERE, 'outputs', '_shards')
 
 MIN_QUALITY, DEV_MIN, BUDGET_MIN, TEST_FLOOR_MIN = 0.7, 15, 80, 45
+# plan v2: a speaker with too few high-quality minutes for 45 test + 15 dev + 80 train keeps
+# the 80-minute budget and gives up test and dev minutes (docs/training_plan_v3.md § 1)
+SPLIT_MIN = {30843: dict(test=30, dev=10)}
 
 def log(msg):
     print(time.strftime('[%H:%M:%S] ') + msg, flush=True)
@@ -120,10 +123,10 @@ def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_F
     """The high-quality plan (docs/training_plan_v3.md, step 1): every split is drawn
     from chunks at quality >= 0.95 that also pass the word rule (word_quality.word_ok:
     few clearly misaligned words, no run of them), for the panel with
-    word_quality.PANEL_SWAPS applied (30843 -> her alternate 556).  Per speaker,
-    session-disjoint by date: the newest sessions until test_min (45 min, the v1
-    floor), then dev_min, then the budget, newest first -- so nested budgets are
-    prefixes.  The session that crosses a target is inside it, as in plan()."""
+    word_quality.PANEL_ADD (556, 30601).  Per speaker, session-disjoint by date: the
+    newest sessions until test_min (45 min, the v1 floor), then dev_min, then the
+    budget, newest first -- so nested budgets are prefixes.  SPLIT_MIN overrides test
+    and dev for a speaker short of high-quality minutes (30843).  The session that crosses a target is inside it, as in plan()."""
     import word_quality as WQ
     W = pd.read_parquet(WQ.OUT); W = W[WQ.word_ok(W)]
     idx = pd.read_parquet(index_path, columns=['chunk_id', 'speaker_id', 'session', 'session_date', 'knesset', 'duration_s', 'quality', 'text', 'shard'])
@@ -133,7 +136,8 @@ def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_F
     for sid, d in cand.groupby('speaker_id'):
         per = d.groupby('session').agg(date=('session_date', 'first'), dur=('duration_s', 'sum')).sort_values(['date', 'session'], ascending=False)
         cum = (per.dur / 60).cumsum().values; part = {}; start = 0
-        for name, want in (('test', test_min), ('dev', dev_min), ('train', budget_min)):
+        sm = SPLIT_MIN.get(int(sid), {})
+        for name, want in (('test', sm.get('test', test_min)), ('dev', sm.get('dev', dev_min)), ('train', budget_min)):
             got = cum[start:] - (cum[start - 1] if start else 0.0)
             k = int(np.argmax(got >= want)) if (got >= want).any() else len(got) - 1
             if not len(got) or got[k] < want:
@@ -266,7 +270,8 @@ def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=T
         chk(not (by.get('train', set()) & by.get('test', set())) and not (by.get('train', set()) & by.get('dev', set())) and not (by.get('dev', set()) & by.get('test', set())),
             f'{sid}: no session on two sides')
         mins = g.groupby('part').duration_s.sum() / 60
-        chk(mins.get('test', 0) >= TEST_FLOOR_MIN * 0.9 and mins.get('train', 0) >= budget_min, f'{sid}: test {mins.get("test", 0):.0f} min, dev {mins.get("dev", 0):.0f}, train {mins.get("train", 0):.0f}')
+        floor = SPLIT_MIN.get(int(sid), {}).get('test', TEST_FLOOR_MIN) if os.path.abspath(plan_path) != os.path.abspath(PLAN) else TEST_FLOOR_MIN
+        chk(mins.get('test', 0) >= floor * 0.9 and mins.get('train', 0) >= budget_min, f'{sid}: test {mins.get("test", 0):.0f} min, dev {mins.get("dev", 0):.0f}, train {mins.get("train", 0):.0f}')
         dates = g.groupby('part').session_date.agg(['min', 'max'])
         chk(dates.loc['train', 'max'] <= dates.loc['test', 'min'], f'{sid}: train ends {dates.loc["train", "max"]} before test starts {dates.loc["test", "min"]}')
         tr = g[g.part == 'train'].sort_values('train_order')
@@ -277,7 +282,7 @@ def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=T
         import word_quality as WQ
         W = pd.read_parquet(WQ.OUT); ok_ids = set(W[WQ.word_ok(W)].chunk_id)
         chk((P.quality >= WQ.MIN_QUALITY).all() and P.chunk_id.isin(ok_ids).all(), f'every chunk (test, dev, train) has quality >= {WQ.MIN_QUALITY} and passes the word rule')
-        chk(sorted(P.speaker_id.unique()) == sorted(WQ.panel_speakers()), f'speakers are the panel with {WQ.PANEL_SWAPS} applied')
+        chk(sorted(P.speaker_id.unique()) == sorted(WQ.panel_speakers()), f'speakers are the panel plus {WQ.PANEL_ADD}')
         bad = [(s, x) for s, xs in WQ.EXCLUDE_SESSIONS.items() for x in xs if ((P.speaker_id == s) & (P.session_id == x)).any()]
         chk(not bad, f'excluded sessions absent {sorted(WQ.EXCLUDE_SESSIONS.items())}')
     if not check_audio:
