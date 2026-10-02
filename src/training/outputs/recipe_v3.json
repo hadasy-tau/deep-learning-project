@@ -1,0 +1,260 @@
+{
+ "stages": [
+  "A",
+  "B",
+  "C"
+ ],
+ "recipe": {
+  "5": {
+   "lr": 0.0001,
+   "rank": 8,
+   "dropout": 0.0,
+   "augment": "none"
+  },
+  "20": {
+   "lr": 0.0003,
+   "rank": 8,
+   "dropout": 0.0,
+   "augment": "none"
+  },
+  "80": {
+   "lr": 0.0003,
+   "rank": 8,
+   "dropout": 0.0,
+   "augment": "none"
+  }
+ },
+ "log": [
+  "stage A: 5 and 80 minutes disagree -- 5: {'lr': 0.0001, 'rank': 8, 'dropout': 0.0, 'augment': 'none'}, 80: {'lr': 0.0003, 'rank': 8, 'dropout': 0.0, 'augment': 'none'}; 20 takes 80 (a finding, report it)",
+  "stage B: 5 and 80 minutes disagree -- 5: {'lr': 0.0001, 'rank': 8, 'dropout': 0.0, 'augment': 'none'}, 80: {'lr': 0.0003, 'rank': 8, 'dropout': 0.0, 'augment': 'none'}; 20 takes 80 (a finding, report it)",
+  "stage C: 5 and 80 minutes disagree -- 5: {'lr': 0.0001, 'rank': 8, 'dropout': 0.0, 'augment': 'none'}, 80: {'lr': 0.0003, 'rank': 8, 'dropout': 0.0, 'augment': 'none'}; 20 takes 80 (a finding, report it)"
+ ],
+ "tables": {
+  "A": [
+   {
+    "budget": 5,
+    "lr": 0.0003,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.26582542602006876,
+    "gain_vs_incumbent": 0.0,
+    "helped": "-",
+    "passes": "incumbent"
+   },
+   {
+    "budget": 5,
+    "lr": 0.0001,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.29413338035241,
+    "gain_vs_incumbent": 0.028307954332341262,
+    "helped": "3/4",
+    "passes": true
+   },
+   {
+    "budget": 5,
+    "lr": 0.001,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.2691226289997094,
+    "gain_vs_incumbent": 0.0032972029796406455,
+    "helped": "2/4",
+    "passes": false
+   },
+   {
+    "budget": 80,
+    "lr": 0.0003,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.43206936025104326,
+    "gain_vs_incumbent": 0.0,
+    "helped": "-",
+    "passes": "incumbent"
+   },
+   {
+    "budget": 80,
+    "lr": 0.0001,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.4337197681608296,
+    "gain_vs_incumbent": 0.00165040790978635,
+    "helped": "3/4",
+    "passes": false
+   },
+   {
+    "budget": 80,
+    "lr": 0.001,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.4285250461850807,
+    "gain_vs_incumbent": -0.0035443140659625894,
+    "helped": "2/4",
+    "passes": false
+   }
+  ],
+  "B": [
+   {
+    "budget": 5,
+    "lr": 0.0001,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.29413338035241005,
+    "gain_vs_incumbent": 0.0,
+    "helped": "-",
+    "passes": "incumbent"
+   },
+   {
+    "budget": 5,
+    "lr": 0.0001,
+    "rank": 8,
+    "dropout": 0.1,
+    "augment": "none",
+    "mean_rel_drop": 0.01912263455210561,
+    "gain_vs_incumbent": -0.27501074580030443,
+    "helped": "0/4",
+    "passes": false
+   },
+   {
+    "budget": 5,
+    "lr": 0.0001,
+    "rank": 16,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.2813470197482669,
+    "gain_vs_incumbent": -0.012786360604143149,
+    "helped": "1/4",
+    "passes": false
+   },
+   {
+    "budget": 5,
+    "lr": 0.0001,
+    "rank": 16,
+    "dropout": 0.1,
+    "augment": "none",
+    "mean_rel_drop": 0.020606552159282643,
+    "gain_vs_incumbent": -0.2735268281931274,
+    "helped": "0/4",
+    "passes": false
+   },
+   {
+    "budget": 80,
+    "lr": 0.0003,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.43206936025104326,
+    "gain_vs_incumbent": 0.0,
+    "helped": "-",
+    "passes": "incumbent"
+   },
+   {
+    "budget": 80,
+    "lr": 0.0003,
+    "rank": 8,
+    "dropout": 0.1,
+    "augment": "none",
+    "mean_rel_drop": 0.07656822770465016,
+    "gain_vs_incumbent": -0.3555011325463931,
+    "helped": "0/4",
+    "passes": false
+   },
+   {
+    "budget": 80,
+    "lr": 0.0003,
+    "rank": 16,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.43208374706203867,
+    "gain_vs_incumbent": 1.4386810995414834e-05,
+    "helped": "3/4",
+    "passes": false
+   },
+   {
+    "budget": 80,
+    "lr": 0.0003,
+    "rank": 16,
+    "dropout": 0.1,
+    "augment": "none",
+    "mean_rel_drop": 0.15128950719515288,
+    "gain_vs_incumbent": -0.28077985305589037,
+    "helped": "0/4",
+    "passes": false
+   }
+  ],
+  "C": [
+   {
+    "budget": 5,
+    "lr": 0.0001,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.29413338035241005,
+    "gain_vs_incumbent": 0.0,
+    "helped": "-",
+    "passes": "incumbent"
+   },
+   {
+    "budget": 5,
+    "lr": 0.0001,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "specaug",
+    "mean_rel_drop": 0.29798041522201696,
+    "gain_vs_incumbent": 0.0038470348696069134,
+    "helped": "3/4",
+    "passes": false
+   },
+   {
+    "budget": 5,
+    "lr": 0.0001,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "specaug+tempo",
+    "mean_rel_drop": 0.29994149019406285,
+    "gain_vs_incumbent": 0.005808109841652809,
+    "helped": "3/4",
+    "passes": false
+   },
+   {
+    "budget": 80,
+    "lr": 0.0003,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "none",
+    "mean_rel_drop": 0.43206936025104326,
+    "gain_vs_incumbent": 0.0,
+    "helped": "-",
+    "passes": "incumbent"
+   },
+   {
+    "budget": 80,
+    "lr": 0.0003,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "specaug",
+    "mean_rel_drop": 0.43023604438600893,
+    "gain_vs_incumbent": -0.0018333158650342962,
+    "helped": "1/4",
+    "passes": false
+   },
+   {
+    "budget": 80,
+    "lr": 0.0003,
+    "rank": 8,
+    "dropout": 0.0,
+    "augment": "specaug+tempo",
+    "mean_rel_drop": 0.43108153642538016,
+    "gain_vs_incumbent": -0.00098782382566312,
+    "helped": "2/4",
+    "passes": false
+   }
+  ]
+ }
+}
