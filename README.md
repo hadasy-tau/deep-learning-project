@@ -4,12 +4,19 @@ Adapting a general-purpose Hebrew ASR model to an individual speaker, on the Kne
 **committees** corpus — ~15,500 h of committee audio with the official protocol
 force-aligned to it.
 
+**The question.** Once a population-level Hebrew fine-tune has taken part of the error, is
+there anything speaker-specific left — for whom, and how many minutes of one person's voice
+does it take to get it?
+
 Two models, the comparison the whole project rests on:
 
 | Arm | Model | Role |
 |---|---|---|
 | **A** | `openai/whisper-large-v3` | General multilingual. Positive control — makes a null result on B interpretable |
 | **B** | `ivrit-ai/whisper-large-v3` | Hebrew fine-tune. The real adaptation target |
+
+Inference over the corpus ran B as `ivrit-ai/whisper-large-v3-turbo-ct2`, the checkpoint
+ivrit.ai serve; training adapts `ivrit-ai/whisper-large-v3` (`src/inference/README.md`).
 
 **Why committees and not plenums.** Arm B was fine-tuned on ~4,700 h of *plenum* audio.
 [VoxKnesset](https://huggingface.co/datasets/ivrit-ai/VoxKnesset) is also plenum speech, so
@@ -19,6 +26,33 @@ stages and moved off it; nothing here reads it any more.
 
 One caveat survives the move: the *speakers* overlap with B's training data. Recordings are
 held out, voices are not.
+
+## The pipeline
+
+Each step reads what the one before it published. Results, numbers and what is still open
+live in the step's document, not here.
+
+| Step | What it does | Code | Document |
+|---|---|---|---|
+| Speaker identity | Resolves each protocol speaker name to the Knesset's `PersonID`, exactly or not at all, giving an index of `(session, start, end)` spans | `src/preprocessing/speaker_index/` | [`speaker_index_plan.md`](docs/speaker_index_plan.md) |
+| Chunk corpus | Index × audio → chunks of ≤ 30 s, one speaker each, protocol text as reference. Nothing filtered at build time | `src/preprocessing/chunk_corpus/` | [`chunk_corpus_build.html`](docs/chunk_corpus_build.html) |
+| Inference | Both arms over a 1 h-per-speaker subset of the corpus | `src/inference/` | [`inference.md`](docs/inference.md), runbook [`src/inference/README.md`](src/inference/README.md) |
+| Error map | Per-speaker WER, CER and gain (A − B) with CIs; subgroup rules; who to adapt | `src/evaluation/`, `notebooks/` | [`error_map.md`](docs/error_map.md) |
+| Adaptation design | The decisions the training code implements (D1–D7), the panel and how it was chosen | `src/common.py`, `src/evaluation/evaluate.py` | [`adaptation_plan.md`](docs/adaptation_plan.md) |
+| Training | One LoRA adapter per speaker and budget, scored against base B and a cross-speaker control | `src/training/` | [`training_run2.md`](docs/training_run2.md) (the second run), [`training_plan_v3.md`](docs/training_plan_v3.md) (the current plan) |
+
+## What to read
+
+- **New to the project:** [`docs/design.md`](docs/design.md) — the whole flow on one page.
+- **Current work:** [`docs/training_plan_v3.md`](docs/training_plan_v3.md).
+- **Running training on a GPU pod:** [`docs/pod_runbook_v3.md`](docs/pod_runbook_v3.md).
+- **Working with the corpus itself:** [`docs/committees_handoff.md`](docs/committees_handoff.md) —
+  how to read it and what is known to be wrong with it.
+
+Records of earlier sessions, kept for the reasoning they carry:
+[`training_handoff.md`](docs/training_handoff.md) (the setup of the first GPU runs) and
+[`training_next.md`](docs/training_next.md) (the options weighed after the second run, which
+plan v3 chose from).
 
 ## Structure
 
@@ -30,33 +64,33 @@ src/
   preprocessing/
     speaker_index/             who is speaking, and when. Knesset ODATA roster, protocol
                                parsing, strict name agreement, per-word labelling ->
-                               an index of (session, start, end) spans carrying a PersonID
+                               an index of (session, start, end) spans carrying a PersonID.
+                               validate_audio.py is the audio gate: does the voice match the id
     chunk_corpus/              that index + the audio -> <=30 s chunks, one speaker each
 
   inference/                   both arms over the chunk corpus. Arm A via HF Inference
                                Providers (deepinfra), arm B via RunPod serverless on
                                ivrit.ai's own worker image. Resumable, cost-bounded
 
-  training/                    materialize.py: the panel's audio from the corpus shards to WAVs
-                               (panel_plan.parquet says which chunks, which split);
-                               train.py: one cell -> one adapter (speaker, arm, site, method,
-                               budget, rank, lr, seed); run_panel.py: cells -> scored results.
-                               README.md there is the GPU session, in order
-  evaluation/evaluate.py       transcribe, count errors, paired bootstrap
-  evaluation/error_map.py      the per-speaker error map over the committees inference:
-                               WER/CER and gain per speaker with CIs, subgroup viability and
-                               separation, who to adapt
-  evaluation/outputs/          committees_*.csv -- that error map (speaker_performance.csv is
-                               the VoxKnesset one Stage 1 produced, kept as the reference point)
+  evaluation/evaluate.py       transcribe (with the loop guard), count errors, paired bootstrap
+  evaluation/error_map.py      the per-speaker error map: WER/CER and gain per speaker with CIs,
+                               subgroup viability and separation, who to adapt
+  evaluation/error_analysis.py what the errors are; the protocol-aware ("forgiven") count
+  evaluation/outputs/          the error map's tables (committees_*), the panel
+                               (committees_panel.csv), and speaker_performance.csv -- the
+                               VoxKnesset per-speaker table, kept as the plenum reference point
 
-notebooks/                     explore_committees.ipynb, committees_error_map.ipynb (the Stage 1
-                               analysis on the committees)
-docs/                          design.md + design.html are the one-page overview: the
-                               whole flow, end to end. Then the build records:
-                               committees_handoff.md, speaker_index_plan.md,
-                               chunk_corpus_build.html, inference.md, error_map.md,
-                               adaptation_plan.md for the design, and training_handoff.md --
-                               read that one first on the GPU box
+  training/                    materialize.py: which chunks go in which split (panel_plan*.parquet)
+                               and their audio as WAVs; word_quality.py: the word-level label rule;
+                               train.py: one cell -> one adapter; run_panel.py: cells -> scored
+                               results, with the control. README.md there lists every file
+    box/                       the GPU pod: env.sh, pod_v3.sh (plan v3, staged) and v3_decide.py
+
+notebooks/                     explore_committees.ipynb (the corpus with speakers attached);
+                               committees_error_map.ipynb (the error map in full) and
+                               stage1_error_map.ipynb (its condensed version)
+docs/                          one document per step (table above); figures/ holds the
+                               notebooks' plots
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
@@ -64,9 +98,6 @@ cache/                         git-ignored. Secrets (mode 600) read by inference
 Each folder is self-contained and imports its siblings flat, so run things by path
 (`python src/inference/run.py`) or put the folder on `sys.path`. Anything shared lives in
 `src/common.py`, reached by putting `src/` on the path.
-
-**Read [`docs/committees_handoff.md`](docs/committees_handoff.md) first.** It is the
-orientation document: what the corpus is, how to read it, what is known to be wrong with it.
 
 ## Data
 
@@ -83,53 +114,25 @@ speaker index uses for MK service dates.
 
 Gated means an accepted licence on the dataset page and an `HF_TOKEN` in the environment.
 
-**Write — what this repo produces**
+**Write — what this repo produces**, all in the HF organization
+[`knesset-asr`](https://huggingface.co/knesset-asr). The audio in them is cut from the gated
+`ivrit-ai/knesset-committees`, whose licence applies.
 
 | Dataset | Holds |
 |---|---|
-| [`knesset-asr/knesset-committees-speakers`](https://huggingface.co/datasets/knesset-asr/knesset-committees-speakers) | An **index, not audio**: 5,158,763 rows naming a `(session, start, end)` span, each carrying a verified Knesset `PersonID` and its demographics. 3,345 h of identified MK speech, 268 speakers, Knessets 20–25 |
-| `knesset-asr/knesset-committees-chunks` | **Private.** The corpus itself: ~1.2 M chunks of ≤30 s, 330 speakers, 410 parquet shards, FLAC inline. Exact totals in `docs/committees_handoff.md` |
-| [`knesset-asr/knesset-committees-inference`](https://huggingface.co/datasets/knesset-asr/knesset-committees-inference) | **Private.** Both models' transcriptions of the Stage-1 subset -- 65,990 chunks, 230 h, 267 speakers, 1 h per MK -- beside the protocol reference. `inference.parquet` (one row per chunk, `hypothesis_A`/`hypothesis_B`/`hypothesis_A_auto`), `inference_long.parquet` (per chunk and arm, with timing and errors), `coverage.parquet` (every corpus chunk: what ran on which arm). Validated end to end; corpus WER A 0.417, B 0.324 |
+| [`knesset-committees-speakers`](https://huggingface.co/datasets/knesset-asr/knesset-committees-speakers) | An **index, not audio**: 5,158,763 rows naming a `(session, start, end)` span, each carrying a verified Knesset `PersonID` and its demographics. 3,345 h of identified MK speech, 268 speakers, Knessets 20–25 |
+| [`knesset-committees-chunks`](https://huggingface.co/datasets/knesset-asr/knesset-committees-chunks) | The corpus itself: ~1.2 M chunks of ≤ 30 s, 330 speakers, 410 parquet shards, FLAC inline. Exact totals in `docs/committees_handoff.md` |
+| [`knesset-committees-inference`](https://huggingface.co/datasets/knesset-asr/knesset-committees-inference) | Both models' transcriptions of the 1 h-per-speaker subset (65,990 chunks, 267 speakers) beside the protocol reference: `inference.parquet`, `inference_long.parquet`, `coverage.parquet` |
+| [`knesset-committees-panel`](https://huggingface.co/datasets/knesset-asr/knesset-committees-panel) | The adaptation panel's audio as WAVs, plan v1 (`panel_plan.parquet`, quality ≥ 0.7) |
+| [`knesset-committees-panel-hq`](https://huggingface.co/datasets/knesset-asr/knesset-committees-panel-hq) | The same for plan v2 (`panel_plan_v2.parquet`, high-quality clips only) |
+| [`knesset-committees-adapters`](https://huggingface.co/datasets/knesset-asr/knesset-committees-adapters) | Training runs mirrored from the GPU pod: adapters, per-cell results, logs |
 
 `speaker_id` throughout is the Knesset's official `PersonID` — the same id space as
 KnessetCorpus — so the tables join directly.
 
-## State
+## Self-checks
 
-- **Speaker index** — built and published. Text validation passed with zero cross-person
-  errors over 55.4 h held out. Its audio gate (`speaker_index/validate_audio.py`) is written
-  but has never run; it needs a GPU, and it is the check that would catch both text sources
-  copying the same wrong speaker header.
-- **Chunk corpus** — built and uploaded. Nothing was filtered at build time, deliberately:
-  filtering is the consumer's decision. Filter on `quality` (≥ 0.7 is the recommendation).
-- **Inference** — done. Both arms verified against a fixed 10-chunk sample, then run over a
-  1 h/speaker subset (65,990 chunks, pinned in `src/inference/subset_stage1.parquet`):
-  every subset chunk has both hypotheses, the 22 acceptance checks of
-  `src/inference/validate_final.py` pass, and the result is published as
-  `knesset-asr/knesset-committees-inference`. Corpus WER A 0.417, B 0.324. Arm A is run with
-  the language forced to Hebrew, as B always was; its first, auto-detect run is kept as
-  `hypothesis_A_auto` because Whisper mis-detected 6.7 % of chunks (mostly under 3 s).
-- **Error map** — done (`docs/error_map.md`). After the quality ≥ 0.7 filter: 58,180 chunks,
-  217 h, 267 speakers; corpus WER A 0.387, B 0.292. Every speaker is helped by the fine-tune,
-  median 24 % of A's error removed (52 % on the plenums). Corpus hours do not predict WER; the
-  share of a speaker's chunks the filter removed does (rho ≈ 0.6–0.7), which is the labels
-  question. Subgroup rules separate gain (speaking rate strongest, then religion, nationality,
-  age) or difficulty (religious orientation, gender), never both — the reverse of VoxKnesset.
-  `committees_adaptation_candidates.csv` is the input to the sharing axis. Beyond Stage 1: B's
-  insertions are real speech the protocol left out (73 % also heard by A), the digit problem is
-  1 % of errors, the per-speaker ranking is reliable (split-half 0.75–0.85), and 2018–19
-  sessions and the Finance committee are the hard conditions. Under a protocol-aware count that
-  stops charging for added words both models heard, B's advantage is 37 % rather than 24 %, and
-  the per-speaker conclusions hold (ranking Spearman 0.96, 35 of 40 candidates the same).
-- **Adaptation** — ready for the GPU. The panel is chosen (11 speakers, `docs/adaptation_plan.md`
-  § The panel), its audio is planned and materialized (`src/training/materialize.py`: 8,113
-  chunks, 28.8 h, session-disjoint by date, ≥ 45 min test / ~15 dev / ≥ 80 train each), the
-  driver runs cells to scored results with the paired bootstrap and the S/D/I rule
-  (`src/training/run_panel.py`), and the whole path was smoke-tested on CPU with a tiny Whisper.
-  Never run on the real models: `src/training/README.md` is the session, in order — the audio
-  gate first, then `overfit_check`, then arm B / LoRA / three budgets / three seeds.
-
-Self-checks, no GPU and no network beyond the cached data:
+No GPU and no network beyond the cached data:
 
 ```bash
 python src/common.py                                   # Hebrew normalisation, splits
