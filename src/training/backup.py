@@ -11,7 +11,7 @@ cell whose DONE marker is missing.  The token comes from `hf auth login`
     nohup python src/training/backup.py --repo knesset-asr/knesset-committees-adapters --every 30 &
     python src/training/backup.py --repo ... --once
 """
-import argparse, os, sys, time
+import argparse, glob, os, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 FOLDERS = {'results': os.path.join(HERE, 'outputs', 'results'), 'runs': os.path.join(HERE, 'runs'),
            'runs_tune': os.path.join(HERE, 'runs_tune')}    # plan v3's tuning runs: train_meta.json only (adapters deleted)
@@ -31,9 +31,11 @@ def backup_once(repo, extra_logs=()):
         api.upload_folder(folder_path=folder, path_in_repo=name, repo_id=repo, repo_type='dataset',
                           ignore_patterns=IGNORE, commit_message=f'backup {name} {time.strftime("%Y-%m-%d %H:%M")}')
         log(f'{name}: uploaded')
-    for name, path in list(FILES.items()) + [(os.path.basename(p), p) for p in extra_logs]:
+    # extra_logs may be glob patterns, expanded on every pass: a run's per-GPU worker logs appear as it goes
+    logs = sorted({p for pat in extra_logs for p in (glob.glob(pat) or [pat])})
+    for name, path in list(FILES.items()) + [(os.path.basename(p), p) for p in logs]:
         if os.path.exists(path):
-            api.upload_file(path_or_fileobj=path, path_in_repo=f'logs/{name}' if path in extra_logs else name,
+            api.upload_file(path_or_fileobj=path, path_in_repo=f'logs/{name}' if path in logs else name,
                             repo_id=repo, repo_type='dataset', commit_message=f'backup {name}')
             log(f'{name}: uploaded')
 

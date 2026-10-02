@@ -7,7 +7,31 @@ For whoever runs the training, a person or a fresh Claude session on the pod. It
 Everything runs through `src/training/box/pod_v3.sh <stage>`. Each stage is idempotent: a
 scored cell, a finished adapter, a tuning run and a cached base transcription are skipped on a
 rerun. After a crash or a preemption, run the same stage again. Every stage logs to
-`src/training/outputs/logs/<stage>.log`.
+`src/training/outputs/logs/<stage>.log`, and each GPU's share of it to `<stage>.gpu<k>.log`.
+
+## How many GPUs: four A100s, in one pod
+
+The run is about 250 independent jobs of ~3 minutes each (train an adapter, or transcribe a
+test set). That totals ~12 GPU-hours. RunPod bills GPU-hours, so the same work costs the same
+on 1 GPU for 12 hours or on 4 GPUs for 3 hours. `pod_v3.sh` uses every GPU the pod has
+(`GPUS=N` to override) and splits the work so no two processes write the same file:
+
+- **tuning:** one tuning speaker per GPU;
+- **own adapters:** the speakers in round-robin shares;
+- **controls:** one (seed, budget) per GPU, and only after every own adapter is done. A
+  control is always trained on *all* the panel's speakers, never on one worker's share.
+
+| pod | $/h (2026-10-02) | wall time | cost | |
+|---|---|---|---|---|
+| 1× A100 SXM 80 GB | 1.59 | ~12 h | ~$19 | the measured baseline |
+| 2× A100 SXM 80 GB | 3.18 | ~6.5 h | ~$21 | |
+| **4× A100 SXM 80 GB** | **6.36** | **~3.5 h** | **~$22** | **recommended**: tuning runs exactly 4 speakers at once |
+| H100 SXM | 3.49 | not measured | more | batch-8 jobs, with CPU-side audio loading, do not use its extra compute |
+| A40 / L4 / RTX A5000 | 0.27–0.49 | not measured | similar or more | ~2.5–3× slower per job; cheaper per hour, not per job |
+
+Only the A100 is measured (`docs/training_run2.md`): 0.52 s a training step at batch 8,
+21 GB peak, 24 s for a 224-chunk test set at `--eval-batch 64`. A 48 GB card would fit, but
+nothing here has timed one.
 
 ## What this run does, in one table
 
@@ -24,19 +48,21 @@ rerun. After a crash or a preemption, run the same stage again. Every stage logs
 | `seeds` | seeds 1 and 2 at 80 min, own adapters and their controls | yes | ~3 h |
 | `summary` | `outputs/results.csv`, a last backup | — | seconds |
 
-About 11–12.5 GPU hours, $21–34 at $1.9–2.7/h.
+About 12 GPU-hours, ~$19–22 at A100 SXM's $1.59/h. The times above are GPU time; divide
+`tune`, `base`, `final` and `seeds` by the number of GPUs for wall time (controls by 3 and 2,
+since those stages have 3 and 2 control jobs).
 
 ## Before the pod (on the laptop)
 
 - [ ] `main` has PR [hadasy-tau/deep-learning-project#31](https://github.com/hadasy-tau/deep-learning-project/pull/31) (the personalization interval and the loop guard). It does, since 2026-10-02.
 - [ ] Ideally, `knesset-asr/knesset-committees-panel-hq` holds every clip of `panel_plan_v2.parquet` (7,564) and `panel_test07.parquet` (7,111). If it does not, the `data` stage extracts the gap from the corpus on the pod (up to 163 shards, ~1 h). Either way works; a complete dataset makes `data` a few minutes.
 - [ ] A HuggingFace token that can **read** the `knesset-asr` datasets and the gated `ivrit-ai/knesset-committees` (the audio gate range-reads it), and **write** to `knesset-asr` (the backup creates `knesset-committees-v3-results` itself, private). A fine-grained token scoped to a personal account gets a 404 on the org.
-- [ ] RunPod credit for ~$35.
+- [ ] RunPod credit for ~$30.
 
 ## The pod
 
 - **Template:** a RunPod **PyTorch** template, so torch and torchaudio come matched to the CUDA build. `setup` stops if torch cannot see the GPU.
-- **GPU:** one **A100 80 GB**. The speeds above, `--eval-batch 64` and bf16 without gradient checkpointing were measured on one.
+- **GPU:** **4× A100 SXM 80 GB** in one pod (§ How many GPUs). The speeds above, `--eval-batch 64` and bf16 without gradient checkpointing were measured on one.
 - **Container disk: 100 GB.** Model weights and the HF cache go there (`box/env.sh`).
 - **Network volume: optional.** If you attach one, note that in the second run `/workspace` refused writes past ~10 GB however much it reported free (`docs/training_run2.md` § The box). This run keeps audio (~5 GB), adapters and results in the repo; put the repo on the container disk if the volume quota bites.
 - The RunPod API key in the laptop's `cache/` is serverless-scoped: create the pod in the web console.
@@ -52,8 +78,8 @@ bash src/training/box/pod_v3.sh backup
 bash src/training/box/pod_v3.sh sanity          # read the time it prints, then tell Dolev the price before going on
 ```
 
-`sanity` prints how long one 80-minute tuning run took. The whole plan is about 70–90 such
-runs' worth of GPU time. At about 3 minutes a run, the estimate above holds. **At over 6
+`sanity` prints how long one 80-minute tuning run took. The whole plan is about 250 such
+jobs' worth of GPU time, split over the GPUs. At about 3 minutes a job, the estimate above holds. **At over 6
 minutes, stop and report before spending more:** in the second run a 10× slowdown was BLAS
 thread oversubscription, fixed in code but worth suspecting first (`docs/training_run2.md`
 § Why the first run took 30 minutes a cell).

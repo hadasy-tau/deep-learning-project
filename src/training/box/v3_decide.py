@@ -6,7 +6,7 @@ pod_v3.sh calls this between stages, so the run never waits on someone reading a
     python src/training/box/v3_decide.py pick A        # apply the rule to tuning.csv -> outputs/recipe_v3.json
     python src/training/box/v3_decide.py flags 80      # the chosen recipe as run_panel flags
     python src/training/box/v3_decide.py gate          # the audio gate's verdict on 30601 (exit 1 = stop)
-    python src/training/box/v3_decide.py base          # base WER on the high-quality test vs the error map (exit 1 = stop)
+    python src/training/box/v3_decide.py base [ids]    # base WER on the high-quality test vs the error map (exit 1 = stop)
     python src/training/box/v3_decide.py --self-check
 
 The tuning rule (docs/training_plan_v3.md § 2), per budget (5 and 80 minutes), on the four
@@ -139,14 +139,16 @@ def gate(path=GATE, speaker=30601):
 
 
 # ---- the base-WER sanity check ------------------------------------------------------------
-def base(audio_dir=None, batch=64):
+def base(audio_dir=None, batch=64, speakers=None):
     """Base B on each speaker's high-quality test set (cached as base_B_*_hq.json, the same file the
-    final run reuses) against the error map's wer_B.  Clean clips should score BELOW it."""
+    final run reuses) against the error map's wer_B.  Clean clips should score BELOW it.  `speakers`
+    restricts it to a subset: pod_v3.sh gives each GPU its own speakers, then reruns it on all of
+    them, which only reads the caches, for the one table."""
     sys.path.insert(0, TRAINING); sys.path.insert(0, os.path.join(ROOT, 'src', 'evaluation'))
     import run_panel as RP, evaluate as EV
     P = RP.load_plan(PLAN_V2); perf = pd.read_csv(PERF, index_col='speaker_id', encoding='utf-8-sig')
     rows = []
-    for s in sorted(int(x) for x in P.speaker_id.unique()):
+    for s in sorted(int(x) for x in P.speaker_id.unique() if not speakers or int(x) in speakers):
         test = P[(P.speaker_id == s) & (P.part == 'test')].reset_index(drop=True)
         hb = RP.base_hyps('B', s, test, audio_dir or RP.AUDIO, batch, data='hq')
         sc = EV.score(test.text, hb); w = EV.wer(sc)
@@ -204,5 +206,5 @@ if __name__ == '__main__':
     elif a.cmd == 'pick': pick(a.args[0])
     elif a.cmd == 'flags': print(flags(int(a.args[0])))
     elif a.cmd == 'gate': sys.exit(0 if gate() else 1)
-    elif a.cmd == 'base': sys.exit(0 if base(batch=a.batch) else 1)
+    elif a.cmd == 'base': sys.exit(0 if base(batch=a.batch, speakers=[int(x) for x in a.args]) else 1)
     else: ap.error('give a command or --self-check')
