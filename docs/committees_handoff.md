@@ -46,8 +46,8 @@ One caveat that remains: the *speakers* overlap with the plenum training data. R
 - Ear check (35 clips, shared verdicts): https://claude.ai/code/artifact/a775c7c4-1fa5-4d45-8889-f1449dad971b
 
 **HuggingFace.**
-- **`Hadasy/knesset-committees-chunks`** is the corpus. It is **private**, so every read needs `huggingface_hub.get_token()` or `HF_TOKEN`.
-- `Dolevabudi/knesset-committees-speakers` is the speaker index it was built from, pinned to revision `56b19714`.
+- **`knesset-asr/knesset-committees-chunks`** is the corpus. It is **private**, so every read needs `huggingface_hub.get_token()` or `HF_TOKEN`.
+- `knesset-asr/knesset-committees-speakers` is the speaker index it was built from, pinned to revision `56b19714`.
 - `ivrit-ai/knesset-committees` is the source audio. You should not need it.
 
 ## The corpus

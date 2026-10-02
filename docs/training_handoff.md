@@ -25,11 +25,11 @@ postdate the model. The speakers overlap with B's training data; the recordings 
 Done, published, and not to be redone:
 
 - **Speaker index** — 5.16 M `(session, start, end)` spans carrying a verified Knesset PersonID
-  (`Dolevabudi/knesset-committees-speakers`).
+  (`knesset-asr/knesset-committees-speakers`).
 - **Chunk corpus** — 1.2 M single-speaker chunks of ≤ 30 s with the protocol text as reference
-  (`Hadasy/knesset-committees-chunks`, private, 410 parquet shards).
+  (`knesset-asr/knesset-committees-chunks`, private, 410 parquet shards).
 - **Inference** — both arms over a 1 h/speaker subset: 65,990 chunks, 267 speakers, validated by
-  22 acceptance checks (`Dolevabudi/knesset-committees-inference`). Corpus WER A 0.387, B 0.292
+  22 acceptance checks (`knesset-asr/knesset-committees-inference`). Corpus WER A 0.387, B 0.292
   after the quality filter. See `docs/inference.md`.
 - **Error map** — per-speaker WER, gain and subgroup analysis over that inference
   (`docs/error_map.md`, `src/evaluation/`). Every speaker is helped by the fine-tune, median 24 %
@@ -37,7 +37,7 @@ Done, published, and not to be redone:
 - **The panel** — 11 speakers chosen for adaptation, with 4 alternates
   (`docs/adaptation_plan.md` § The panel, `src/evaluation/outputs/committees_panel.csv`).
 - **The panel's audio** — materialized as WAVs and published as
-  `Dolevabudi/knesset-committees-panel` (private, 3.3 GB, 8,113 files). The table that describes
+  `knesset-asr/knesset-committees-panel` (private, 3.3 GB, 8,113 files). The table that describes
   it is `src/training/panel_plan.parquet`, committed.
 
 Not done — this is you:
@@ -93,7 +93,7 @@ serverless and returns 403 on pod creation — launch pods from RunPod's web con
 
 Full commands are in `src/training/README.md`. The order matters:
 
-1. **Install and fetch the audio.** `materialize.py download --repo Dolevabudi/knesset-committees-panel`
+1. **Install and fetch the audio.** `materialize.py download --repo knesset-asr/knesset-committees-panel`
    then `materialize.py verify`. Verify must pass: 45 split checks plus every one of the 8,113
    WAVs present and readable. If it fails, stop and report — do not re-extract from the shards
    (that is 85 GB and was already done).
@@ -107,7 +107,7 @@ Full commands are in `src/training/README.md`. The order matters:
 5. **The audio gate**, ideally started in the background during step 4 — it is independent of
    training and only changes how you *interpret* a speaker's result. It needs `ffmpeg`,
    `speechbrain`, `torchaudio`, gated read access to `ivrit-ai/knesset-committees`, and
-   `segments.parquet` (521 MB) from `Dolevabudi/knesset-committees-speakers` placed in
+   `segments.parquet` (521 MB) from `knesset-asr/knesset-committees-speakers` placed in
    `src/preprocessing/speaker_index/outputs/`. It range-seeks each span over HTTP rather than
    downloading sessions, so it is bandwidth-cheap but makes thousands of small ffmpeg calls;
    budget two to four hours. Output: `outputs/audio_check.parquet` and `audio_report.txt`.

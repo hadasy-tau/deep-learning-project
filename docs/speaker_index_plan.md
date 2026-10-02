@@ -296,7 +296,7 @@ alias tables from all ~7,000 Path-A sessions) → audio check.
   materialized locally from `ivrit-ai/knesset-committees` by `session/start/end`.
 - **Former MKs speaking as guests** get `label = former_mk` with a full `speaker_id` and
   demographics; `label == 'mk'` stays "MK on the recording date".
-- **Dataset** `Dolevabudi/knesset-committees-speakers`, private until Step 4 passes.
+- **Dataset** `knesset-asr/knesset-committees-speakers`, private until Step 4 passes.
   README credits ivrit.ai and the Knesset Corpus; licence CC-BY-SA 4.0 (inherited).
 - **Runs on the local Mac** in `.venv` (pandas, pyarrow, huggingface_hub, requests,
   rapidfuzz). No GPU except the optional Step 4 embedding check.

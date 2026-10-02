@@ -40,7 +40,7 @@ pip install -r src/training/requirements.txt          # torch: use the CUDA whee
 huggingface-cli login                                 # read access to the chunk corpus
 
 # 1. the audio: EITHER fetch the folder the laptop extracted (3 GB) ...
-python src/training/materialize.py download --repo Dolevabudi/knesset-committees-panel
+python src/training/materialize.py download --repo knesset-asr/knesset-committees-panel
 # ... OR extract it here (85 GB pass through, ~45 min on a fast link, resumable)
 python src/training/materialize.py extract
 python src/training/materialize.py verify             # splits + every wav present and readable

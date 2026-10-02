@@ -16,5 +16,5 @@ echo "[$(date)] run B exit $?; run C: decoder-MLP site, lr 3e-4"
 python src/training/run_panel.py --arm B --sites decoder_mlp --budgets 80 --seeds 0 --lrs 3e-4 --eval-batch 64 --control-folds 2 --control-budget 80
 echo "[$(date)] run C exit $?; summary + backup"
 python src/training/run_panel.py --summary > /dev/null
-python src/training/backup.py --repo Dolevabudi/knesset-committees-adapters --once --logs /workspace/deep-learning-project/src/training/outputs/run_seed0.log /workspace/deep-learning-project/src/training/outputs/run_followups.log /workspace/deep-learning-project/src/training/outputs/run_next.log
+python src/training/backup.py --repo knesset-asr/knesset-committees-adapters --once --logs /workspace/deep-learning-project/src/training/outputs/run_seed0.log /workspace/deep-learning-project/src/training/outputs/run_followups.log /workspace/deep-learning-project/src/training/outputs/run_next.log
 echo "[$(date)] NEXT RUNS DONE"

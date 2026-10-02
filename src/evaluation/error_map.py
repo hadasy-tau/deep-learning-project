@@ -2,7 +2,7 @@
 
 This is Stage 1's analysis (notebooks/speaker_error_map.ipynb, run on VoxKnesset)
 re-done on the inference the project actually stands on: the 1 h/speaker subset
-of Hadasy/knesset-committees-chunks transcribed by both arms
+of knesset-asr/knesset-committees-chunks transcribed by both arms
 (knesset-asr/knesset-committees-inference).  Same questions, same scoring:
 
   1. how well does each model do per speaker (WER, CER; counts, never rates)

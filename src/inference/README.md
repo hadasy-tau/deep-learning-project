@@ -1,6 +1,6 @@
 # Stage 4 — inference over the committees chunk corpus
 
-Transcribes [`Hadasy/knesset-committees-chunks`](https://huggingface.co/datasets/Hadasy/knesset-committees-chunks)
+Transcribes [`knesset-asr/knesset-committees-chunks`](https://huggingface.co/datasets/knesset-asr/knesset-committees-chunks)
 (1,204,617 chunks, 3,840 h, 330 identified speakers) with the two arms, writing one
 JSONL row per chunk with the protocol reference alongside the hypothesis.
 

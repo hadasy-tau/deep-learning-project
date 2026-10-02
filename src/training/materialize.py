@@ -2,7 +2,7 @@
 
 train.py and evaluate.py open audio with common.read_wav(filename, start, end):
 16 kHz 16-bit mono WAV files in a folder, named by a table.  The corpus
-(Hadasy/knesset-committees-chunks) holds its audio as FLAC bytes inside 410
+(knesset-asr/knesset-committees-chunks) holds its audio as FLAC bytes inside 410
 parquet shards of ~770 MB.  This module bridges the two, in two commands that
 run on different machines:
 
@@ -267,7 +267,7 @@ pretty_name: Knesset Committees Panel
 # Knesset Committees Panel
 
 The audio the adaptation stage trains and tests on: {len(P):,} chunks ({P.duration_s.sum()/3600:.1f} h) of
-{P.speaker_id.nunique()} Knesset members, cut from `Hadasy/knesset-committees-chunks` at {selection},
+{P.speaker_id.nunique()} Knesset members, cut from `knesset-asr/knesset-committees-chunks` at {selection},
 as 16 kHz 16-bit mono WAV under `panel_audio/<speaker_id>/<chunk_id>.wav`. `{name}` is the
 table: one row per chunk with the reference text, session and date, and the split (`part`: test = the
 speaker's newest sessions, then dev, the rest train; session-disjoint by date; train ordered latest-first so

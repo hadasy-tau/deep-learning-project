@@ -1,6 +1,6 @@
 """Stage 3 publish: push the index (never audio) to a private HuggingFace dataset.
 
-Decisions (docs/speaker_index_plan.md): index only; Dolevabudi/knesset-committees-speakers;
+Decisions (docs/speaker_index_plan.md): index only; knesset-asr/knesset-committees-speakers;
 private until Step 4 passes; licence CC-BY-SA 4.0 inherited from the Knesset
 Corpus; credits ivrit.ai and the Knesset Corpus.
 
@@ -18,7 +18,7 @@ from roster import OUT
 # repo's, not the speaker-index builder's.
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'cache')
 
-REPO   = 'Dolevabudi/knesset-committees-speakers'
+REPO   = 'knesset-asr/knesset-committees-speakers'
 FILES  = ['segments.parquet', 'manifest.csv', 'mk_metadata.csv', 'mk_stints.csv', 'mk_name_variants.csv',
           'alias_names.csv', 'alias_et.csv', 'build_sessions.csv', 'match_report.txt', 'holdout_report.txt']
 

@@ -18,12 +18,12 @@ under `src/evaluation/outputs/committees_*`.
 
 ## The data
 
-The Stage-1 subset of `Hadasy/knesset-committees-chunks` transcribed by both arms,
-`Dolevabudi/knesset-committees-inference` (`docs/inference.md` § Result): one hour per MK at
+The Stage-1 subset of `knesset-asr/knesset-committees-chunks` transcribed by both arms,
+`knesset-asr/knesset-committees-inference` (`docs/inference.md` § Result): one hour per MK at
 alignment quality ≥ 0.5, round-robin over sessions — **65,990 chunks, 230 h, 267 speakers**,
 every chunk carrying both hypotheses. Arm A is `openai/whisper-large-v3` with the language forced
 to Hebrew; Arm B is `ivrit-ai/whisper-large-v3-turbo-ct2`. Demographics come from
-`Dolevabudi/knesset-committees-speakers`; corpus hours per speaker from the inference index.
+`knesset-asr/knesset-committees-speakers`; corpus hours per speaker from the inference index.
 
 ## What changed from the VoxKnesset version, and why
 
