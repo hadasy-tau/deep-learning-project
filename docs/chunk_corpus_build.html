@@ -377,7 +377,7 @@
       <code>src/preprocessing/chunk_corpus/chunk_corpus/chunks.py</code> turns the committees speaker index into audio — chunks of at
       most 30&nbsp;seconds, each holding exactly one speaker, over the whole corpus. It has now been
       built: <strong>410 shards, 274.5&nbsp;GB of lossless FLAC, all 10,905 sessions</strong>, at
-      <code>Hadasy/knesset-committees-chunks</code>.
+      <code>knesset-asr/knesset-committees-chunks</code>.
     </p>
     <div class="statusbar">
       <span class="status"><span class="dot done"></span>Built: 10,905 / 10,905 sessions</span>
@@ -400,7 +400,7 @@
         fine-tune.
       </p>
       <p>
-        The identity work was already done. <code>Dolevabudi/knesset-committees-speakers</code> resolves
+        The identity work was already done. <code>knesset-asr/knesset-committees-speakers</code> resolves
         every aligned segment to an official Knesset <code>PersonID</code> with demographics — but it
         publishes an <em>index only</em>. Its <code>filename</code> column names files that do not
         exist, and nothing in the repository could turn those names into audio. This module is that
@@ -833,7 +833,7 @@ delete                the m4a
   </section>
 
   <footer>
-    Built against <code>Dolevabudi/knesset-committees-speakers</code> and
+    Built against <code>knesset-asr/knesset-committees-speakers</code> and
     <code>ivrit-ai/knesset-committees</code>. Chunking adapted from ivrit.ai's
     <code>asr-training/create_dataset.py</code>. All measured figures taken from the live index on
     9&nbsp;September&nbsp;2026, through the module's own code path.

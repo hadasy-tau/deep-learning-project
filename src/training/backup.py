@@ -8,7 +8,7 @@ are skipped: the finished adapter is what matters and the driver retrains a
 cell whose DONE marker is missing.  The token comes from `hf auth login`
 (huggingface_hub reads it); nothing here prints it.
 
-    nohup python src/training/backup.py --repo Dolevabudi/knesset-committees-adapters --every 30 &
+    nohup python src/training/backup.py --repo knesset-asr/knesset-committees-adapters --every 30 &
     python src/training/backup.py --repo ... --once
 """
 import argparse, os, sys, time

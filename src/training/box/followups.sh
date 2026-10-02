@@ -12,5 +12,5 @@ echo "[$(date)] follow-up 1 exit $?; starting follow-up 2 (lr 1e-4, 3e-4)"
 python src/training/run_panel.py --arm B --budgets 80 --seeds 0 --lrs 1e-4 3e-4 --eval-batch 64 --control-folds 2 --control-budget 80
 echo "[$(date)] follow-up 2 exit $?; summary + backup"
 python src/training/run_panel.py --summary > /dev/null
-python src/training/backup.py --repo Dolevabudi/knesset-committees-adapters --once --logs /workspace/deep-learning-project/src/training/outputs/run_seed0.log /workspace/deep-learning-project/src/training/outputs/run_followups.log
+python src/training/backup.py --repo knesset-asr/knesset-committees-adapters --once --logs /workspace/deep-learning-project/src/training/outputs/run_seed0.log /workspace/deep-learning-project/src/training/outputs/run_followups.log
 echo "[$(date)] FOLLOWUPS DONE"

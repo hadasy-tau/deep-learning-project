@@ -1,6 +1,6 @@
 # Stage 4 — inference over the committees chunk corpus
 
-How the two ASR arms are run over `Hadasy/knesset-committees-chunks`, what each
+How the two ASR arms are run over `knesset-asr/knesset-committees-chunks`, what each
 piece of `src/inference/` does, what was verified, and what it costs. Written after the
 pipeline was built and verified live (2026-09-11) and extended as the subset run was
 finished (§ The subset run, § Language, § Result); every number below was
@@ -22,8 +22,8 @@ arms on it.
 
 | dataset | what it is | how Stage 4 uses it |
 |---|---|---|
-| `Hadasy/knesset-committees-chunks` | 1,204,617 single-speaker chunks ≤ 30 s, FLAC inline, protocol text, verified `speaker_id` (Knesset PersonID) and demographics. 410 shards, 275 GB. | the audio and the reference text |
-| `Dolevabudi/knesset-committees-speakers` (`segments.parquet`) | the Stage 3 index the chunks were cut from; carries `label` (`mk` / `former_mk`) | optional join to keep only sitting MKs — not needed for Stage 1's error map |
+| `knesset-asr/knesset-committees-chunks` | 1,204,617 single-speaker chunks ≤ 30 s, FLAC inline, protocol text, verified `speaker_id` (Knesset PersonID) and demographics. 410 shards, 275 GB. | the audio and the reference text |
+| `knesset-asr/knesset-committees-speakers` (`segments.parquet`) | the Stage 3 index the chunks were cut from; carries `label` (`mk` / `former_mk`) | optional join to keep only sitting MKs — not needed for Stage 1's error map |
 
 The chunk corpus is pinned to one dataset revision for the life of a run
 (`src/inference/cache/revision.json`), so a re-upload cannot change the data under a
@@ -168,7 +168,7 @@ the design above (see § Wall time and § Result).
                               (Hebrew, non-empty, not the reference leaked back), sampled
                               FLAC durations, WER sane and B < A. Exits non-zero on any failure
      5. merge.py --upload     only if 4 passed: the three parquets and a dataset card to
-                              Dolevabudi/knesset-committees-inference
+                              knesset-asr/knesset-committees-inference
 ```
 
 ### `verify.py` — scoring and invariants
@@ -206,7 +206,7 @@ alignment quality ≥ 0.7), sent through the real pipeline to both arms:
 | per-chunk, B vs A | — | B better on 9, tie on 1 |
 
 All 14 pipeline invariants passed. The HF mirror was exercised once against
-`Dolevabudi/knesset-committees-inference` (private).
+`knesset-asr/knesset-committees-inference` (private).
 
 The WER level is the committees register, not the pipeline: the reference is a
 cleaned stenographic protocol, while both models faithfully transcribe the
@@ -320,7 +320,7 @@ descriptor`), fixed with `ulimit -n 4096`. **128 in flight: ~24 h, $94–104.**
 ### Result (2026-09-13)
 
 The subset is complete on both arms and published as
-`Dolevabudi/knesset-committees-inference` (private): 65,990/65,990 chunks with
+`knesset-asr/knesset-committees-inference` (private): 65,990/65,990 chunks with
 both hypotheses, 267 speakers, 0 unrecovered errors, all 22 acceptance checks
 of `validate_final.py` passed. Corpus WER on the subset, Stage 1's method:
 **A 0.417, B 0.324** (B better by 22 %). Empty hypotheses A 0.30 % / B 0;

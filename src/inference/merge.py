@@ -1,7 +1,7 @@
 """Stage 4 merge: assemble the run JSONLs into the dataset Stage 1 reads.
 
     python src/inference/merge.py            # -> outputs/inference.parquet + coverage; dry-run the upload
-    python src/inference/merge.py --upload   # push to Dolevabudi/knesset-committees-inference
+    python src/inference/merge.py --upload   # push to knesset-asr/knesset-committees-inference
 
 One row per (chunk_id, arm) with the hypothesis, the reference, timing and
 the chunk's metadata; plus a wide table with one row per chunk carrying
@@ -14,7 +14,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import data as D
 HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, 'outputs')
-REPO = 'Dolevabudi/knesset-committees-inference'
+REPO = 'knesset-asr/knesset-committees-inference'
 KEEP = ['chunk_id','arm','provider','model','speaker_id','session','session_date','knesset','duration_s','quality',
         'reference','hypothesis','language','latency_s','exec_s','queue_s','error','ts']
 
@@ -68,9 +68,9 @@ pretty_name: Knesset Committees Inference
 Transcriptions of Knesset committee audio by two models, with the protocol
 reference alongside, for the personalised-ASR study (Stage 1: per-speaker
 WER, general model vs Hebrew fine-tune). Audio and references come from
-[`Hadasy/knesset-committees-chunks`](https://huggingface.co/datasets/Hadasy/knesset-committees-chunks);
+[`knesset-asr/knesset-committees-chunks`](https://huggingface.co/datasets/knesset-asr/knesset-committees-chunks);
 speaker identities from
-[`Dolevabudi/knesset-committees-speakers`](https://huggingface.co/datasets/Dolevabudi/knesset-committees-speakers).
+[`knesset-asr/knesset-committees-speakers`](https://huggingface.co/datasets/knesset-asr/knesset-committees-speakers).
 No audio is included.
 
 | arm | model | served by | language |

@@ -8,5 +8,5 @@ echo "[$(date)] run D: verbatim targets + dev-loss selection, lr 3e-4"
 python src/training/run_panel.py --arm B --budgets 80 --seeds 0 --lrs 3e-4 --targets verbatim --eval-batch 64 --control-folds 2 --control-budget 80
 echo "[$(date)] run D exit $?; summary + backup"
 python src/training/run_panel.py --summary > /dev/null
-python src/training/backup.py --repo Dolevabudi/knesset-committees-adapters --once --logs /workspace/deep-learning-project/src/training/outputs/run_next.log /workspace/deep-learning-project/src/training/outputs/run_d.log
+python src/training/backup.py --repo knesset-asr/knesset-committees-adapters --once --logs /workspace/deep-learning-project/src/training/outputs/run_next.log /workspace/deep-learning-project/src/training/outputs/run_d.log
 echo "[$(date)] RUN D DONE"

@@ -139,7 +139,7 @@ python src/training/materialize.py verify --plan src/training/panel_plan_v2.parq
 # any machine with a fast link (no GPU): only clips not already on disk are pulled
 python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet
 python src/training/materialize.py verify  --plan src/training/panel_plan_v2.parquet
-python src/training/materialize.py upload  --plan src/training/panel_plan_v2.parquet --repo Dolevabudi/knesset-committees-panel
+python src/training/materialize.py upload  --plan src/training/panel_plan_v2.parquet --repo knesset-asr/knesset-committees-panel
 
 # GPU: tuning, validation only
 S="30685 23558 30718 30859"; V2=src/training/panel_plan_v2.parquet
@@ -162,7 +162,7 @@ For whoever runs the training next, a person or a fresh Claude session on a GPU 
 - **Code:** PR [hadasy-tau/deep-learning-project#23](https://github.com/hadasy-tau/deep-learning-project/pull/23) (`training-plan-v3` → `main`). Train from `main` once it's merged, otherwise from the branch. It includes Dolev's second run.
 - **Data plan:** `src/training/panel_plan_v2.parquet` (6,462 clips, 27.9 h, 11 speakers), built and verified. It's committed, along with `word_quality.parquet`.
 - **Audio:** extracted on Hadas's laptop on 2026-10-01 into `src/training/outputs/panel_audio/<speaker>/<clip>.wav` (git-ignored): all 6,462 WAVs, 3.1 GB, 46 minutes for 186 shards at about 80 Mbit/s. `verify` passed every check, including 200 sampled WAVs with the right duration and non-silent audio. Nothing has been trained on it yet.
-- **Access:** `Dolevabudi/knesset-committees-panel` is Dolev's private v1 audio, not readable from Hadas's account. `Dolevabudi/knesset-committees-adapters` holds the second run's adapters and the 462 per-experiment result files, which were removed from git. The corpus `Hadasy/knesset-committees-chunks` is Hadas's. The plan-v3 audio is `knesset-asr/knesset-committees-panel-hq`, in the shared organization. Both are private.
+- **Access:** every project dataset now lives in the HF organization `knesset-asr` (moved 2026-10 from the personal accounts; the old names redirect): `knesset-committees-chunks` (the corpus), `-speakers`, `-inference`, `-panel` (the v1 panel audio, ≥ 0.7), `-adapters` (the second run's adapters and the 462 per-experiment result files, removed from git) and `-panel-hq` (the plan-v3 audio).
 
 ### 1. Get the audio onto the GPU box, one of two ways
 - **(a) From HuggingFace (recommended).** The laptop's WAVs are uploaded to the private dataset **`knesset-asr/knesset-committees-panel-hq`**, in the project's HF organization `knesset-asr` (Hadas and Dolev are members): all 6,462 WAVs, 3.0 GB, plus `panel_plan_v2.parquet` and a card. It needs an HF token with read access to the `knesset-asr` organization. A fine-grained token scoped only to a personal account gets a 404. This takes a few minutes:
@@ -170,7 +170,7 @@ For whoever runs the training next, a person or a fresh Claude session on a GPU 
   python src/training/materialize.py download --repo knesset-asr/knesset-committees-panel-hq   # -> src/training/outputs/panel_audio/
   ```
   It is private because the audio comes from ivrit.ai's gated `ivrit-ai/knesset-committees`. Making it public would hand the audio to people who never accepted ivrit.ai's terms, so ask them first.
-- **(b) Extract on the box itself.** It needs read access to `Hadasy/knesset-committees-chunks`. 186 shards pass through, about 125 GB; each is deleted after use, and the run is resumable. That's under an hour on a datacenter link, CPU only.
+- **(b) Extract on the box itself.** It needs read access to `knesset-asr/knesset-committees-chunks`. 186 shards pass through, about 125 GB; each is deleted after use, and the run is resumable. That's under an hour on a datacenter link, CPU only.
   ```bash
   python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet --prefetch 3
   ```

@@ -157,7 +157,7 @@ def main():
     ap.add_argument('--limit', type=int); ap.add_argument('--seed', type=int, default=0)
     ap.add_argument('--workers', type=int, default=None)
     ap.add_argument('--retry-failed', action='store_true')
-    ap.add_argument('--upload-repo', default=None, help='e.g. Dolevabudi/knesset-committees-inference')
+    ap.add_argument('--upload-repo', default=None, help='e.g. knesset-asr/knesset-committees-inference')
     ap.add_argument('--upload-every-min', type=float, default=15)
     a = ap.parse_args()
 

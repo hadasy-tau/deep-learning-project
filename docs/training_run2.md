@@ -18,7 +18,7 @@ what came out. Everything here was measured on one RunPod A100 SXM 80 GB pod (EU
 
 Progress per cell is in `src/training/outputs/run_seed0.log` and `run_followups.log`; every
 30 minutes `src/training/backup.py` mirrors results and adapters to the private dataset
-`Dolevabudi/knesset-committees-adapters`.
+`knesset-asr/knesset-committees-adapters`.
 
 ## The box
 
@@ -471,7 +471,7 @@ container disk does not. On a new pod attached to the same volume:
 cd /workspace/deep-learning-project && source src/training/box/env.sh     # caches to the container disk, thread cap
 hf auth login                                                               # if the token under HF_HOME is gone
 python src/training/materialize.py verify                                   # the audio is on the volume; should pass
-nohup python src/training/backup.py --repo Dolevabudi/knesset-committees-adapters --every 30 &
+nohup python src/training/backup.py --repo knesset-asr/knesset-committees-adapters --every 30 &
 ```
 
 Model weights re-download on first use (~6 GB, minutes). `runs/` (the adapters, 1.3 GB) and

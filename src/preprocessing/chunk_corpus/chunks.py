@@ -1,7 +1,7 @@
 """Preprocessing: build a corpus of <= 30 s audio chunks, each holding exactly
 one speaker, from the Knesset committees recordings.
 
-Two inputs, one output.  `Dolevabudi/knesset-committees-speakers` publishes an
+Two inputs, one output.  `knesset-asr/knesset-committees-speakers` publishes an
 *index* -- one row per aligned segment, carrying a global Knesset PersonID and
 demographics, but no audio at all (its `filename` column names files that do not
 exist).  `ivrit-ai/knesset-committees` holds the audio, one `audio.m4a` per
@@ -75,9 +75,9 @@ CACHE = os.path.join(HERE, 'cache')
 PARTS = os.path.join(OUT, 'parts')
 M4A_DIR = os.path.join(CACHE, 'm4a')
 
-INDEX_REPO = 'Dolevabudi/knesset-committees-speakers'
+INDEX_REPO = 'knesset-asr/knesset-committees-speakers'
 AUDIO_REPO = 'ivrit-ai/knesset-committees'
-CHUNKS_REPO = 'Hadasy/knesset-committees-chunks'   # where a streaming build ships to
+CHUNKS_REPO = 'knesset-asr/knesset-committees-chunks'   # where a streaming build ships to
 
 SR = 16000                 # Whisper's input rate; the only rate this module emits
 MAX_S = 30.0               # Whisper's window, and ivrit.ai's slice_length

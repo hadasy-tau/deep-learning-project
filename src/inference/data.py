@@ -68,7 +68,7 @@ def shard_url(name):
 
 HERE   = os.path.dirname(os.path.abspath(__file__))
 CACHE  = os.path.join(HERE, 'cache')
-REPO   = 'Hadasy/knesset-committees-chunks'
+REPO   = 'knesset-asr/knesset-committees-chunks'
 # Chunk-corpus metadata, so it lives with the chunk-corpus builder.
 META   = os.path.join(HERE, '..', 'preprocessing', 'chunk_corpus', 'cache',
                       'hadas_chunks_meta.parquet')
