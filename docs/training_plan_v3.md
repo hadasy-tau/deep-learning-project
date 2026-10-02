@@ -108,7 +108,7 @@ Rate is tuned first because it mattered most in the second run. With alpha = 2 �
 - **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is off there (`--forgiven` turns it back on). On high-quality clips the protocol matches the audio, which is what it was a workaround for.
 
 **Two test sets** (added 2026-10-02). Quality comes from a Whisper-family aligner, so the ≥ 0.95 filter keeps the clips a Whisper model already finds easy. On the second run's test sets it kept only 31–40% of the speech of the hardest speakers (23558, 30701, 30843), the speakers the project is about, against 64% overall. `docs/adaptation_plan.md` asks for results with and without the filter. So every cell and every control evaluation is also scored on a second test set:
-- **`panel_test07.parquet`** (`materialize.py plan-test07`): the same test sessions as the high-quality test, every clip at quality ≥ 0.7, no word rule. 0.7 is the corpus floor: below it the protocol demonstrably does not match the audio, and the WER measures the labels, not the model.
+- **`panel_test07.parquet`** (`materialize.py plan-test07`): the same test sessions as the high-quality test, every clip at quality ≥ 0.7, no word rule. Built 2026-10-02 at corpus revision `839622c1` (the index reproduces `panel_plan_v2.parquet` row for row): 5,710 clips, 18.8 h; the high-quality test is 48% of it. Per speaker it keeps 26% (23558), 31% (556) and 37% (30701) of the test speech at ≥ 0.95, and 53–67% for the rest. Extraction adds 3,749 clips from 81 shards. 0.7 is the corpus floor: below it the protocol demonstrably does not match the audio, and the WER measures the labels, not the model.
 - The high-quality test is a subset of it (`hq` = True), so the two differ only in the filter. Session-disjoint from train and validation by construction; `verify` checks it.
 - Its columns are `test07.*` in `results.csv`, with **forgiven-shared WER always on**: between 0.7 and 0.8 the protocol omits about 28 words per 100, so a standard-WER gain there can be the adapter learning the omissions.
 - **Per quality band** (`test07.bands.q070`, `q080`, `q090`, `q095`): the gain and the personalization in each of 0.7–0.8, 0.8–0.9, 0.9–0.95 and ≥ 0.95. This answers whether the adapter helps on the hard clips the filter drops.
@@ -134,8 +134,8 @@ Nothing is computed only for display. Every number a plot could need is written 
 | B. rank × dropout: 3 new × 2 × 4 | 24 | about 1.2 h |
 | C. augmentation: 2 × 2 × 4 | 16 | about 0.8 h |
 | final: 33 cells + 6 control trainings + 33 control evaluations + base transcriptions | — | about 2–2.5 h |
-| the ≥ 0.7 test: the clips outside the high-quality test, for 66 adapters, plus both base models once | — | about 0.5–1 h |
-| **total** | | **about 6–7 h, $12–19** |
+| the ≥ 0.7 test: the clips outside the high-quality test (9.9 h, 3,749 clips) for 66 adapters, plus both base models on all 18.8 h once | — | about 1–1.5 h |
+| **total** | | **about 6.5–7.5 h, $13–20** |
 
 ## Runbook
 
