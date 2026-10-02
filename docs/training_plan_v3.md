@@ -148,6 +148,8 @@ Nothing is computed only for display. Every number a plot could need is written 
 | seeds 1 and 2 at 80 min: 26 cells + 4 control trainings + 26 control evaluations, both tests | — | about 3 h |
 | **total** | | **about 11–12.5 h, $21–34** |
 
+Those are GPU-hours. The jobs are independent, so `src/training/box/pod_v3.sh` spreads them over every GPU of the pod: on 4× A100 SXM ($1.59/h each on 2026-10-02) the run takes about 3.5 hours for about $22 (`docs/pod_runbook_v3.md` § How many GPUs).
+
 ## Runbook
 
 ```bash
