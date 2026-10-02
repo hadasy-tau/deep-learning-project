@@ -1,6 +1,6 @@
 """The per-speaker error map, on the committees corpus.
 
-This is Stage 1's analysis (notebooks/speaker_error_map.ipynb, run on VoxKnesset)
+This is Stage 1's analysis (run on VoxKnesset; table in outputs/speaker_performance.csv)
 re-done on the inference the project actually stands on: the 1 h/speaker subset
 of knesset-asr/knesset-committees-chunks transcribed by both arms
 (knesset-asr/knesset-committees-inference).  Same questions, same scoring:
