@@ -46,6 +46,15 @@ collects the validation results into outputs/tuning.csv.
         --speakers 30685 23558 30718 30859 --budgets 5 80 --lrs 1e-4 3e-4 1e-3 --seeds 0
     python src/training/run_panel.py --tuning-report
 
+The second test set (docs/training_plan_v3.md § 4).  --test07-plan panel_test07.parquet
+also scores every cell and every control evaluation on plan v2's test sessions at
+quality >= 0.7 (materialize.py plan-test07): `test07.*` columns beside the high-quality
+ones, always with the forgiven-shared count (arm A on it, cached once per speaker) and
+split by quality band (`test07.bands.q070` ... `q095`).  The high-quality test is a
+subset of it, so its hypotheses are reused and only the rest is transcribed.  A cell
+scored before the flag was given gets its test07 scores on the next run, from its
+saved adapter.
+
 Needs the materialized audio (materialize.py extract or download) and a GPU
 for anything but the smoke test.
 """
@@ -60,6 +69,7 @@ sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, '..')); sys.path
 PLAN, AUDIO = os.path.join(HERE, 'panel_plan.parquet'), os.path.join(HERE, 'outputs', 'panel_audio')
 RUNS, RESULTS = os.path.join(HERE, 'runs'), os.path.join(HERE, 'outputs', 'results')
 TUNE_RUNS, TUNING = os.path.join(HERE, 'runs_tune'), os.path.join(HERE, 'outputs', 'tuning.csv')
+PLAN_TEST07 = os.path.join(HERE, 'panel_test07.parquet')
 
 def load_plan(plan_path=PLAN, speakers=None):
     P = pd.read_parquet(plan_path)
@@ -100,6 +110,57 @@ def compare(test, hb, ht, ha):
         fb, ft = forgiven_score(test.text, hb, ha), forgiven_score(test.text, ht, ha)
         pf = EV.paired_bootstrap(fb, ft)
         res.update({k + '_f': v for k, v in pf.items() if k not in ('n_segments', 'n_words')}, base_f=_fshares(fb), tuned_f=_fshares(ft))
+    return res
+
+QBANDS = ((0.70, 0.80), (0.80, 0.90), (0.90, 0.95), (0.95, 1.01))
+
+def compare_bands(test, hb, ht, ha):
+    """compare() within each alignment-quality band of the >= 0.7 test set: where the
+    adapter helps, on the clean clips or on the hard ones the high-quality filter drops."""
+    import evaluate as EV
+    sb, st = EV.score(test.text, hb), EV.score(test.text, ht)
+    fb, ft = forgiven_score(test.text, hb, ha), forgiven_score(test.text, ht, ha)
+    out = {}
+    for lo, hi in QBANDS:
+        m = ((test.quality >= lo) & (test.quality < hi)).values
+        if not m.any(): continue
+        pb = EV.paired_bootstrap(sb[m], st[m]); pf = EV.paired_bootstrap(fb[m], ft[m])
+        out[f'q{round(lo * 100):03d}'] = dict(minutes=float(test.duration_s[m].sum() / 60), n_segments=int(m.sum()),
+                                             **{k: pb[k] for k in ('wer_base', 'wer_tuned', 'delta_abs', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot')},
+                                             **{k + '_f': pf[k] for k in ('wer_base', 'wer_tuned', 'delta_abs', 'delta_rel', 'p_boot')})
+    return out
+
+def score_test07(T07, speaker, arm, test, ht, model, proc, device, audio_dir, batch, name):
+    """One adapter on the speaker's >= 0.7 test set.  `test`/`ht` are its high-quality
+    test chunks and hypotheses: they are a subset, so only the rest is transcribed.
+    Writes <name>.test07.hyps.json; returns the dict stored under the result's `test07`."""
+    import evaluate as EV
+    t07 = T07[T07.speaker_id == speaker].reset_index(drop=True)
+    known = dict(zip(test.chunk_id, ht))
+    rest = t07[~t07.chunk_id.isin(known)].reset_index(drop=True)
+    known.update(zip(rest.chunk_id, EV.transcribe_short(model, proc, rest, audio_dir, batch=batch, device=device)))
+    ht7 = [known[c] for c in t07.chunk_id]
+    hb7 = base_hyps(arm, speaker, t07, audio_dir, batch, data='test07')
+    ha7 = base_hyps(OTHER_ARM[arm], speaker, t07, audio_dir, batch, data='test07')
+    json.dump(dict(chunk_ids=list(t07.chunk_id), hyps=ht7), open(os.path.join(RESULTS, name + '.test07.hyps.json'), 'w', encoding='utf-8'), ensure_ascii=False)
+    res = dict(n_test=int(len(t07)), test_minutes=float(t07.duration_s.sum() / 60), hq_share=float(t07.duration_s[t07.hq].sum() / t07.duration_s.sum()),
+               **compare(t07, hb7, ht7, ha7), bands=compare_bands(t07, hb7, ht7, ha7))
+    print(f'{name} on the >= 0.7 test: WER {res["wer_base"]:.4f} -> {res["wer_tuned"]:.4f} ({res["delta_rel"]:+.1%}, p {res["p_boot"]:.3f}); '
+          f'forgiven {res["delta_rel_f"]:+.1%}; ' + ' '.join(f'{k} {v["delta_rel"]:+.1%}' for k, v in res['bands'].items()), flush=True)
+    return res
+
+def add_test07(out_json, T07, arm, adapter, audio_dir, batch):
+    """A result scored before --test07-plan was given: add its test07 scores from the
+    saved adapter and its saved high-quality hypotheses."""
+    import evaluate as EV
+    res = json.load(open(out_json, encoding='utf-8'))
+    if 'test07' in res or not os.path.exists(os.path.join(adapter, 'adapter_config.json')): return res
+    name = os.path.basename(out_json)[:-len('.json')]
+    h = json.load(open(os.path.join(RESULTS, name + '.hyps.json'), encoding='utf-8'))
+    test = pd.DataFrame(dict(chunk_id=h['chunk_ids']))
+    model, proc, device = EV.load(arm, adapter=adapter)
+    res['test07'] = score_test07(T07, int(res['speaker']), arm, test, h['hyps'], model, proc, device, audio_dir, batch, name); del model
+    json.dump(res, open(out_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False, default=float)
     return res
 
 def base_hyps(arm, speaker, test, audio_dir, batch, model_override=None, data=''):
@@ -190,7 +251,7 @@ def select_kw(P_protocol, dev_rows, select, audio_dir, eval_batch, arm):
         other += [h[c] for c in g.chunk_id]
     return dict(select='forgiven', select_refs=refs, select_other=other)
 
-def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_override=None, forgiven=False, targets='protocol', select='loss', step=None):
+def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_override=None, forgiven=False, targets='protocol', select='loss', step=None, T07=None):
     import train as T, evaluate as EV
     if model_override:                         # smoke tests: both arms, so the other-arm transcription is tiny too
         for a in T.ARMS: T.ARMS[a] = model_override; EV.ARMS[a] = model_override
@@ -200,7 +261,9 @@ def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_overr
     name = T.cell_name(c['speaker'], c['arm'], c['site'], c['method'], c['budget'], c['rank'], c['lr'], c['seed'], tag)
     out_json = os.path.join(RESULTS, name + '.json')
     if os.path.exists(out_json):
-        print(f'skip (scored): {name}'); return json.load(open(out_json, encoding='utf-8'))
+        print(f'skip (scored): {name}')
+        if T07 is not None: return add_test07(out_json, T07, c['arm'], os.path.join(RUNS, name), audio_dir, eval_batch)
+        return json.load(open(out_json, encoding='utf-8'))
     t0 = time.time(); phase = {}
     Pt = apply_targets(P, targets)
     spk = Pt[Pt.speaker_id == c['speaker']]
@@ -215,8 +278,11 @@ def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_overr
     # arm A's (the other arm's) transcription of the same chunks, for the forgiven-shared count; cached per speaker
     t = time.time(); ha = base_hyps(OTHER_ARM[c['arm']], c['speaker'], test, audio_dir, eval_batch, data=data) if forgiven else None; phase['other_arm'] = time.time() - t
     t = time.time(); model, proc, device = EV.load(c['arm'], adapter=adapter); phase['load_tuned'] = time.time() - t
-    t = time.time(); ht = EV.transcribe_short(model, proc, test, audio_dir, batch=eval_batch, device=device); del model; phase['transcribe_tuned'] = time.time() - t
+    t = time.time(); ht = EV.transcribe_short(model, proc, test, audio_dir, batch=eval_batch, device=device); phase['transcribe_tuned'] = time.time() - t
     t = time.time(); cmp = compare(test, hb, ht, ha); phase['score'] = time.time() - t
+    if T07 is not None:
+        t = time.time(); cmp['test07'] = score_test07(T07, c['speaker'], c['arm'], test, ht, model, proc, device, audio_dir, eval_batch, name); phase['test07'] = time.time() - t
+    del model
     tr = T.take_budget(spk[spk.part == 'train'], c['budget']); meta = _train_meta(adapter)
     res = dict(cell=name, **c, targets=targets, select=select, adapter=adapter, train_minutes=float(tr.duration_s.sum() / 60), train_chunks=int(len(tr)),
                train_steps=meta.get('global_step'), train_epochs=meta.get('epochs', epochs), best_eval_loss=meta.get('best_eval_loss'), best_epoch=meta.get('best_epoch'),
@@ -255,7 +321,7 @@ def control_folds(speakers, k, seed=0):
     return [sorted(int(s) for s in order[i::k]) for i in range(k)]
 
 def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, budget=80, arm='B', site='both', method='lora',
-                rank=8, lr=None, seed=0, dev_min=15, forgiven=False, targets='protocol', select='loss', step=None):
+                rank=8, lr=None, seed=0, dev_min=15, forgiven=False, targets='protocol', select='loss', step=None, T07=None):
     """k adapters, each trained on a pool from the speakers NOT in its fold and
     evaluated on the fold's speakers.  With k=1 (the handoff's single adapter)
     the pool spans all the speakers and each is evaluated on an adapter that saw
@@ -269,6 +335,9 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
         label = f'ctrl{k}of{folds}'
         name = T.cell_name(label, arm, site, method, budget, rank, lr, seed, tag)
         todo = [s for s in evals if not os.path.exists(os.path.join(RESULTS, f'{name}__eval{s}.json'))]
+        if T07 is not None:                    # scored before --test07-plan: add it from the saved adapter
+            for s in evals:
+                if s not in todo: add_test07(os.path.join(RESULTS, f'{name}__eval{s}.json'), T07, arm, os.path.join(RUNS, name), audio_dir, eval_batch)
         if not todo:
             print(f'skip (scored): {name} on {evals}'); out += [json.load(open(os.path.join(RESULTS, f'{name}__eval{s}.json'), encoding='utf-8')) for s in evals]; continue
         t0 = time.time()
@@ -286,6 +355,7 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
             hb = base_hyps(arm, s, test, audio_dir, eval_batch, data=data); ha = base_hyps(OTHER_ARM[arm], s, test, audio_dir, eval_batch, data=data) if forgiven else None
             ht = EV.transcribe_short(model, proc, test, audio_dir, batch=eval_batch, device=device)
             cmp = compare(test, hb, ht, ha)
+            if T07 is not None: cmp['test07'] = score_test07(T07, s, arm, test, ht, model, proc, device, audio_dir, eval_batch, f'{name}__eval{s}')
             res = dict(cell=f'{name}__eval{s}', speaker=s, arm=arm, site=site, method=method, budget=budget, rank=rank, lr=lr, seed=seed,
                        targets=targets, select=select, control=True, fold=k, folds=folds, trained_on=trainers, saw_own_minutes=float(per_spk_min.get(s, 0.0)),
                        adapter=adapter, train_minutes=float(tr.duration_s.sum() / 60), train_chunks=int(len(tr)), train_steps=meta.get('global_step'),
@@ -359,7 +429,8 @@ def _table(rows, control_budget=80):
     if len(ctrl):
         R['_recipe'] = R.cell.map(_recipe)
         keys = ['speaker', 'arm', 'site', 'method', 'rank', 'lr', 'seed', 'targets', 'select', '_recipe']
-        vals = ['delta_abs', 'delta_rel', 'wer_tuned', 'ci_lo', 'ci_hi', 'p_boot'] + [c for c in ('delta_abs_f', 'delta_rel_f', 'wer_tuned_f') if c in ctrl]
+        vals = ['delta_abs', 'delta_rel', 'wer_tuned', 'ci_lo', 'ci_hi', 'p_boot'] + [c for c in ('delta_abs_f', 'delta_rel_f', 'wer_tuned_f') if c in ctrl] \
+            + [c for c in ctrl if c.startswith('test07.') and ('delta_abs' in c or c in ('test07.delta_rel', 'test07.delta_rel_f'))]
         ren = {k: k.replace('delta', 'control_delta').replace('wer_tuned', 'wer_control').replace('ci_', 'control_ci_').replace('p_boot', 'control_p_boot') for k in vals}
         C = R[R.control][keys + ['budget'] + vals].rename(columns=ren)
         same = R[keys + ['budget']].merge(C, on=keys + ['budget'], how='left')
@@ -370,6 +441,10 @@ def _table(rows, control_budget=80):
         R['personalization_abs'] = R.delta_abs - R.control_delta_abs
         R['personalization_rel'] = R.personalization_abs / R.wer_base
         if 'delta_abs_f' in R: R['personalization_abs_f'] = R.delta_abs_f - R.control_delta_abs_f
+        # the same on the >= 0.7 test set, overall and per quality band, standard and forgiven
+        for c in [c for c in ren if c.startswith('test07.') and 'delta_abs' in c]:
+            p = R[c] - R[ren[c]]; R[c.replace('delta_abs', 'personalization_abs')] = p
+            R[c.replace('delta_abs', 'personalization_rel')] = p / R[c.replace('delta_abs', 'wer_base')]
     return R
 
 def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
@@ -378,7 +453,8 @@ def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
     R = _table(rows)
     R.to_csv(out, index=False, float_format='%.5g'); print(f'{len(R)} rows ({int(R.control.sum())} control evaluations) -> {out}')
     cols = [c for c in ['speaker', 'site', 'lr', 'targets', 'select', 'budget', 'seed', 'control', 'n_test', 'train_steps', 'wer_base', 'wer_tuned', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot', 'wer_base_f', 'wer_tuned_f', 'delta_rel_f', 'p_boot_f',
-                        'improvement_from_insertions', 'style_not_speaker', 'control_delta_rel', 'personalization_rel'] if c in R]
+                        'improvement_from_insertions', 'style_not_speaker', 'control_delta_rel', 'personalization_rel',
+                        'test07.n_test', 'test07.hq_share', 'test07.wer_base', 'test07.delta_rel', 'test07.p_boot', 'test07.delta_rel_f', 'test07.personalization_rel'] if c in R]
     print(R[cols].round(4).to_string(index=False))
     return R
 
@@ -407,12 +483,16 @@ if __name__ == '__main__':
     ap.add_argument('--control-budgets', nargs='+', type=int, help='train the control at each of these budgets (default: --control-budget)')
     ap.add_argument('--tune', action='store_true', help='train + validate only, no test (runs_tune/); then --tuning-report')
     ap.add_argument('--tuning-report', action='store_true', help='write outputs/tuning.csv from the tuning runs and print the comparison')
+    ap.add_argument('--test07-plan', help='also score on this second test set (panel_test07.parquet: plan v2\'s test sessions at quality >= 0.7)')
     a = ap.parse_args()
     if a.summary: summary(); sys.exit(0)
     if a.tuning_report: tuning_report(); sys.exit(0)
     if (a.dropouts != [None] or a.augments != ['none'] or a.tune) and not a.max_steps:
         ap.error('--dropouts, --augments and --tune are step-mode settings: give --max-steps')
     P = load_plan(a.plan, speakers=a.speakers)
+    T07 = load_plan(a.test07_plan, speakers=a.speakers) if (a.test07_plan and not a.tune) else None
+    if T07 is not None:
+        assert set(P[P.part == 'test'].chunk_id) <= set(T07.chunk_id), f'{a.test07_plan} does not contain {a.plan}\'s test set: rebuild it (materialize.py plan-test07)'
     data_tag = '' if os.path.abspath(a.plan) == os.path.abspath(PLAN) else 'hq'
     steps = [dict(max_steps=a.max_steps, eval_steps=a.eval_steps, patience=a.patience, dropout=d, augment=g, data=data_tag)
              for d in a.dropouts for g in a.augments] if a.max_steps else [{}]
@@ -436,12 +516,12 @@ if __name__ == '__main__':
             for c in C: run_tune(c, P, a.audio, a.batch, a.grad_accum, st, a.model)
         tuning_report(); sys.exit(0)
     for st in steps:
-        for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, forgiven=a.forgiven, targets=a.targets, select=a.select, step=st)
+        for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, forgiven=a.forgiven, targets=a.targets, select=a.select, step=st, T07=T07)
     if a.control_folds:                        # one control per recipe, so every sweep point has a budget-matched 'others' adapter
         for st in steps:
             for cb in (a.control_budgets or [a.control_budget]):
                 for site in a.sites:
                     for lr in a.lrs:
                         run_control(P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, folds=a.control_folds, budget=cb, arm=a.arms[0], site=site,
-                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], forgiven=a.forgiven, targets=a.targets, select=a.select, step=st)
+                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], forgiven=a.forgiven, targets=a.targets, select=a.select, step=st, T07=T07)
     summary()
