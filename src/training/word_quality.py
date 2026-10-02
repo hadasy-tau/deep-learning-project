@@ -41,15 +41,18 @@ MAX_LOW_SHARE = 0.10    # at most this share of low words; fixed from report() (
 MAX_COUNT_GAP = 0.2     # |aligned words - reference words| / reference words above this: the span is not verifiable
 RAW_TARGET_MIN = 250    # candidate minutes per speaker (>= 0.95), before the word rule (~65% pass it)
 EXCLUDE_SESSIONS = {30843: {2235355}}   # the audio gate: this dev session is mostly another voice (docs/training_run2.md)
-# 30843 has ~124 high-quality minutes, short of test + dev + train (140); her S2
-# alternate takes her place, as the panel file provides (docs/training_plan_v3.md).
-PANEL_SWAPS = {30843: 556}
+# Plan v3 first swapped 30843 for 556: 30843 has about 120 high-quality minutes, short of
+# 45 test + 15 dev + 80 train.  Revised 2026-10-02 (docs/training_plan_v3.md § 1): 30843
+# stays, with a shorter test and dev (materialize.SPLIT_MIN), and two speakers are added --
+# 556, the S2 alternate, and 30601, a "hard and left behind" speaker from outside the
+# panel (WER_B 0.455, the fine-tune removes 18% of arm A's error).
+PANEL_ADD = [556, 30601]
 
 
 def panel_speakers(panel_path=PANEL):
     panel = pd.read_csv(panel_path, index_col=0)
     core = [int(s) for s in panel[~panel.profile.str.contains('alt')].index]
-    return [PANEL_SWAPS.get(s, s) for s in core]
+    return core + [s for s in PANEL_ADD if s not in core]
 
 
 def span(chunk_id):

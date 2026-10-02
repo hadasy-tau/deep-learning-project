@@ -20,7 +20,7 @@ session, which split, which shard).
 | `run_panel.py` | cells → adapters → scored results (`outputs/results/*.json`, `outputs/results.csv`); standard and forgiven-shared WER per cell; `--control-folds K` for the cross-speaker control (D3) |
 | `targets.py` | semi-verbatim training targets: the protocol text with the words both base models produced put back (`--build-targets`); `forgiven_score` for training-side selection |
 | `word_quality.py` | per-word alignment scores for the candidate train/dev clips (from the raw ivrit.ai sessions) and the word rule `word_ok`; writes `word_quality.parquet` |
-| `panel_plan_v2.parquet` | the high-quality plan: test, dev and train all at quality ≥ 0.95 passing the word rule; 30843 replaced by her alternate 556 (`materialize.py plan-v2`) |
+| `panel_plan_v2.parquet` | the high-quality plan: test, dev and train all at quality ≥ 0.95 passing the word rule; 13 speakers: the panel, plus 556 and 30601; 30843 with a 30-minute test (`materialize.py plan-v2`) |
 | `panel_test07.parquet` | the second test set: plan v2's test sessions, every chunk at quality ≥ 0.7, no word rule; v2's test is its `hq` subset (`materialize.py plan-test07`, scored with `run_panel.py --test07-plan`) |
 | `backup.py` | copies `outputs/results/` and `runs/` (adapters only, no trainer checkpoints) to a private HF dataset on a loop |
 | `box/` | the GPU box's `env.sh` (caches on the container disk, thread cap) and the detached run chains of the 2026-09-20 session |

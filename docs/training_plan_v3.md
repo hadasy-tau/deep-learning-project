@@ -42,7 +42,14 @@ trusted. Parked from `docs/training_next.md`:
 - **validation:** the next sessions, until 15 minutes;
 - **train:** older sessions, newest first, at least 80 minutes, so the 5/20/80 budgets nest.
 
-**Panel change.** 30843 has only about 124 high-quality minutes, short of the 140 needed. Her S2 alternate, **556 חיים כץ**, takes her place (`word_quality.PANEL_SWAPS`). His caveat is 15 h of plenum exposure, the reason he was an alternate. Her validation session 2235355, flagged by the audio gate, stays excluded in case she returns.
+**Panel change, revised 2026-10-02: 13 speakers** (`word_quality.PANEL_ADD`).
+- **30843 stays.** The first version swapped 30843 out: about 120 high-quality minutes, short of the 140 needed. But 30843 is one of the three speakers where the second run found a personal effect, and the hard speakers are the project's question. So 30843 keeps the 80-minute budget and gives up test and dev minutes instead: **30 min test, 10 min dev** (`materialize.SPLIT_MIN`). The validation session 2235355, flagged by the audio gate, stays excluded.
+  - The ≥ 0.7 test (§ 4) gives 30843 91 minutes.
+- **556 חיים כץ stays too,** as an extra S2 speaker. The caveat is 15 h of plenum exposure, the reason he was an alternate.
+- **30601 ינון אזולאי is added:** "hard and left behind", from outside the original panel. WER_B is 0.455, higher than anyone on the panel, and the fine-tune removes only 18% of arm A's error. 44 corpus hours, 146 minutes passing the word rule.
+  - The quality-filter footprint is high (21% of the audio below 0.7, against 7–14% for most of the panel), so **the audio gate must pass on 30601 before training** (Handoff, step 2b).
+  - The plenum exposure has not been measured.
+- **The original eleven speakers' data is unchanged,** row for row, in `panel_plan_v2.parquet` and `panel_test07.parquet`. `word_quality.parquet` only gained rows: 30601's, and 82 chunks from 30843's four newest sessions that had never been scored.
 
 **Consequences:**
 - The test clips differ from the second run's, so results aren't directly comparable with it.
@@ -102,13 +109,13 @@ Rate is tuned first because it mattered most in the second run. With alpha = 2 �
 
 ## 4. The final run, and where the random speaker group comes in
 
-- **Cells:** the chosen recipe at 5, 20 and 80 minutes, all 11 speakers, seed 0.
+- **Cells:** the chosen recipe at 5, 20 and 80 minutes, all 13 speakers, seed 0.
 - **The control:** a random group of the *other* panel speakers, in 2 folds, trained on the same number of minutes and evaluated on every speaker it never heard. It runs at **each** budget (`--control-folds 2 --control-budgets 5 20 80`). Personalization = the own adapter's gain − the control's gain, on the same test clips (`run_panel._table`). This is the comparison that tells "learned this voice" apart from "learned committee Hebrew".
 - **Not in this plan:** comparing *similar*-speaker groups against random groups of the same size (`training_next.md`, "sharing"). It can follow on the chosen recipe: about 44 short runs.
 - **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is off there (`--forgiven` turns it back on). On high-quality clips the protocol matches the audio, which is what it was a workaround for.
 
 **Two test sets** (added 2026-10-02). Quality comes from a Whisper-family aligner, so the ≥ 0.95 filter keeps the clips a Whisper model already finds easy. On the second run's test sets it kept only 31–40% of the speech of the hardest speakers (23558, 30701, 30843), the speakers the project is about, against 64% overall. `docs/adaptation_plan.md` asks for results with and without the filter. So every cell and every control evaluation is also scored on a second test set:
-- **`panel_test07.parquet`** (`materialize.py plan-test07`): the same test sessions as the high-quality test, every clip at quality ≥ 0.7, no word rule. Built 2026-10-02 at corpus revision `839622c1` (the index reproduces `panel_plan_v2.parquet` row for row): 5,710 clips, 18.8 h; the high-quality test is 48% of it. Per speaker it keeps 26% (23558), 31% (556) and 37% (30701) of the test speech at ≥ 0.95, and 53–67% for the rest. Extraction adds 3,749 clips from 81 shards. 0.7 is the corpus floor: below it the protocol demonstrably does not match the audio, and the WER measures the labels, not the model.
+- **`panel_test07.parquet`** (`materialize.py plan-test07`): the same test sessions as the high-quality test, every clip at quality ≥ 0.7, no word rule. Built 2026-10-02 at corpus revision `839622c1`; the index reproduces the eleven-speaker `panel_plan_v2.parquet` row for row. 7,111 clips, 23.2 h; the high-quality test is 44% of it. Per speaker it keeps 26% (23558), 27% (30601), 31% (556), 33% (30843) and 37% (30701) of the test speech at ≥ 0.95, and 53–67% for the rest. Beyond plan v2, extraction adds 4,841 clips (13.0 h). 0.7 is the corpus floor: below it the protocol demonstrably does not match the audio, and the WER measures the labels, not the model.
 - The high-quality test is a subset of it (`hq` = True), so the two differ only in the filter. Session-disjoint from train and validation by construction; `verify` checks it.
 - Its columns are `test07.*` in `results.csv`, with **forgiven-shared WER always on**: between 0.7 and 0.8 the protocol omits about 28 words per 100, so a standard-WER gain there can be the adapter learning the omissions.
 - **Per quality band** (`test07.bands.q070`, `q080`, `q090`, `q095`): the gain and the personalization in each of 0.7–0.8, 0.8–0.9, 0.9–0.95 and ≥ 0.95. This answers whether the adapter helps on the hard clips the filter drops.
@@ -133,9 +140,10 @@ Nothing is computed only for display. Every number a plot could need is written 
 | A. learning rate: 3 × 2 budgets × 4 speakers | 24 | about 1.2 h |
 | B. rank × dropout: 3 new × 2 × 4 | 24 | about 1.2 h |
 | C. augmentation: 2 × 2 × 4 | 16 | about 0.8 h |
-| final: 33 cells + 6 control trainings + 33 control evaluations + base transcriptions | — | about 2–2.5 h |
-| the ≥ 0.7 test: the clips outside the high-quality test (9.9 h, 3,749 clips) for 66 adapters, plus both base models on all 18.8 h once | — | about 1–1.5 h |
-| **total** | | **about 6.5–7.5 h, $13–20** |
+| final: 39 cells (13 speakers) + 6 control trainings + 39 control evaluations + base transcriptions | — | about 2.5–3 h |
+| the ≥ 0.7 test: the clips outside the high-quality test (13.0 h) for 78 adapters, plus both base models on all 23.2 h once | — | about 1.5–2 h |
+| the audio gate on 30601 (Handoff, step 2b) | — | about 0.5 h |
+| **total** | | **about 7.5–9 h, $15–24** |
 
 ## Runbook
 
@@ -172,8 +180,11 @@ For whoever runs the training next, a person or a fresh Claude session on a GPU 
 
 ### Where things stand
 - **Code:** PR [hadasy-tau/deep-learning-project#23](https://github.com/hadasy-tau/deep-learning-project/pull/23) (`training-plan-v3` → `main`). Train from `main` once it's merged, otherwise from the branch. It includes Dolev's second run.
-- **Data plan:** `src/training/panel_plan_v2.parquet` (6,462 clips, 27.9 h, 11 speakers), built and verified. It's committed, along with `word_quality.parquet`.
-- **Audio:** extracted on Hadas's laptop on 2026-10-01 into `src/training/outputs/panel_audio/<speaker>/<clip>.wav` (git-ignored): all 6,462 WAVs, 3.1 GB, 46 minutes for 186 shards at about 80 Mbit/s. `verify` passed every check, including 200 sampled WAVs with the right duration and non-silent audio. Nothing has been trained on it yet.
+- **Data plan:** `src/training/panel_plan_v2.parquet`, built and verified, and committed along with `word_quality.parquet` and `panel_test07.parquet`.
+  - The first version (6,462 clips, 27.9 h, 11 speakers) was rebuilt on 2026-10-02 with 13 speakers (§ 1): 7,564 clips, 32.4 h.
+- **Audio:** the first version's 6,462 WAVs were extracted on Hadas's laptop on 2026-10-01 into `src/training/outputs/panel_audio/<speaker>/<clip>.wav` (git-ignored): 3.1 GB, 46 minutes for 186 shards at about 80 Mbit/s, and `verify` passed every check. They are in `knesset-asr/knesset-committees-panel-hq`.
+  - **Not yet extracted:** the revision's 1,102 new clips (4.4 h: 30601, and 30843's) and the ≥ 0.7 test's 4,841 extra clips (13.0 h), from 163 shards together. Step 1 pulls them; only clips not on disk are fetched.
+  - Nothing has been trained on any of it yet.
 - **Access:** every project dataset now lives in the HF organization `knesset-asr` (moved 2026-10 from the personal accounts; the old names redirect): `knesset-committees-chunks` (the corpus), `-speakers`, `-inference`, `-panel` (the v1 panel audio, ≥ 0.7), `-adapters` (the second run's adapters and the 462 per-experiment result files, removed from git) and `-panel-hq` (the plan-v3 audio).
 
 ### 1. Get the audio onto the GPU box, one of two ways
@@ -187,8 +198,9 @@ For whoever runs the training next, a person or a fresh Claude session on a GPU 
   python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet --prefetch 3
   ```
 
-Then the ≥ 0.7 test set's extra clips (§ 4, *Two test sets*). `panel_test07.parquet` is built on a machine with the corpus index (`materialize.py plan-test07`) and committed; extraction pulls only the clips not already on disk:
+Then, either way, the clips that aren't in `panel-hq`: the 13-speaker revision's new ones (§ 1) and the ≥ 0.7 test set's extra ones (§ 4, *Two test sets*). Extraction pulls only the clips not already on disk; together it's 163 shards, under an hour on a datacenter link:
 ```bash
+python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet --prefetch 3
 python src/training/materialize.py extract --plan src/training/panel_test07.parquet --prefetch 3
 ```
 
@@ -209,6 +221,15 @@ source src/training/box/env.sh                       # RunPod: caches on the con
 # a pod can be preempted: mirror results every 30 min to a private dataset YOU can write to
 nohup python src/training/backup.py --repo knesset-asr/<a new private dataset, e.g. knesset-committees-v3-results> --every 30 > backup.log 2>&1 &
 ```
+
+### 2b. The audio gate on 30601 (about 30 minutes, before any training)
+30601's quality-filter footprint is high (§ 1), so check that the labelled voice is one person before training on it. This is the same gate the second run ran on the panel, focused on 30601 against a reference population. It needs `pip install speechbrain` and `ffmpeg`.
+```bash
+python src/preprocessing/speaker_index/validate_audio.py --speakers 30601 --per-speaker 40 --others 60 --tag 30601
+```
+- **Pass:** the share of 30601's segments closer to another speaker's centroid is near the corpus level (the panel's run: 4.6%, the reference population alone 3.8%).
+- **If it is well above that,** look at which sessions the flagged segments come from: exclude them in `word_quality.EXCLUDE_SESSIONS`, as with 30843's 2235355, and rebuild the plans (`materialize.py plan-v2`, then `plan-test07`).
+- **If they are spread everywhere,** drop 30601 from `PANEL_ADD`, and tell Dolev and Hadas.
 
 ### 3. Two sanity checks (about 15 minutes)
 ```bash
