@@ -127,7 +127,10 @@ KnessetCorpus — so the tables join directly.
   data only (`src/training/panel_plan_v2.parquet`: 6,887 chunks, 30.0 h, session-disjoint by
   date), validation-only tuning picked by rule, the budget-matched control at every budget, seeds
   0-2 at 80 minutes, and a second test set at quality ≥ 0.7 (`panel_test07.parquet`). The audio
-  is `knesset-asr/knesset-committees-panel-hq`. On the pod: `docs/pod_runbook_v3.md`.
+  is `knesset-asr/knesset-committees-panel-hq`. On the pod: `docs/pod_runbook_v3.md`. **Run on
+  2026-10-02: `docs/training_run3.md`** -- personalization +2-3 points of relative WER at 80 minutes,
+  stable over three seeds; the rest of the 12-15 % gain is domain, and the clean data did not stop the
+  adapter learning the stenographer's omissions.
 
 Self-checks, no GPU and no network beyond the cached data:
 

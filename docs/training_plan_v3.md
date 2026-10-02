@@ -1,6 +1,7 @@
 # Training plan v3: high-quality data, lean hyperparameter tuning, augmentation
 
 Written 2026-09-29 and revised 2026-10-01, after the second run (`docs/training_run2.md`).
+**Run on 2026-10-02: `docs/training_run3.md` has the results and conclusions.**
 The project narrows to three things that decide whether the personalization result can be
 trusted. Parked from `docs/training_next.md`:
 
