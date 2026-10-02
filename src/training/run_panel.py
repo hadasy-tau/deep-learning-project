@@ -432,6 +432,7 @@ def _table(rows, control_budget=80):
         vals = ['delta_abs', 'delta_rel', 'wer_tuned', 'ci_lo', 'ci_hi', 'p_boot'] + [c for c in ('delta_abs_f', 'delta_rel_f', 'wer_tuned_f') if c in ctrl] \
             + [c for c in ctrl if c.startswith('test07.') and ('delta_abs' in c or c in ('test07.delta_rel', 'test07.delta_rel_f'))]
         ren = {k: k.replace('delta', 'control_delta').replace('wer_tuned', 'wer_control').replace('ci_', 'control_ci_').replace('p_boot', 'control_p_boot') for k in vals}
+        vals.append('cell'); ren['cell'] = 'control_cell'     # which control evaluation was joined: personalization_ci reads its hypotheses
         C = R[R.control][keys + ['budget'] + vals].rename(columns=ren)
         same = R[keys + ['budget']].merge(C, on=keys + ['budget'], how='left')
         fall = R[keys].merge(C[C.budget == control_budget].drop(columns='budget'), on=keys, how='left')
@@ -447,14 +448,62 @@ def _table(rows, control_budget=80):
             R[c.replace('delta_abs', 'personalization_rel')] = p / R[c.replace('delta_abs', 'wer_base')]
     return R
 
+def _hyps(name):
+    p = os.path.join(RESULTS, name + '.hyps.json')
+    if not os.path.exists(p): return None
+    d = json.load(open(p, encoding='utf-8'))
+    return d['chunk_ids'], d['hyps']
+
+def _other_arm_hyps(arm, speaker, chunk_ids):
+    """The other arm's cached base transcription of exactly these chunks (any plan's cache), or None."""
+    for p in sorted(glob.glob(os.path.join(RESULTS, f'base_{OTHER_ARM[arm]}_{speaker}_*.json'))):
+        d = json.load(open(p, encoding='utf-8'))
+        if d['chunk_ids'] == chunk_ids: return d['hyps']
+    return None
+
+def personalization_ci(R, plans=None):
+    """A paired bootstrap on the headline number.  personalization_abs = delta(own) -
+    delta(control) = WER(control) - WER(own), because both deltas are taken against the
+    same base on the same test chunks -- so it is exactly paired_bootstrap(control, own),
+    resampling chunks, and needs only the two saved hypothesis files.  Adds
+    personalization_ci_lo / _ci_hi / _p (absolute WER, like ci_lo / ci_hi), the same with
+    _f under the forgiven-shared count when the other arm's transcription is cached, and
+    test07.* for the >= 0.7 test set.  The point estimate must reproduce the joined
+    personalization_abs: an assert, so a wrong control join cannot pass silently."""
+    import evaluate as EV
+    plans = plans or sorted(glob.glob(os.path.join(HERE, 'panel_*.parquet')))
+    text = pd.concat([pd.read_parquet(p, columns=['chunk_id', 'text']) for p in plans]).drop_duplicates('chunk_id').set_index('chunk_id').text
+    rows = R.index[~R.control & R.control_cell.notna()]
+    sets = [('', '')] + ([('.test07', 'test07.')] if 'test07.personalization_abs' in R else [])
+    for _, pre in sets:
+        for c in ('personalization_ci_lo', 'personalization_ci_hi', 'personalization_p', 'personalization_abs_f', 'personalization_ci_lo_f', 'personalization_ci_hi_f', 'personalization_p_f'):
+            if pre + c not in R: R[pre + c] = np.nan
+    for i in rows:
+        r = R.loc[i]
+        for suffix, pre in sets:
+            own, ctrl = _hyps(r.cell + suffix), _hyps(r.control_cell + suffix)
+            if own is None or ctrl is None: continue
+            assert own[0] == ctrl[0], f'{r.cell}{suffix}: own and control were scored on different chunks'
+            refs = text.loc[own[0]].tolist()
+            pb = EV.paired_bootstrap(EV.score(refs, ctrl[1]), EV.score(refs, own[1]))
+            assert abs(pb['delta_abs'] - r[pre + 'personalization_abs']) < 1e-9, (r.cell, suffix, pb['delta_abs'], r[pre + 'personalization_abs'])
+            R.loc[i, [pre + 'personalization_ci_lo', pre + 'personalization_ci_hi', pre + 'personalization_p']] = pb['ci_lo'], pb['ci_hi'], pb['p_boot']
+            ha = _other_arm_hyps(r.arm, int(r.speaker), own[0])
+            if ha is not None:
+                pf = EV.paired_bootstrap(forgiven_score(refs, ctrl[1], ha), forgiven_score(refs, own[1], ha))
+                R.loc[i, [pre + 'personalization_abs_f', pre + 'personalization_ci_lo_f', pre + 'personalization_ci_hi_f', pre + 'personalization_p_f']] = \
+                    pf['delta_abs'], pf['ci_lo'], pf['ci_hi'], pf['p_boot']
+    return R
+
 def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
     rows = [json.load(open(f, encoding='utf-8')) for f in sorted(glob.glob(os.path.join(RESULTS, '*.json'))) if not f.endswith('.hyps.json') and not os.path.basename(f).startswith(('base_', 'hyps_'))]
     if not rows: print('no results yet'); return None
     R = _table(rows)
+    if 'control_cell' in R: R = personalization_ci(R)
     R.to_csv(out, index=False, float_format='%.5g'); print(f'{len(R)} rows ({int(R.control.sum())} control evaluations) -> {out}')
     cols = [c for c in ['speaker', 'site', 'lr', 'targets', 'select', 'budget', 'seed', 'control', 'n_test', 'train_steps', 'wer_base', 'wer_tuned', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot', 'wer_base_f', 'wer_tuned_f', 'delta_rel_f', 'p_boot_f',
-                        'improvement_from_insertions', 'style_not_speaker', 'control_delta_rel', 'personalization_rel',
-                        'test07.n_test', 'test07.hq_share', 'test07.wer_base', 'test07.delta_rel', 'test07.p_boot', 'test07.delta_rel_f', 'test07.personalization_rel'] if c in R]
+                        'improvement_from_insertions', 'style_not_speaker', 'control_delta_rel', 'personalization_rel', 'personalization_ci_lo', 'personalization_ci_hi', 'personalization_p',
+                        'test07.n_test', 'test07.hq_share', 'test07.wer_base', 'test07.delta_rel', 'test07.p_boot', 'test07.delta_rel_f', 'test07.personalization_rel', 'test07.personalization_p'] if c in R]
     print(R[cols].round(4).to_string(index=False))
     return R
 
