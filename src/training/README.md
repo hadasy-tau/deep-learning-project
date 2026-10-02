@@ -4,6 +4,8 @@
 > train (`word_quality.py`, `materialize.py plan-v2`), step-mode training with fixed early stopping,
 > lean validation-only tuning (`run_panel.py --tune`, `--tuning-report`) and augmentation. Its
 > runbook supersedes the session below, which is how the second run was driven.
+> **On the GPU pod: `docs/pod_runbook_v3.md`**, which drives plan v3 through `box/pod_v3.sh <stage>`,
+> with the tuning rule, the audio gate and the base-WER check applied by `box/v3_decide.py`.
 
 What to do on the GPU box, in order, and what to bring back. **Read
 `docs/training_handoff.md` first** — it carries the decisions, the panel and the two rules for
