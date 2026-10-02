@@ -3,7 +3,7 @@
 This is Stage 1's analysis (notebooks/speaker_error_map.ipynb, run on VoxKnesset)
 re-done on the inference the project actually stands on: the 1 h/speaker subset
 of Hadasy/knesset-committees-chunks transcribed by both arms
-(Dolevabudi/knesset-committees-inference).  Same questions, same scoring:
+(knesset-asr/knesset-committees-inference).  Same questions, same scoring:
 
   1. how well does each model do per speaker (WER, CER; counts, never rates)
   2. each speaker's adaptation gain, WER_A - WER_B, and who gains least
@@ -41,7 +41,7 @@ INFERENCE = os.path.join(ROOT, 'src', 'inference', 'outputs', 'inference.parquet
 INDEX     = os.path.join(ROOT, 'src', 'inference', 'cache', 'index.parquet')
 SPEAKERS  = os.path.join(ROOT, 'src', 'preprocessing', 'speaker_index', 'outputs', 'segments.parquet')
 OUT       = os.path.join(HERE, 'outputs')
-INFERENCE_REPO, SPEAKERS_REPO = 'Dolevabudi/knesset-committees-inference', 'Dolevabudi/knesset-committees-speakers'
+INFERENCE_REPO, SPEAKERS_REPO = 'knesset-asr/knesset-committees-inference', 'knesset-asr/knesset-committees-speakers'
 
 MIN_QUALITY  = 0.7      # the one QC filter; see the module docstring and docs/error_map.md
 MIN_SEG      = 20       # below this a speaker's WER is mostly sampling noise (Stage 1 §9; here too)
