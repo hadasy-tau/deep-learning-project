@@ -10,7 +10,7 @@ trusted. Parked from `docs/training_next.md`:
 - the word-for-word test set.
 
 **Rules for the whole plan:**
-- **High-quality data only**, for test, validation and train alike (§ 1).
+- **High-quality data only** for training and validation (§ 1). The test is scored twice: on the high-quality clips, and on every clip of the same test sessions at quality ≥ 0.7 (§ 4, *Two test sets*).
 - **The test set is read once, at the end.** Every choice is made on validation (the `dev` split in the code).
 - `results.csv` keeps its format. New rows carry `hq` in their cell name. Tuning results go to `outputs/tuning.csv`.
 
@@ -105,7 +105,14 @@ Rate is tuned first because it mattered most in the second run. With alpha = 2 �
 - **Cells:** the chosen recipe at 5, 20 and 80 minutes, all 11 speakers, seed 0.
 - **The control:** a random group of the *other* panel speakers, in 2 folds, trained on the same number of minutes and evaluated on every speaker it never heard. It runs at **each** budget (`--control-folds 2 --control-budgets 5 20 80`). Personalization = the own adapter's gain − the control's gain, on the same test clips (`run_panel._table`). This is the comparison that tells "learned this voice" apart from "learned committee Hebrew".
 - **Not in this plan:** comparing *similar*-speaker groups against random groups of the same size (`training_next.md`, "sharing"). It can follow on the chosen recipe: about 44 short runs.
-- **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is off (`--forgiven` turns it back on). On high-quality clips the protocol matches the audio, which is what it was a workaround for.
+- **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is off there (`--forgiven` turns it back on). On high-quality clips the protocol matches the audio, which is what it was a workaround for.
+
+**Two test sets** (added 2026-10-02). Quality comes from a Whisper-family aligner, so the ≥ 0.95 filter keeps the clips a Whisper model already finds easy. On the second run's test sets it kept only 31–40% of the speech of the hardest speakers (23558, 30701, 30843), the speakers the project is about, against 64% overall. `docs/adaptation_plan.md` asks for results with and without the filter. So every cell and every control evaluation is also scored on a second test set:
+- **`panel_test07.parquet`** (`materialize.py plan-test07`): the same test sessions as the high-quality test, every clip at quality ≥ 0.7, no word rule. 0.7 is the corpus floor: below it the protocol demonstrably does not match the audio, and the WER measures the labels, not the model.
+- The high-quality test is a subset of it (`hq` = True), so the two differ only in the filter. Session-disjoint from train and validation by construction; `verify` checks it.
+- Its columns are `test07.*` in `results.csv`, with **forgiven-shared WER always on**: between 0.7 and 0.8 the protocol omits about 28 words per 100, so a standard-WER gain there can be the adapter learning the omissions.
+- **Per quality band** (`test07.bands.q070`, `q080`, `q090`, `q095`): the gain and the personalization in each of 0.7–0.8, 0.8–0.9, 0.9–0.95 and ≥ 0.95. This answers whether the adapter helps on the hard clips the filter drops.
+- Training and tuning are unchanged: still high-quality only.
 
 ## 5. What every run collects, for the analysis notebook
 
@@ -115,6 +122,7 @@ Nothing is computed only for display. Every number a plot could need is written 
 |---|---|---|
 | `outputs/results.csv` (from `outputs/results/<cell>.json`) | scored cell or control evaluation | the settings, train minutes, steps and best checkpoint, test size, base and tuned WER and CER, the gain with its 95% interval and p-values, the substitution/deletion/insertion shares and looping outputs, the style flag, the control's gain and **personalization** = own gain − control's gain |
 | `outputs/results/<cell>.hyps.json`, `base_*_hq.json` | cell; speaker | every test clip's transcription by the tuned and the base model, for re-scoring and per-clip analysis without a GPU |
+| `outputs/results/<cell>.test07.hyps.json`, `base_{A,B}_*_test07.json` | cell; speaker | the same on the ≥ 0.7 test set; arm A's for the forgiven count |
 | `runs/<cell>/train_meta.json`, `runs_tune/<cell>/train_meta.json` | trained adapter (final run and tuning) | `settings` (speaker, budget, lr, rank, alpha, LoRA dropout, Whisper dropout, augmentation, batch, schedule, seed); `train_log`: the **training loss**, gradient norm and learning rate every 5 steps; `evals`: the **validation loss** every 20 steps; `base_eval_loss` (the untuned model's); `best_step`, `global_step`, `stopped_early`; `trainable_params`, `train_runtime_s`, `peak_gpu_mem_gb`; the train and validation clip IDs |
 | `outputs/tuning.csv` | tuning run | the settings, untuned and best validation loss, `rel_drop` (the tuning criterion), best and stop steps |
 
@@ -126,7 +134,8 @@ Nothing is computed only for display. Every number a plot could need is written 
 | B. rank × dropout: 3 new × 2 × 4 | 24 | about 1.2 h |
 | C. augmentation: 2 × 2 × 4 | 16 | about 0.8 h |
 | final: 33 cells + 6 control trainings + 33 control evaluations + base transcriptions | — | about 2–2.5 h |
-| **total** | | **about 5–6 h, $10–16** |
+| the ≥ 0.7 test: the clips outside the high-quality test, for 66 adapters, plus both base models once | — | about 0.5–1 h |
+| **total** | | **about 6–7 h, $12–19** |
 
 ## Runbook
 
@@ -135,6 +144,8 @@ Nothing is computed only for display. Every number a plot could need is written 
 python src/training/word_quality.py                  # word scores for the candidate clips + the report
 python src/training/materialize.py plan-v2           # panel_plan_v2.parquet
 python src/training/materialize.py verify --plan src/training/panel_plan_v2.parquet --no-audio
+python src/training/materialize.py plan-test07         # panel_test07.parquet: the same test sessions at quality >= 0.7
+python src/training/materialize.py verify --plan src/training/panel_test07.parquet --no-audio
 
 # any machine with a fast link (no GPU): only clips not already on disk are pulled
 python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet
@@ -151,7 +162,8 @@ python src/training/run_panel.py --tuning-report                 # outputs/tunin
 
 # GPU: the final run, test read once
 python src/training/run_panel.py --plan $V2 --max-steps 400 --budgets 5 20 80 --seeds 0 \
-    --lrs <A> --ranks <B> --dropouts <B> --augments <C or none> --control-folds 2 --control-budgets 5 20 80
+    --lrs <A> --ranks <B> --dropouts <B> --augments <C or none> --control-folds 2 --control-budgets 5 20 80 \
+    --test07-plan src/training/panel_test07.parquet
 ```
 
 ## Handoff: continuing from here (written 2026-10-01)
@@ -175,9 +187,15 @@ For whoever runs the training next, a person or a fresh Claude session on a GPU 
   python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet --prefetch 3
   ```
 
-Either way, it must pass before anything else:
+Then the ≥ 0.7 test set's extra clips (§ 4, *Two test sets*). `panel_test07.parquet` is built on a machine with the corpus index (`materialize.py plan-test07`) and committed; extraction pulls only the clips not already on disk:
+```bash
+python src/training/materialize.py extract --plan src/training/panel_test07.parquet --prefetch 3
+```
+
+Either way, both must pass before anything else:
 ```bash
 python src/training/materialize.py verify --plan src/training/panel_plan_v2.parquet    # splits, filters, every WAV readable
+python src/training/materialize.py verify --plan src/training/panel_test07.parquet    # same test sessions as v2, v2's test is the hq subset
 ```
 
 ### 2. Set up the box
@@ -224,7 +242,8 @@ python src/training/run_panel.py --tuning-report
 ### 5. The final run: test set used once
 ```bash
 python src/training/run_panel.py --plan $V2 --max-steps 400 --budgets 5 20 80 --seeds 0 --eval-batch 64 \
-    --lrs <A> --ranks <B> --dropouts <B> --augments <C or none> --control-folds 2 --control-budgets 5 20 80
+    --lrs <A> --ranks <B> --dropouts <B> --augments <C or none> --control-folds 2 --control-budgets 5 20 80 \
+    --test07-plan src/training/panel_test07.parquet
 python src/training/run_panel.py --summary                       # outputs/results.csv
 ```
 - **Time:** about 2–2.5 hours. It's idempotent, so kill and rerun it freely.
@@ -234,6 +253,8 @@ python src/training/run_panel.py --summary                       # outputs/resul
 ### 6. Reading the results
 - **New rows** are the ones with `hq` in `cell`.
 - **The headline column** is `personalization_rel`, the own adapter's gain minus the control's gain at the same budget. A gain whose interval (`ci_lo`, `ci_hi`) crosses zero isn't a result.
+- **Report both test sets side by side:** `personalization_rel` (≥ 0.95) and `test07.personalization_rel` (≥ 0.7), plus `test07.personalization_rel_f`. On the ≥ 0.7 set, trust a gain only if the forgiven count agrees. `test07.bands.*` says on which clips it was earned.
+- **If `--test07-plan` was missed**, rerun the same command with it: scored cells are not retrained; their ≥ 0.7 scores are added from the saved adapters.
 - **`style_not_speaker`** marks gains that are mostly fewer insertions. On high-quality clips these should be rare. If they aren't, say so.
 - **Base-WER sanity check:** the base WER on the high-quality test set should come out *below* each speaker's `wer_B` in `src/evaluation/outputs/committees_speaker_performance.csv`, because these clips are cleaner. If it comes out more than 0.10 *above*, materialization or scoring is broken: stop.
 
