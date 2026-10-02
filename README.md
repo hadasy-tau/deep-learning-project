@@ -121,13 +121,13 @@ KnessetCorpus — so the tables join directly.
   sessions and the Finance committee are the hard conditions. Under a protocol-aware count that
   stops charging for added words both models heard, B's advantage is 37 % rather than 24 %, and
   the per-speaker conclusions hold (ranking Spearman 0.96, 35 of 40 candidates the same).
-- **Adaptation** — ready for the GPU. The panel is chosen (11 speakers, `docs/adaptation_plan.md`
-  § The panel), its audio is planned and materialized (`src/training/materialize.py`: 8,113
-  chunks, 28.8 h, session-disjoint by date, ≥ 45 min test / ~15 dev / ≥ 80 train each), the
-  driver runs cells to scored results with the paired bootstrap and the S/D/I rule
-  (`src/training/run_panel.py`), and the whole path was smoke-tested on CPU with a tiny Whisper.
-  Never run on the real models: `src/training/README.md` is the session, in order — the audio
-  gate first, then `overfit_check`, then arm B / LoRA / three budgets / three seeds.
+- **Adaptation** — the second training run is done (`docs/training_run2.md`, 2026-09-20: 11
+  speakers, arm B, LoRA; personal minus control +2 to +5 points, concentrated in the hardest
+  speakers). Plan v3 (`docs/training_plan_v3.md`) is ready for the GPU: 12 speakers, high-quality
+  data only (`src/training/panel_plan_v2.parquet`: 6,887 chunks, 30.0 h, session-disjoint by
+  date), validation-only tuning picked by rule, the budget-matched control at every budget, seeds
+  0-2 at 80 minutes, and a second test set at quality ≥ 0.7 (`panel_test07.parquet`). The audio
+  is `knesset-asr/knesset-committees-panel-hq`. On the pod: `docs/pod_runbook_v3.md`.
 
 Self-checks, no GPU and no network beyond the cached data:
 

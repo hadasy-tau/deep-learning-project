@@ -5,7 +5,6 @@ pod_v3.sh calls this between stages, so the run never waits on someone reading a
     python src/training/box/v3_decide.py grid A 80     # the tuning stage's sweep flags for one budget
     python src/training/box/v3_decide.py pick A        # apply the rule to tuning.csv -> outputs/recipe_v3.json
     python src/training/box/v3_decide.py flags 80      # the chosen recipe as run_panel flags
-    python src/training/box/v3_decide.py gate          # the audio gate's verdict on 30601 (exit 1 = stop)
     python src/training/box/v3_decide.py base [ids]    # base WER on the high-quality test vs the error map (exit 1 = stop)
     python src/training/box/v3_decide.py --self-check
 
@@ -25,14 +24,12 @@ RECIPE = os.path.join(OUTPUTS, 'recipe_v3.json')
 TUNING = os.path.join(OUTPUTS, 'tuning.csv')
 PLAN_V2 = os.path.join(TRAINING, 'panel_plan_v2.parquet')
 PERF = os.path.join(ROOT, 'src', 'evaluation', 'outputs', 'committees_speaker_performance.csv')
-GATE = os.path.join(ROOT, 'src', 'preprocessing', 'speaker_index', 'outputs', 'audio_check_30601.parquet')
 
 TUNE_SPEAKERS = [30685, 23558, 30718, 30859]          # one per profile (S1, S2, S3, S4)
 TUNE_BUDGETS = [5, 80]
 INCUMBENT = dict(lr=3e-4, rank=8, dropout=0.0, augment='none')
 LRS, RANKS, DROPOUTS, AUGMENTS = [1e-4, 3e-4, 1e-3], [8, 16], [0.0, 0.1], ['specaug', 'specaug+tempo']
 MIN_GAIN, MIN_HELPED = 0.01, 3
-GATE_MAX = 0.10       # share of 30601's segments closer to another voice; the panel's run was 4.6 % (reference 3.8 %)
 BASE_MAX_ABOVE = 0.10  # training_plan_v3.md § 6: base WER more than this ABOVE the error map's wer_B = broken metric
 
 
@@ -122,22 +119,6 @@ def flags(budget):
     return f'--lrs {_fmt(r["lr"])} --ranks {r["rank"]} --dropouts {_fmt(r["dropout"])} --augments {r["augment"]}'
 
 
-# ---- the audio gate on 30601 --------------------------------------------------------------
-def gate(path=GATE, speaker=30601):
-    res = pd.read_parquet(path)
-    own, ref = res[res.speaker_id == speaker], res[res.speaker_id != speaker]
-    share, ref_share = float((own.margin < 0).mean()), float((ref.margin < 0).mean())
-    print(f'{speaker}: {int((own.margin < 0).sum())}/{len(own)} segments closer to another voice = {share:.1%} '
-          f'(reference population {ref_share:.1%}; pass at <= {GATE_MAX:.0%})')
-    if share <= GATE_MAX:
-        print('PASS: 30601 stays on the panel'); return True
-    P = pd.read_parquet(PLAN_V2); sess = set(P[P.speaker_id == speaker].session.astype(str))
-    fl = own[own.margin < 0].assign(in_plan=lambda d: d.session.astype(str).isin(sess))
-    print(fl.groupby(['session', 'in_plan']).size().rename('flagged').reset_index().to_string(index=False))
-    print('FAIL: run the final without 30601 (SPEAKERS=..., docs/pod_runbook_v3.md § Stop rules) and tell Dolev and Hadas')
-    return False
-
-
 # ---- the base-WER sanity check ------------------------------------------------------------
 def base(audio_dir=None, batch=64, speakers=None):
     """Base B on each speaker's high-quality test set (cached as base_B_*_hq.json, the same file the
@@ -198,13 +179,12 @@ def _self_check():
 
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser(); ap.add_argument('cmd', nargs='?', choices=['grid', 'pick', 'flags', 'gate', 'base'])
+    ap = argparse.ArgumentParser(); ap.add_argument('cmd', nargs='?', choices=['grid', 'pick', 'flags', 'base'])
     ap.add_argument('args', nargs='*'); ap.add_argument('--self-check', action='store_true'); ap.add_argument('--batch', type=int, default=64)
     a = ap.parse_args()
     if a.self_check: _self_check(); sys.exit(0)
     if a.cmd == 'grid': print(grid(a.args[0], int(a.args[1])))
     elif a.cmd == 'pick': pick(a.args[0])
     elif a.cmd == 'flags': print(flags(int(a.args[0])))
-    elif a.cmd == 'gate': sys.exit(0 if gate() else 1)
     elif a.cmd == 'base': sys.exit(0 if base(batch=a.batch, speakers=[int(x) for x in a.args]) else 1)
     else: ap.error('give a command or --self-check')

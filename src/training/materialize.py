@@ -20,7 +20,7 @@ run on different machines:
             skipped, so a dropped link costs one shard.
   plan-v2   laptop.  The high-quality plan: test, dev and train all from chunks
             at quality >= 0.95 that also pass the word rule (word_quality.py,
-            which must run first), the panel plus 556 and 30601.  Writes
+            which must run first), the panel plus 556 (12 speakers).  Writes
             panel_plan_v2.parquet.  extract/verify/upload take --plan to use it.
   plan-test07  laptop.  The second test set (docs/training_plan_v3.md § 4): plan
             v2's own test sessions, every chunk at quality >= 0.7 and no word
@@ -123,7 +123,7 @@ def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_F
     """The high-quality plan (docs/training_plan_v3.md, step 1): every split is drawn
     from chunks at quality >= 0.95 that also pass the word rule (word_quality.word_ok:
     few clearly misaligned words, no run of them), for the panel with
-    word_quality.PANEL_ADD (556, 30601).  Per speaker, session-disjoint by date: the
+    word_quality.PANEL_ADD (556).  Per speaker, session-disjoint by date: the
     newest sessions until test_min (45 min, the v1 floor), then dev_min, then the
     budget, newest first -- so nested budgets are prefixes.  SPLIT_MIN overrides test
     and dev for a speaker short of high-quality minutes (30843).  The session that crosses a target is inside it, as in plan()."""
