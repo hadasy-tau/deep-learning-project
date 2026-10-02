@@ -49,8 +49,8 @@ src/
   evaluation/outputs/          committees_*.csv -- that error map (speaker_performance.csv is
                                the VoxKnesset one Stage 1 produced, kept as the reference point)
 
-notebooks/                     explore_committees.ipynb, speaker_error_map.ipynb (Stage 1 on
-                               VoxKnesset), committees_error_map.ipynb (the same on the committees)
+notebooks/                     explore_committees.ipynb, committees_error_map.ipynb (the Stage 1
+                               analysis on the committees)
 docs/                          design.md + design.html are the one-page overview: the
                                whole flow, end to end. Then the build records:
                                committees_handoff.md, speaker_index_plan.md,
