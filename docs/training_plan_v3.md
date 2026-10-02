@@ -4,7 +4,6 @@ Written 2026-09-29 and revised 2026-10-01, after the second run (`docs/training_
 The project narrows to three things that decide whether the personalization result can be
 trusted. Parked from `docs/training_next.md`:
 
-- extra seeds;
 - similar-speaker groups;
 - the word-for-word test set.
 
@@ -110,9 +109,11 @@ Rate is tuned first because it mattered most in the second run. With alpha = 2 �
 ## 4. The final run, and where the random speaker group comes in
 
 - **Cells:** the chosen recipe at 5, 20 and 80 minutes, all 13 speakers, seed 0.
+- **Seeds 1 and 2 at 80 minutes** (added 2026-10-02), for the own adapters and their controls alike. The second run's personal effect was significant for only 1–4 of 11 speakers per recipe, the size seed-to-seed variation can reach; three seeds say whether a speaker's effect is the speaker or the seed. One `run_panel.py` call per seed, because `run_control` trains its control at the first seed it is given; each seed's control folds are a different shuffle. 5 and 20 minutes stay at one seed.
+- **The forgiven-shared count on the high-quality test too** (`--forgiven`): about 7 omitted words per 100 survive the ≥ 0.95 filter, more than the effect being measured.
 - **The control:** a random group of the *other* panel speakers, in 2 folds, trained on the same number of minutes and evaluated on every speaker it never heard. It runs at **each** budget (`--control-folds 2 --control-budgets 5 20 80`). Personalization = the own adapter's gain − the control's gain, on the same test clips (`run_panel._table`). This is the comparison that tells "learned this voice" apart from "learned committee Hebrew".
 - **Not in this plan:** comparing *similar*-speaker groups against random groups of the same size (`training_next.md`, "sharing"). It can follow on the chosen recipe: about 44 short runs.
-- **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is off there (`--forgiven` turns it back on). On high-quality clips the protocol matches the audio, which is what it was a workaround for.
+- **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is on there as well (`--forgiven`, see *Cells* above): the high-quality clips match the protocol far better, not perfectly.
 
 **Two test sets** (added 2026-10-02). Quality comes from a Whisper-family aligner, so the ≥ 0.95 filter keeps the clips a Whisper model already finds easy. On the second run's test sets it kept only 31–40% of the speech of the hardest speakers (23558, 30701, 30843), the speakers the project is about, against 64% overall. `docs/adaptation_plan.md` asks for results with and without the filter. So every cell and every control evaluation is also scored on a second test set:
 - **`panel_test07.parquet`** (`materialize.py plan-test07`): the same test sessions as the high-quality test, every clip at quality ≥ 0.7, no word rule. Built 2026-10-02 at corpus revision `839622c1`; the index reproduces the eleven-speaker `panel_plan_v2.parquet` row for row. 7,111 clips, 23.2 h; the high-quality test is 44% of it. Per speaker it keeps 26% (23558), 27% (30601), 31% (556), 33% (30843) and 37% (30701) of the test speech at ≥ 0.95, and 53–67% for the rest. Beyond plan v2, extraction adds 4,841 clips (13.0 h). 0.7 is the corpus floor: below it the protocol demonstrably does not match the audio, and the WER measures the labels, not the model.
@@ -142,8 +143,10 @@ Nothing is computed only for display. Every number a plot could need is written 
 | C. augmentation: 2 × 2 × 4 | 16 | about 0.8 h |
 | final: 39 cells (13 speakers) + 6 control trainings + 39 control evaluations + base transcriptions | — | about 2.5–3 h |
 | the ≥ 0.7 test: the clips outside the high-quality test (13.0 h) for 78 adapters, plus both base models on all 23.2 h once | — | about 1.5–2 h |
-| the audio gate on 30601 (Handoff, step 2b) | — | about 0.5 h |
-| **total** | | **about 7.5–9 h, $15–24** |
+| the audio gate on 30601 (Handoff, step 2b), alongside tuning | — | about 0.5 h |
+| arm A on the high-quality test, once per speaker (`--forgiven`) | — | about 0.2 h |
+| seeds 1 and 2 at 80 min: 26 cells + 4 control trainings + 26 control evaluations, both tests | — | about 3 h |
+| **total** | | **about 11–12.5 h, $21–34** |
 
 ## Runbook
 
@@ -177,6 +180,8 @@ python src/training/run_panel.py --plan $V2 --max-steps 400 --budgets 5 20 80 --
 ## Handoff: continuing from here (written 2026-10-01)
 
 For whoever runs the training next, a person or a fresh Claude session on a GPU box. Read § 1–5 above first: they carry the decisions. This section is only the *how*, in order.
+
+**On the pod, follow `docs/pod_runbook_v3.md`** (added 2026-10-02): `src/training/box/pod_v3.sh` runs the steps below stage by stage, and `src/training/box/v3_decide.py` applies the tuning rule, the audio gate and the base-WER check by rule. What follows is the manual equivalent.
 
 ### Where things stand
 - **Code:** PR [hadasy-tau/deep-learning-project#23](https://github.com/hadasy-tau/deep-learning-project/pull/23) (`training-plan-v3` → `main`). Train from `main` once it's merged, otherwise from the branch. It includes Dolev's second run.

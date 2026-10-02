@@ -553,7 +553,7 @@ if __name__ == '__main__':
         T = TG.build_targets(P, RESULTS); TG.report(T); T.to_parquet(os.path.join(HERE, 'outputs', 'targets_verbatim.parquet'), index=False); sys.exit(0)
     C = [] if a.control_only else list(cells(P, a.arms, a.sites, a.methods, a.budgets, a.ranks, a.lrs, a.seeds))
     print(f'{len(C)} cells over {P.speaker_id.nunique()} speakers; test {P[P.part=="test"].duration_s.sum()/60:.0f} min, train {P[P.part=="train"].duration_s.sum()/60:.0f} min available'
-          + (f'; then the cross-speaker control in {a.control_folds} fold(s) at {a.control_budget} min' if a.control_folds else ''))
+          + (f'; then the cross-speaker control in {a.control_folds} fold(s) at {"/".join(map(str, a.control_budgets or [a.control_budget]))} min' if a.control_folds else ''))
     if a.dry_run:
         import train as T
         for st in steps:
