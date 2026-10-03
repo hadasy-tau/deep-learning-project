@@ -1,12 +1,5 @@
 # Handoff: training the per-speaker adapters on a GPU box
 
-Read this before touching anything. It is written for a fresh Claude session on a rented GPU
-machine, with no memory of how any of this was built. Everything before this stage is done and
-verified; your job is the first training experiment and nothing else.
-
-`src/training/README.md` is the command list. This document is the *why*, the decisions already
-taken, and the rules for reading what comes out.
-
 > **Historical (run 1 and run 2, 2026-09-20). Do not follow it for a new run.** The current plan
 > is `docs/training_plan_v3.md` and the pod session is `docs/pod_runbook_v3.md`; they take
 > precedence wherever this file differs. Since it was written: the audio gate has run (run 2:
@@ -18,6 +11,10 @@ taken, and the rules for reading what comes out.
 > described that first run and contradicted the current plan (git history has them). What remains:
 > the question, the two rules for reading results, the changes made before run 2 (which
 > `docs/training_run2.md` refers to by number), and the repo's conventions.
+
+It was written before run 1 for a fresh Claude session on a rented GPU machine, as the *why*
+beside the command list in `src/training/README.md`: the decisions taken and the rules for
+reading what comes out.
 
 ## What the project asks
 
@@ -54,8 +51,10 @@ thing in this document and the easiest to get wrong.
 The reference text is a *cleaned stenographic protocol*, not a verbatim transcript. People say
 "I, I mean, you know" and the stenographer writes the tidy version. Both models transcribe what
 was actually said, so every extra word counts against them. We measured this: **73 % of the words
-model B adds also appear in model A's transcription of the same chunk** — they were spoken, and
-the protocol dropped them. Over half of B's errors are insertions.
+model B adds also appear in model A's transcription of the same chunk** — read at the time as
+proof that they were spoken and the protocol dropped them. *(Checked 2026-10-03 on 23
+human-corrected committee clips: only about half were, 19 of 36; `docs/personalization_research.md`
+§ 1.5.)* Over half of B's errors are insertions.
 
 So an adapter can lower WER simply by learning to omit filler, which is learning the
 stenographer's habits, not the speaker's voice. `run_panel.py --summary` computes

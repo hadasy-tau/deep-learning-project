@@ -168,7 +168,9 @@ the substitution list comes from.
 
 **B's insertions are real speech, not hallucination.** 73 % of the words B inserts also appear
 in A's hypothesis of the same chunk (236,530 inserted words). Two independent models hearing
-the same absent word is the protocol not writing it down. Looping decodes (a 3-gram repeated
+the same absent word was read as the protocol not writing it down. *(Checked 2026-10-03 on 23
+human-corrected committee clips: about half of such shared insertions were really spoken, 19 of
+36, so the reading holds for about half, not all; `docs/personalization_research.md` § 1.5.)* Looping decodes (a 3-gram repeated
 three or more times) are 0.8 % of chunks for A and 1.1 % for B; runaway decodes 0.5 % and
 0.7 %; empty hypotheses 0.2 % and 0.
 

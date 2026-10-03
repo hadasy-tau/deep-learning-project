@@ -41,7 +41,7 @@ Run 2 (2026-09-20) was driven by hand on `panel_plan.parquet`, 11 speakers at qu
 with `run_panel.py --arm B --budgets 5 20 80 --seeds 0 --control-folds 2 --control-budget 80`
 and the follow-up chains in `box/` (`followups.sh`, `next_runs.sh`, `run_d.sh`); the full
 record is `docs/training_run2.md`. A new run follows `docs/pod_runbook_v3.md`, which drives
-`box/pod_v3.sh`. The flags below still exist.
+`box/pod_v3.sh`. The flags below still exist, except `--select forgiven`.
 
 Recipe options added on 2026-09-20 (`docs/training_run2.md` for what each did):
 `--lrs 3e-4` (the rate to use; 1e-3 restores epoch 1 everywhere), `--sites decoder_mlp`,

@@ -113,5 +113,7 @@ before the model.
 | [`training_plan_v3.md`](training_plan_v3.md) | the current training plan: 12 speakers, quality ≥ 0.95 data, tuning on validation by rule, the control at every budget, two test sets |
 | [`pod_runbook_v3.md`](pod_runbook_v3.md) | **read first on the GPU pod.** The plan-v3 session stage by stage (`src/training/box/pod_v3.sh`), stop rules, what to report |
 | [`training_run2.md`](training_run2.md) | the second training run (2026-09-20): log, decisions, results |
+| [`training_run3.md`](training_run3.md) | the third training run (2026-10-02, plan v3): log, results, conclusions |
+| [`personalization_research.md`](personalization_research.md) | after run 3: what the remaining errors are, what the literature says, and the ranked next steps |
 | [`training_handoff.md`](training_handoff.md) | historical: the setup of runs 1–2; still the source of the two rules for reading results |
 | [`design.html`](design.html) | the same design as a page, with diagrams — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |
