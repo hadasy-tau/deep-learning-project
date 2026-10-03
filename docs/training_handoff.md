@@ -171,7 +171,9 @@ causes it. Mitigation: transcribe each speaker's test chunks with arm A once (ca
 base-B transcription), then compute forgiven-shared WER (`src/evaluation/error_analysis.py::
 forgiven_counts`, see `docs/error_map.md` § The same map, protocol-aware) for base and tuned
 beside standard WER, and put both in `results.csv`. A gain that survives when shared insertions
-are forgiven is more likely the voice.
+are forgiven is more likely the voice. *(2026-10-03: withdrawn. On human-corrected committee clips
+two models agreeing against the protocol meant the protocol was wrong only about half the time;
+the forgiven count is removed from the code. `docs/personalization_research.md` § 1.5.)*
 
 **3. Add the cross-speaker control (design decision D3) to this run.** Without it, "the adapter
 helped speaker X" cannot be told from "80 minutes of any committee audio teaches the model
@@ -200,7 +202,7 @@ the write-up.
 **Status (2026-09-20, second run).** Points 1–3 are done and 4–5 decided: the profile found
 BLAS thread oversubscription in the log-mel extraction (1.4 s a chunk) and gradient
 checkpointing on an 80 GB card, and a cell now takes 1.5–4.7 minutes (`src/training/README.md`
-§ Speed); every cell carries forgiven-shared WER beside standard WER; the control runs in two
+§ Speed); every cell carries forgiven-shared WER beside standard WER (since withdrawn); the control runs in two
 folds (`--control-folds 2`), so no speaker is evaluated on an adapter that saw them; passes
 stay fixed at 8 and `train_steps` is reported per cell; the run is `--seeds 0` plus the
 control. Point 6 stays a write-up item. The session's results and every decision are in `docs/training_run2.md`; what to do next is `docs/training_next.md`.

@@ -1,4 +1,12 @@
-"""Semi-verbatim training targets, and the forgiven count as a training-side metric.
+"""Semi-verbatim training targets.
+
+**Rests on a withdrawn assumption.**  A word goes back when *both* base models produced it,
+on the reading that two models agreeing against the protocol means the protocol dropped a
+spoken word.  On human-corrected committee clips only about half of such shared insertions
+were real speech (19 of 36; docs/personalization_research.md § 1.5), so these targets put
+back roughly as many unspoken words as spoken ones.  Kept so the second and third runs'
+`verbatim` cells stay reproducible; do not read their results as evidence about what the
+speaker said.  The forgiven-shared count that used to live here is removed.
 
 docs/training_next.md § A1.  The reference is a cleaned protocol: words the speaker said
 and the stenographer dropped count as insertions against both models, and a model trained
@@ -9,7 +17,6 @@ put back.  Only insertions are added; nothing is removed, so a protocol word the
 missed stays -- deletions are where recognition is hard, which is the thing under study.
 
     build_targets(P, results_dir)   -> DataFrame chunk_id, part, text, text_verbatim, n_ref, n_inserted
-    forgiven_score(refs, hyps, other_hyps) -> per-chunk counts, evaluate.score-shaped
 
 The insertion logic is error_analysis.forgiven_counts' (an inserted word counts as shared
 if the other arm's hypothesis holds it, multiset), applied to arm B's alignment against the
@@ -26,17 +33,6 @@ sys.path.insert(0, os.path.join(HERE, '..')); sys.path.insert(0, os.path.join(RO
 from common import normalize_he
 
 ARMS = {'A': 'openai/whisper-large-v3', 'B': 'ivrit-ai/whisper-large-v3'}
-
-
-def forgiven_score(refs, hyps, other_hyps):
-    """Per-chunk counts under the protocol-aware count, through
-    error_analysis.forgiven_counts (not re-derived): S, D and the insertions the
-    other arm did NOT also produce.  Returns a frame shaped like evaluate.score's
-    (werr, n_words, S, D, I) plus Ish, so paired_bootstrap works on it unchanged."""
-    import error_analysis as EA
-    k = pd.DataFrame(dict(ref_n=[normalize_he(r) for r in refs], hyp_A=list(other_hyps), hyp_B=list(hyps)))
-    k = EA.forgiven_counts(k)
-    return pd.DataFrame(dict(n_words=k.ref_n.str.split().map(len), werr=k.werr_B_f, S=k.S_B_f, D=k.D_B_f, I=k.I_B_f, Ish=k.Ish_B))
 
 
 def _keyed(text):
@@ -139,7 +135,4 @@ if __name__ == '__main__':
     t, n = verbatim_target('א ב', 'א נו נו ב', 'נו'); assert n == 1, (t, n)
     # deletions never touch the reference
     t, n = verbatim_target('א ב ג ד', 'א ד', 'א ד'); assert t == 'א ב ג ד' and n == 0
-    # forgiven_score agrees with the standard count when nothing is shared
-    f = forgiven_score(['א ב ג'] * 2, ['א ב ג ד'] * 2, ['א ב ג', 'א ב ג ד'])
-    assert list(f.werr) == [1, 0] and list(f.Ish) == [0, 1], f
     print('targets.py: OK')

@@ -97,7 +97,12 @@ def content_table(content):
     return pd.DataFrame(rows)
 
 def forgiven_counts(kept):
-    """The protocol-aware measure.  Per chunk and arm: S, D, I as evaluate.score
+    """**Withdrawn as evidence** (docs/personalization_research.md § 1.5): it assumes an insertion both
+    arms produced is speech the protocol dropped, and on human-corrected committee clips
+    about half of them were not.  Kept so the error map's recorded outputs and the
+    notebooks still run; do not cite its numbers.
+
+    The protocol-aware measure.  Per chunk and arm: S, D, I as evaluate.score
     counts them, plus `Ish` -- the arm's inserted words that also occur in the
     OTHER arm's hypothesis of the same chunk (multiset match) -- and
 

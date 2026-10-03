@@ -113,16 +113,16 @@ Rate is tuned first because it mattered most in the second run. With alpha = 2 �
 
 - **Cells:** the chosen recipe at 5, 20 and 80 minutes, all 12 speakers, seed 0.
 - **Seeds 1 and 2 at 80 minutes** (added 2026-10-02), for the own adapters and their controls alike. The second run's personal effect was significant for only 1–4 of 11 speakers per recipe, the size seed-to-seed variation can reach; three seeds say whether a speaker's effect is the speaker or the seed. One `run_panel.py` call per seed, because `run_control` trains its control at the first seed it is given; each seed's control folds are a different shuffle. 5 and 20 minutes stay at one seed.
-- **The forgiven-shared count on the high-quality test too** (`--forgiven`): about 7 omitted words per 100 survive the ≥ 0.95 filter, more than the effect being measured.
+- **The forgiven-shared count is withdrawn** (2026-10-03, docs/personalization_research.md § 1.5). It was on in the run (`--forgiven`) on the assumption that a word both models produce and the protocol lacks was spoken; on human-corrected committee clips that held for only about half of them. Its `*_f` columns in the run's results are not evidence, and the option is removed from the code.
 - **The control:** a random group of the *other* panel speakers, in 2 folds, trained on the same number of minutes and evaluated on every speaker it never heard. It runs at **each** budget (`--control-folds 2 --control-budgets 5 20 80`). Personalization = the own adapter's gain − the control's gain, on the same test clips (`run_panel._table`). This is the comparison that tells "learned this voice" apart from "learned committee Hebrew".
   - **No shared meetings** (fixed 2026-10-02). A committee meeting often has several panel members in it, so a trainer's session can be the very meeting an evaluated speaker is tested on. In the first version, the 80-minute control trained on 2 of 30843's test meetings (about 4 of the 30 test minutes) and 1 of 30831's. The control's pool now excludes every session of the evaluated speakers' test (both test sets) and dev.
 - **Not in this plan:** comparing *similar*-speaker groups against random groups of the same size (`training_next.md`, "sharing"). It can follow on the chosen recipe: about 44 short runs.
-- **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. Forgiven-shared WER is on there as well (`--forgiven`, see *Cells* above): the high-quality clips match the protocol far better, not perfectly.
+- **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. (The forgiven-shared count that ran beside it is withdrawn; see *Cells* above.)
 
 **Two test sets** (added 2026-10-02). Quality comes from a Whisper-family aligner, so the ≥ 0.95 filter keeps the clips a Whisper model already finds easy. On the second run's test sets it kept only 31–40% of the speech of the hardest speakers (23558, 30701, 30843), the speakers the project is about, against 64% overall. `docs/adaptation_plan.md` asks for results with and without the filter. So every cell and every control evaluation is also scored on a second test set:
 - **`panel_test07.parquet`** (`materialize.py plan-test07`): the same test sessions as the high-quality test, every clip at quality ≥ 0.7, no word rule. Built 2026-10-02 at corpus revision `839622c1`; the index reproduces the eleven-speaker `panel_plan_v2.parquet` row for row. 12 speakers: 6,158 clips, 20.3 h; the high-quality test is 46% of it. Per speaker it keeps 26% (23558), 31% (556), 33% (30843) and 37% (30701) of the test speech at ≥ 0.95, and 53–67% for the rest. Beyond plan v2's test it adds 4,085 clips (10.9 h). 0.7 is the corpus floor: below it the protocol demonstrably does not match the audio, and the WER measures the labels, not the model.
 - The high-quality test is a subset of it (`hq` = True), so the two differ only in the filter. Session-disjoint from train and validation by construction; `verify` checks it.
-- Its columns are `test07.*` in `results.csv`, with **forgiven-shared WER always on**: between 0.7 and 0.8 the protocol omits about 28 words per 100, so a standard-WER gain there can be the adapter learning the omissions.
+- Its columns are `test07.*` in `results.csv`. (The run also scored it with the forgiven-shared count, now withdrawn.) Between 0.7 and 0.8 the protocol differs most from the speech, so read gains on that band against a human reference, not the protocol alone.
 - **Per quality band** (`test07.bands.q070`, `q080`, `q090`, `q095`): the gain and the personalization in each of 0.7–0.8, 0.8–0.9, 0.9–0.95 and ≥ 0.95. This answers whether the adapter helps on the hard clips the filter drops.
 - Training and tuning are unchanged: still high-quality only.
 
@@ -134,7 +134,7 @@ Nothing is computed only for display. Every number a plot could need is written 
 |---|---|---|
 | `outputs/results.csv` (from `outputs/results/<cell>.json`) | scored cell or control evaluation | the settings, train minutes, steps and best checkpoint, test size, base and tuned WER and CER, the gain with its 95% interval and p-values, the substitution/deletion/insertion shares and looping outputs, the style flag, the control's gain and **personalization** = own gain − control's gain, with its own paired bootstrap (`personalization_ci_lo`, `_ci_hi`, `_p`; `_f` and `test07.*` alike) |
 | `outputs/results/<cell>.hyps.json`, `base_*_hq.json` | cell; speaker | every test clip's transcription by the tuned and the base model, for re-scoring and per-clip analysis without a GPU |
-| `outputs/results/<cell>.test07.hyps.json`, `base_{A,B}_*_test07.json` | cell; speaker | the same on the ≥ 0.7 test set; arm A's for the forgiven count |
+| `outputs/results/<cell>.test07.hyps.json`, `base_{A,B}_*_test07.json` | cell; speaker | the same on the ≥ 0.7 test set (arm A's cache served the forgiven count, withdrawn) |
 | `runs/<cell>/train_meta.json`, `runs_tune/<cell>/train_meta.json` | trained adapter (final run and tuning) | `settings` (speaker, budget, lr, rank, alpha, LoRA dropout, Whisper dropout, augmentation, batch, schedule, seed); `train_log`: the **training loss**, gradient norm and learning rate every 5 steps; `evals`: the **validation loss** every 20 steps; `base_eval_loss` (the untuned model's); `best_step`, `global_step`, `stopped_early`; `trainable_params`, `train_runtime_s`, `peak_gpu_mem_gb`; the train and validation clip IDs |
 | `outputs/tuning.csv` | tuning run | the settings, untuned and best validation loss, `rel_drop` (the tuning criterion), best and stop steps |
 
@@ -147,7 +147,7 @@ Nothing is computed only for display. Every number a plot could need is written 
 | C. augmentation: 2 × 2 × 4 | 16 | about 0.8 h |
 | final: 36 cells (12 speakers) + 6 control trainings + 36 control evaluations + base transcriptions | — | about 2.3–2.8 h |
 | the ≥ 0.7 test: the clips outside the high-quality test (10.9 h) for 72 adapters, plus both base models on all 20.3 h once | — | about 1.3–1.7 h |
-| arm A on the high-quality test, once per speaker (`--forgiven`) | — | about 0.2 h |
+| arm A on the high-quality test, once per speaker (`--forgiven`, as run; the count is now withdrawn and the option removed) | — | about 0.2 h |
 | seeds 1 and 2 at 80 min: 24 cells + 4 control trainings + 24 control evaluations, both tests | — | about 2.5 h |
 | **total** | | **about 10–11 h, $16–18 at A100 SXM's $1.59/h** |
 
@@ -275,7 +275,7 @@ python src/training/run_panel.py --summary                       # outputs/resul
 ### 6. Reading the results
 - **New rows** are the ones with `hq` in `cell`.
 - **The headline column** is `personalization_rel`, the own adapter's gain minus the control's gain at the same budget. Its interval is `personalization_ci_lo`, `personalization_ci_hi` (absolute WER) with `personalization_p`: a paired bootstrap of the control's hypotheses against the own adapter's on the same clips. A personalization whose interval crosses zero isn't a result, and neither is a gain whose (`ci_lo`, `ci_hi`) does. For scale: in the second run, re-scored this way, 1–4 of 11 speakers per recipe had a significant personal effect at 80 minutes, mostly 30843 and 23558.
-- **Report both test sets side by side:** `personalization_rel` (≥ 0.95) and `test07.personalization_rel` (≥ 0.7), plus `test07.personalization_rel_f`. On the ≥ 0.7 set, trust a gain only if the forgiven count agrees. `test07.bands.*` says on which clips it was earned.
+- **Report both test sets side by side:** `personalization_rel` (≥ 0.95) and `test07.personalization_rel` (≥ 0.7), `test07.bands.*` says on which clips it was earned.
 - **If `--test07-plan` was missed**, rerun the same command with it: scored cells are not retrained; their ≥ 0.7 scores are added from the saved adapters.
 - **`style_not_speaker`** marks gains that are mostly fewer insertions. On high-quality clips these should be rare. If they aren't, say so.
 - **Base-WER sanity check:** the base WER on the high-quality test set should come out *below* each speaker's `wer_B` in `src/evaluation/outputs/committees_speaker_performance.csv`, because these clips are cleaner. If it comes out more than 0.10 *above*, materialization or scoring is broken: stop.

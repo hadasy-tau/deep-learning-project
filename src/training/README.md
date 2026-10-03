@@ -19,8 +19,8 @@ session, which split, which shard).
 | `materialize.py` | `plan` (laptop): which chunks, which split — writes `panel_plan.parquet`. `extract` (any fast link): shards → WAVs under `outputs/panel_audio/`. `verify`, `upload`, `download` |
 | `panel_plan.parquet` | 8,113 chunks, 28.8 h, 11 speakers, 111 shards; per speaker ≥ 45 min test (the newest sessions), ~15 min dev, ≥ 80 min train, session-disjoint by date, train ordered latest-first so budgets nest |
 | `train.py` | one cell → one adapter (`train_cell`), `overfit_check` |
-| `run_panel.py` | cells → adapters → scored results (`outputs/results/*.json`, `outputs/results.csv`); standard and forgiven-shared WER per cell; `--control-folds K` for the cross-speaker control (D3) |
-| `targets.py` | semi-verbatim training targets: the protocol text with the words both base models produced put back (`--build-targets`); `forgiven_score` for training-side selection |
+| `run_panel.py` | cells → adapters → scored results (`outputs/results/*.json`, `outputs/results.csv`); WER per cell; `--control-folds K` for the cross-speaker control (D3) |
+| `targets.py` | semi-verbatim training targets: the protocol text with the words both base models produced put back (`--build-targets`). Rests on the withdrawn two-model-agreement assumption (docs/personalization_research.md § 1.5) |
 | `word_quality.py` | per-word alignment scores for the candidate train/dev clips (from the raw ivrit.ai sessions) and the word rule `word_ok`; writes `word_quality.parquet` |
 | `panel_plan_v2.parquet` | the high-quality plan: test, dev and train all at quality ≥ 0.95 passing the word rule; 12 speakers: the panel, plus 556 (30601 deferred); 30843 with a 30-minute test (`materialize.py plan-v2`) |
 | `panel_test07.parquet` | the second test set: plan v2's test sessions, every chunk at quality ≥ 0.7, no word rule; v2's test is its `hq` subset (`materialize.py plan-test07`, scored with `run_panel.py --test07-plan`) |
@@ -71,8 +71,7 @@ python src/training/run_panel.py --summary            # outputs/results.csv
 Recipe options added on 2026-09-20 (`docs/training_run2.md` for what each did):
 `--lrs 3e-4` (the rate to use; 1e-3 restores epoch 1 everywhere), `--sites decoder_mlp`,
 `--targets verbatim` (needs `--transcribe-parts` once, then `--build-targets`),
-`--select forgiven` (checkpoint by dev forgiven-shared WER; measured worse than dev loss at
-15-minute dev sets), `--control-folds K` (one control per recipe).
+`--select forgiven` (removed with the forgiven count), `--control-folds K` (one control per recipe).
 
 Seeds 1 and 2 only if seed 0 shows an effect (`docs/training_handoff.md` § Before the second
 run, point 5). Passes are fixed at 8 whatever the budget, so steps scale with the budget:
@@ -100,15 +99,11 @@ cached once. Kill it and rerun it freely.
 
 ## Reading the results
 
-Every cell carries two counts. `wer_base` / `wer_tuned` are standard WER; `wer_base_f` /
-`wer_tuned_f` are forgiven-shared WER (`error_analysis.forgiven_counts`, `docs/error_map.md`
-§ The same map, protocol-aware): an inserted word that arm A also produced at that chunk is
-not charged, because two models hearing the same absent word is speech the protocol dropped.
-Arm A's transcription of each speaker's test set is cached once (`outputs/results/base_A_*`).
-A gain that survives the forgiven count is more likely the voice; one that appears only under
-the standard count is the adapter learning the stenographer's omissions. In the profiled cell
-(30831, 20 min) standard WER fell 12 % while forgiven WER rose 16 % — the deletion share
-went from 12 % to 33 % of errors.
+`wer_base` / `wer_tuned` are WER against the protocol. The second and third runs also carried
+a forgiven-shared count (`*_f`: an inserted word arm A also produced was not charged); it is
+**withdrawn and removed** — on human-corrected committee clips, two models agreeing against the
+protocol meant the protocol was wrong only about half the time (docs/personalization_research.md § 1.5). The
+summary drops `*_f` columns from older result files.
 
 With `--control-folds K`, each speaker is also evaluated on an adapter trained for the same
 budget on a pool of the *other* panel speakers (rows with `control = True`; K = 2 leaves no
@@ -122,7 +117,7 @@ the S/D/I split for both. The summary adds `improvement_from_insertions`: the sh
 WER improvement that came from fewer insertions. **Above 0.5 the row is flagged
 `style_not_speaker`** — the adapter learned the protocol's tidying, not the voice — and does
 not count as a personalization gain. This is the rule from `docs/adaptation_plan.md`
-§ Verification, and `docs/error_map.md` § The same map, protocol-aware is why it exists.
+§ Verification.
 
 The base-model sanity check is built in: `wer_base` for a speaker should sit within a few
 points of their `wer_B` in `src/evaluation/outputs/committees_speaker_performance.csv`. It

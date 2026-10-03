@@ -139,7 +139,7 @@ own_jobs() {   # own_jobs <seed> <budgets...>: the own-adapter cells, one job pe
         local share chain=""; share=$(group $i $GPUS $spk); [ -n "$share" ] || continue
         for b in "$@"; do
             f=$($D flags $b) || return 1                  # refuses unless tuning picked A, B and C; never fall back to a default rate
-            chain+="${chain:+; }$RP $STEP --seeds $seed --forgiven --test07-plan $T07 --speakers $share --budgets $b $f"
+            chain+="${chain:+; }$RP $STEP --seeds $seed --test07-plan $T07 --speakers $share --budgets $b $f"
         done
         printf '%s\n' "$chain"
     done
@@ -147,7 +147,7 @@ own_jobs() {   # own_jobs <seed> <budgets...>: the own-adapter cells, one job pe
 
 control_job() {   # control_job <seed> <budget>: the 2-fold control over ALL the panel's speakers
     local f spk; f=$($D flags $2) || return 1; spk=$(speakers) || return 1
-    echo "$RP $STEP --seeds $1 --forgiven --test07-plan $T07 --speakers $spk --budgets $2 $f --control-only --control-folds 2 --control-budgets $2"
+    echo "$RP $STEP --seeds $1 --test07-plan $T07 --speakers $spk --budgets $2 $f --control-only --control-folds 2 --control-budgets $2"
 }
 
 stage_final() {

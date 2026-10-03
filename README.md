@@ -116,11 +116,12 @@ KnessetCorpus — so the tables join directly.
   question. Subgroup rules separate gain (speaking rate strongest, then religion, nationality,
   age) or difficulty (religious orientation, gender), never both — the reverse of VoxKnesset.
   `committees_adaptation_candidates.csv` is the input to the sharing axis. Beyond Stage 1: B's
-  insertions are real speech the protocol left out (73 % also heard by A), the digit problem is
+  insertions are mostly words arm A also produced (73 %), the digit problem is
   1 % of errors, the per-speaker ranking is reliable (split-half 0.75–0.85), and 2018–19
-  sessions and the Finance committee are the hard conditions. Under a protocol-aware count that
-  stops charging for added words both models heard, B's advantage is 37 % rather than 24 %, and
-  the per-speaker conclusions hold (ranking Spearman 0.96, 35 of 40 candidates the same).
+  sessions and the Finance committee are the hard conditions. The "protocol-aware" (forgiven-shared)
+  count that stopped charging for words both models added is **withdrawn**: on human-corrected
+  committee clips only about half of such shared words were actually spoken (docs/personalization_research.md § 1.5);
+  the standard count is the result.
 - **Adaptation** — the second training run is done (`docs/training_run2.md`, 2026-09-20: 11
   speakers, arm B, LoRA; personal minus control +2 to +5 points, concentrated in the hardest
   speakers). Plan v3 (`docs/training_plan_v3.md`) is ready for the GPU: 12 speakers, high-quality
@@ -129,8 +130,9 @@ KnessetCorpus — so the tables join directly.
   0-2 at 80 minutes, and a second test set at quality ≥ 0.7 (`panel_test07.parquet`). The audio
   is `knesset-asr/knesset-committees-panel-hq`. On the pod: `docs/pod_runbook_v3.md`. **Run on
   2026-10-02: `docs/training_run3.md`** -- personalization +2-3 points of relative WER at 80 minutes,
-  stable over three seeds; the rest of the 12-15 % gain is domain, and the clean data did not stop the
-  adapter learning the stenographer's omissions.
+  stable over three seeds; the rest of the 12-15 % gain is domain. The protocol itself differs from the
+  speech by ~18 % of its words, so how much of any gain is the speaker rather than the reference needs a
+  human verbatim test (`docs/personalization_research.md`).
 
 Self-checks, no GPU and no network beyond the cached data:
 
