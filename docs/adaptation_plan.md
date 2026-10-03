@@ -54,6 +54,10 @@ before GPU time.
 
 ## The panel (chosen 2026-09-16)
 
+> **Since then:** plan v3 (`docs/training_plan_v3.md` § 1) keeps these eleven, adds the S2
+> alternate 556 (12 speakers), gives 30843 a 30-minute test, and trains and tests on quality ≥ 0.95
+> data (`panel_plan_v2.parquet`); the quality ≥ 0.7 plan below is plan v1, used by run 2.
+
 `src/evaluation/outputs/committees_panel.csv`. Eleven speakers plus four alternates, picked
 from the 142 speakers that pass the entry requirements (≥ 20 chunks, ≥ 3 corpus hours at
 quality ≥ 0.7, ≥ 8 sessions, no session that fails under both arms). Ranking used each
@@ -178,7 +182,7 @@ deployment realism; the gap between the two is where hallucination and repetitio
 | step | what | where |
 |---|---|---|
 | select the panel | from the error map, train-side only | `src/evaluation/outputs/committees_adaptation_candidates.csv`; the rules above |
-| gate the labels | ECAPA centroid check on the panel | `src/preprocessing/speaker_index/validate_audio.py` (GPU; never run — step 2 of the runbook) |
+| gate the labels | ECAPA centroid check on the panel | `src/preprocessing/speaker_index/validate_audio.py` (GPU; ran in run 2 on the panel: 5.4 % foreign-voice chunks, `docs/training_run2.md` § The audio gate) |
 | materialize | the panel's newest sessions at quality ≥ 0.7, covering test + dev + the 80-minute budget, pulled from the corpus shards to WAV with the table train.py reads | `src/training/materialize.py`: `plan` chooses and splits (8,113 chunks, 28.8 h, 111 shards → `panel_plan.parquet`, committed), `extract` writes the WAVs on any machine with a fast link, `verify` checks the invariants and the audio |
 | split | session-disjoint by date, test sized per speaker, nested budgets | `common.make_splits`, `common.budget_order` |
 | baseline | both base models on personal-test, short- and long-form; error counts stored | `evaluate.load`, `transcribe_short/long`, `score` |

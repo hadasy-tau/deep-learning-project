@@ -110,5 +110,8 @@ before the model.
 | [`inference.md`](inference.md) | stage 3: provider contracts, the three bottlenecks, measured cost |
 | [`error_map.md`](error_map.md) | stages 4–5: the per-speaker error map, subgroup rules, who to adapt; what the errors are, and the map again under a protocol-aware count (withdrawn as evidence, 2026-10-03) |
 | [`adaptation_plan.md`](adaptation_plan.md) | stages 6–7: the design the training and evaluation code implement (D1–D7), the panel rules, what is written and what is not |
-| [`training_handoff.md`](training_handoff.md) | **read first on the GPU box.** The training session end to end: what is done, the panel, the two rules for reading results, what not to do |
+| [`training_plan_v3.md`](training_plan_v3.md) | the current training plan: 12 speakers, quality ≥ 0.95 data, tuning on validation by rule, the control at every budget, two test sets |
+| [`pod_runbook_v3.md`](pod_runbook_v3.md) | **read first on the GPU pod.** The plan-v3 session stage by stage (`src/training/box/pod_v3.sh`), stop rules, what to report |
+| [`training_run2.md`](training_run2.md) | the second training run (2026-09-20): log, decisions, results |
+| [`training_handoff.md`](training_handoff.md) | historical: the setup of runs 1–2; still the source of the two rules for reading results |
 | [`design.html`](design.html) | the same design as a page, with diagrams — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |

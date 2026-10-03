@@ -55,7 +55,7 @@ since those stages have 3 and 2 control jobs).
 
 - [ ] `main` has PR [hadasy-tau/deep-learning-project#31](https://github.com/hadasy-tau/deep-learning-project/pull/31) (the personalization interval and the loop guard). It does, since 2026-10-02.
 - [ ] **The panel is 12 speakers** (30601 deferred, `docs/training_plan_v3.md` § 1). `panel_plan_v2.parquet` (6,887 clips) and `panel_test07.parquet` (6,158) on `main` say which.
-- [ ] Ideally, `knesset-asr/knesset-committees-panel-hq` holds every clip of both plans (10,972 WAVs together). If it does not, the `data` stage extracts the gap from the corpus on the pod; only missing clips are pulled. Either way works; a complete dataset makes `data` a few minutes. Extra WAVs in the dataset (another speaker's) are downloaded and ignored.
+- [ ] `knesset-asr/knesset-committees-panel-hq` holds every clip of both plans (10,972 WAVs; checked file by file on 2026-10-02), so `data` takes minutes. Should a clip ever be missing, `data` extracts it from the corpus; extra WAVs (another speaker's) are downloaded and ignored.
 - [ ] A HuggingFace token that can **read** the `knesset-asr` datasets and **write** to `knesset-asr` (the backup creates `knesset-committees-v3-results` itself, private). A fine-grained token scoped to a personal account gets a 404 on the org.
 - [ ] RunPod credit for ~$30.
 
@@ -67,10 +67,30 @@ since those stages have 3 and 2 control jobs).
 - **Network volume: optional.** If you attach one, note that in the second run `/workspace` refused writes past ~10 GB however much it reported free (`docs/training_run2.md` § The box). This run keeps audio (~5 GB), adapters and results in the repo; put the repo on the container disk if the volume quota bites.
 - The RunPod API key in the laptop's `cache/` is serverless-scoped: create the pod in the web console.
 
+## Known pod quirks (met in run 3, 2026-10-02)
+
+- **The system Python refuses `pip install`** (PEP 668, "externally managed"). Make a venv that
+  keeps the template's CUDA-matched torch, and activate it in every shell:
+  `python -m venv --system-site-packages /root/venv && source /root/venv/bin/activate`.
+  `pod_v3.sh setup` calls plain `pip`, so it needs the venv active.
+- **GitHub's default addresses may be unreachable** from the pod while HuggingFace and PyPI work
+  (US-MD-1: every `140.82.112–114.x` address timed out, `140.82.121.4` worked). Test with
+  `curl -sI https://github.com`; if it fails, clone with
+  `git -c http.curloptResolve=github.com:443:140.82.121.4 clone …` and set the same with
+  `git config http.curloptResolve …` inside the clone so `git pull` works.
+- **`hf` exists only after `huggingface_hub` is installed** (inside the venv), and on the PyTorch
+  template the login lands under `HF_HOME=/workspace/.cache/huggingface`. Non-interactive SSH
+  shells do not inherit that variable: export it before running a stage over SSH.
+- **Stopping the pod from inside:** PID 1's environment holds a pod-scoped `RUNPOD_API_KEY`;
+  `export $(tr '\0' '\n' < /proc/1/environ | grep -E '^RUNPOD_(API_KEY|POD_ID)=') && runpodctl stop pod "$RUNPOD_POD_ID"`.
+  A stopped pod still bills a little for its container disk until it is terminated in the console.
+
 ## The session, in order
 
 ```bash
-git clone https://github.com/hadasy-tau/deep-learning-project.git && cd deep-learning-project
+python -m venv --system-site-packages /root/venv && source /root/venv/bin/activate   # § Known pod quirks
+git clone https://github.com/hadasy-tau/deep-learning-project.git && cd deep-learning-project   # if GitHub is unreachable: § Known pod quirks
+pip install -q -r src/training/requirements.txt    # installs `hf`
 hf auth login                                   # typed interactively; never paste a token into a chat, a file or a command line
 bash src/training/box/pod_v3.sh setup
 bash src/training/box/pod_v3.sh data            # must end with "data: both plans verified"
@@ -144,5 +164,6 @@ Do not pool these rows with the second run's: different data plan, different tes
 
 ## After the run
 
-Stop the pod in the RunPod console. A stopped pod with a network volume still bills for
-storage. Everything that matters is in the backup dataset.
+Stop the pod in the RunPod console, or from inside (§ Known pod quirks). A stopped pod still
+bills for its disk, and a network volume for storage, until terminated. Everything that matters
+is in the backup dataset; check it file by file against the pod before stopping.
