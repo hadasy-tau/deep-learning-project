@@ -1,6 +1,8 @@
 # How to make personalization work: diagnosis, literature, and what to test next
 
-Written 2026-10-03, after the third training run (`docs/training_run3.md`). The question: the
+Written 2026-10-03, after the third training run (`docs/training_run3.md`). **Revised the same
+day after checking against a human reference (§ 1.5): the arm-A agreement proxy used in § 1.1–1.2
+did not survive it. The claims built on it are marked.** The question: the
 project's goal is a per-speaker model that recognises *this* speaker better than a general one.
 Run 3 found a personal effect of only +2–3 points of relative WER. Is that the ceiling, or the
 method? This document checks our own data first, then the literature, and ends with a ranked,
@@ -21,9 +23,9 @@ Base B on the high-quality test (12 speakers, WER 0.139):
 | **substitutions and deletions that arm A makes identically** | **66 %** of 4,796 | two models with different training data agreeing on the same "error" points to the reference's conventions |
 | substitutions that are near-misses (one character, or a prefix letter) | 58 % (44 % on the ≥ 0.7 test) | spelling and morphology conventions, not mishearings |
 | errors on a word only this speaker uses (in their train text, in no other panel speaker's) | **1.0 %** | personal vocabulary is not where the errors are |
-| errors *attributable to the model* (not made identically by arm A) | **35 %** (median over speakers) | the room any model change can really work in: about 0.05 absolute WER |
+| errors *attributable to the model* (not made identically by arm A) | **35 %** (median over speakers) | ~~the room any model change can really work in~~ **not supported (§ 1.5)**: agreement with arm A does not tell a protocol error from a model error |
 
-### 1.2 What the adapters actually learn
+### 1.2 What the adapters actually learn (built on the arm-A proxy: see § 1.5 before relying on it)
 
 - **More than half of what the personal adapter fixes and the control does not (54 %) are errors
   arm A also makes**, i.e. the adapter learns *how the protocol writes this speaker*, not their
@@ -44,6 +46,35 @@ The attributable-error measure uses arm A as a second reference. It is a proxy w
 biases (arm A is weaker; an error both models make for acoustic reasons is counted as a label
 convention). It is a reason to build a better reference (§ 4, P0), not a replacement for one.
 
+### 1.5 Checked against a human reference: the protocol is noisy, but the proxy does not find the noise
+
+`ivrit-ai/eval-forced-alignment` (gated, accessible with our token) holds 72 human-corrected Hebrew
+clips, 52 from Knesset committees (7.4 min, 954 words), transcribed by ivrit.ai's guidelines:
+numbers as words, spoken words added, unspoken words removed, no fillers. None of its sessions is
+a panel test session (four are panel train/dev sessions). For 23 clips the protocol span could be
+recovered from our corpus index (the others are non-MK speakers our index does not hold); arms A
+and B transcribed those 23 clips locally (338 protocol words, 387 gold words).
+
+| | vs the protocol | vs the human transcript |
+|---|---|---|
+| base B | 0.281 | **0.165** |
+| base A | 0.393 | 0.295 |
+| the protocol itself | — | **0.183** |
+
+- **The reference problem is real and large.** The protocol differs from what was said by 18 % of
+  its words, and about 40 % of B's measured WER on these clips is the protocol, not the model.
+- **The arm-A agreement proxy does not detect it.** Of B's errors against the protocol, the human
+  transcript sides with the model in **45 % of the errors arm A shares and 49 % of those it does
+  not**: agreement with A carries almost no information about who is wrong. Shared substitutions
+  are mostly real model errors (the gold sides with the model in 6 of 20); insertions are about
+  half real speech either way (19 of 36 shared, 12 of 25 not).
+- **Consequences.** The "35 % attributable", the "adapters add 10–16 % attributable errors" and
+  the "54 % of personal fixes are conventions" figures in § 1.1–1.2 rest on that proxy and are
+  withdrawn as evidence. What stands: the protocol is a noisy reference; run 3's standard gains
+  partly measure agreement with it; only a human reference can say how much.
+- Limits: 23 clips, one annotator each, number normalisation differs between gold (words) and
+  protocol/hypotheses (digits), which counts against the models in both columns.
+
 ### 1.3 Two assumptions checked
 
 - **"Model B already heard these voices in the plenum, so there is nothing left to personalize"
@@ -57,13 +88,11 @@ convention). It is a reason to build a better reference (§ 4, P0), not a replac
 
 ### 1.4 Implications before reading any paper
 
-1. The training signal is the problem as much as the method: a loss on edited protocol text
-   rewards the conventions (two thirds of the error mass) and gives no clean signal on the
-   acoustic third. A cleverer adapter trained on the same targets will mostly learn the same
-   thing.
-2. The measurement is the other problem: personalization of 4 % on 35 % of the errors shows up
-   as ~1.5 % of total WER, which is the size of seed noise. A real but modest acoustic effect can
-   be invisible against a protocol reference.
+1. The training signal is the problem as much as the method: the protocol differs from the
+   speech by ~18 % of its words (§ 1.5), and a loss on it rewards matching those differences. A
+   cleverer adapter trained on the same targets will mostly learn the same thing.
+2. The measurement is the other problem: against a reference that is itself 18 % off, a modest
+   acoustic effect can be invisible, and no automatic proxy we tried separates the two (§ 1.5).
 3. The largest untested lever is data: 80 minutes against 15–23 hours.
 
 ## 2. What the literature says (checked)
@@ -156,7 +185,7 @@ on personalization, three seeds where a claim depends on it.
 | | step | why (evidence) | expected | cost | risk |
 |---|---|---|---|---|---|
 | **P0** | **A verbatim gold test**: the team transcribes 10 minutes per speaker of the existing test clips word for word (≈ 2 h of audio, Hebrew speakers in the team). Re-score run 3's saved hypotheses on it (no GPU). Report "attributable" WER beside it. | § 1.1–1.2: two thirds of the errors are reference conventions; 2412.07937 | tells whether run 3's personal effect is 2 % or 10 % on real errors; decides everything below | ~15–20 person-hours, $0 compute | inter-annotator spelling choices; agree on conventions first |
-| **P1** | **Clean the loss, not just the data**: mask the loss on reference tokens where arms A and B agree on a different word or both omit it; keep the semi-verbatim insertions. | 66 % of S/D errors are shared (§ 1.1); token-level tolerance 2609.30160 | the adapter stops learning conventions; standard gain falls, attributable gain should turn positive | small code change in `train.py` (labels = −100 on masked tokens); 12 cells + control ≈ 30 min on 4 GPUs | masking real errors both models share (homophones); check on P0 |
+| **P1** | **Clean the loss, not just the data** — *weakened by § 1.5*: masking by A/B consensus would mask real model errors about as often as protocol errors. Keep the idea (token-level tolerance, 2609.30160) but choose the mask by a criterion validated on P0 (e.g. aligner word probability, or B-vs-protocol disagreement weighted by B's confidence), and test it against plain semi-verbatim targets. | § 1.5; token-level tolerance 2609.30160 | unknown until validated | small code change in `train.py` (labels = −100 on masked tokens) | the mask criterion is the whole question |
 | **P2** | **KL regularization to the base** (β 0.5–0.8; the base distribution comes free from PEFT's `disable_adapter()`). | Weninger 2019, Yu 2013; § 1.2 shows adapters adding errors and hurting some speakers | fewer new deletions; no speaker hurt; small personal gain kept | ~20 lines; one extra forward pass | too strong a β erases the personal effect too; tune β on validation |
 | **P3** | **Scale personal data: 80 → 320 → 1,200 minutes**, with the matched control at each budget, on P1+P2 targets. Score more candidate minutes (`RAW_TARGET_MIN`) or use the ≥ 0.7 data with P1 masking. | Weninger: log-linear to 20 h; § 1.3: 15–23 h exist per speaker | the key unknown: does the *personal* share grow once domain saturates? | data prep on the laptop; ~2 GPU-h on 4 GPUs (raise `max_steps` for large budgets) | the control grows too; only the difference counts |
 | P4 | Personal text LM: shallow fusion with an n-gram LM from each MK's KnessetCorpus protocols, against an LM of other MKs' text of equal size. Exclude each speaker's dev and test sessions by ID (556, 30718 and 30813 have test sessions before the corpus's 2024-03-26 end). | Weninger: +2.4 % from speaker LM on top of adaptation; Whisper-LM | small; partly conventions again | beam search with fusion in `evaluate.py` | leakage; convention learning |
@@ -194,7 +223,9 @@ but not on the gold test is convention learning, whatever its size.
 - Several numbers above come from abstracts (Euphonia's 26–35 %, the hypernetwork's 75 %,
   SAML/SAMD's figures, Whisper-LM's headline). Weninger 2019, the TTA child-speech paper and the
   quantised-Whisper table were read in full.
-- The attributable-error analysis is a proxy built on arm A; P0 exists to replace it.
+- The attributable-error analysis was a proxy built on arm A; checked on 23 human-transcribed
+  committee clips it did not discriminate (§ 1.5). That check is itself small (one annotator per
+  clip). P0 exists to replace both.
 
 ## Sources
 
@@ -214,4 +245,5 @@ but not on the gold test is convention learning, whatever its size.
 - *Activating Controllable Verbatim ASR…*, arXiv 2607.18934 — https://arxiv.org/abs/2607.18934
 - *A Training Criterion with Token-Level Tolerance to Transcription Ambiguity*, arXiv 2609.30160 — https://arxiv.org/abs/2609.30160
 - *Style-agnostic evaluation of ASR using multiple reference transcripts*, arXiv 2412.07937 — https://arxiv.org/abs/2412.07937
+- ivrit.ai, *Hebrew Forced Alignment Evaluation* (human-corrected clips) — https://huggingface.co/datasets/ivrit-ai/eval-forced-alignment
 - Yu et al., *KL-divergence regularized deep neural network adaptation*, ICASSP 2013 — https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/0007893.pdf
