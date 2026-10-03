@@ -23,7 +23,14 @@ threshold MAX_LOW_SHARE was fixed from `report()` before any training
 (docs/training_plan_v3.md).
 
     python src/training/word_quality.py            # build word_quality.parquet, print the report
+    python src/training/word_quality.py --run4     # run 4's longer candidate lists (docs/training_plan_v4.md)
     python src/training/word_quality.py --check    # self-checks only
+
+Run 4 (docs/training_plan_v4.md) scores further back in time: RAW_TARGET_MIN_FOR for its
+own speakers (23558 and 23641 up to 1,440 train minutes, 23635 up to 360) and
+RUN4_PANEL_TARGET for the rest of the panel, whose longer train feeds the 1,440-minute
+control.  Candidates stay newest-session-first, so the chunks plan v2 used are a prefix
+of them and are not fetched again.
 """
 import argparse, os, sys, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -50,12 +57,27 @@ EXCLUDE_SESSIONS = {30843: {2235355}}   # the audio gate: this dev session is mo
 # back here and rebuilding plan-v2 and plan-test07 brings him in, after the audio gate
 # (his quality-filter footprint is high).
 PANEL_ADD = [556]
+# Run 4 (docs/training_plan_v4.md): two speakers from outside the panel -- 23641 יעקב אשר
+# (Haredi, WER_B 0.41, the fine-tune removes 17% of arm A's error) and 23635 פנינה תמנו
+# (Ethiopia-born) -- and longer candidate lists, so train can reach 1,440 minutes for
+# 23558 and 23641 and the rest of the panel can feed a 1,440-minute control.
+RUN4_NEW = [23641, 23635]
+RAW_TARGET_MIN_FOR = {23558: 2700, 23641: 2700, 23635: 650}   # candidate minutes (>= 0.95), before the word rule
+RUN4_PANEL_TARGET = 1100                                        # every other panel speaker: up to ~800 passing train minutes
 
 
 def panel_speakers(panel_path=PANEL):
     panel = pd.read_csv(panel_path, index_col=0)
     core = [int(s) for s in panel[~panel.profile.str.contains('alt')].index]
     return core + [s for s in PANEL_ADD if s not in core]
+
+
+def run4_speakers(panel_path=PANEL):
+    return panel_speakers(panel_path) + [s for s in RUN4_NEW if s not in panel_speakers(panel_path)]
+
+
+def run4_target(sid):
+    return RAW_TARGET_MIN_FOR.get(int(sid), RUN4_PANEL_TARGET)
 
 
 def span(chunk_id):
@@ -91,14 +113,16 @@ def word_ok(W, max_low_share=MAX_LOW_SHARE):
     return (gap <= MAX_COUNT_GAP) & (W.low_share <= max_low_share) & (W.low_run < MAX_RUN)
 
 
-def candidates(index_path=INDEX, panel_path=PANEL, target_min=RAW_TARGET_MIN):
+def candidates(index_path=INDEX, panel_path=PANEL, target_min=RAW_TARGET_MIN, speakers=None, target_for=None):
+    """Each speaker's chunks at >= MIN_QUALITY, newest session first, until target_min
+    minutes (target_for(sid) per speaker if given).  speakers defaults to the panel."""
     idx = pd.read_parquet(index_path, columns=['chunk_id', 'speaker_id', 'session', 'session_date', 'duration_s', 'quality', 'text'])
-    idx = idx[idx.speaker_id.isin(panel_speakers(panel_path)) & (idx.quality >= MIN_QUALITY)]
+    idx = idx[idx.speaker_id.isin(speakers or panel_speakers(panel_path)) & (idx.quality >= MIN_QUALITY)]
     out = []
     for sid, d in idx.groupby('speaker_id'):
         d = d[~d.session.isin(EXCLUDE_SESSIONS.get(int(sid), set()))]
         per = d.groupby('session').agg(date=('session_date', 'first'), mins=('duration_s', lambda s: s.sum() / 60)).sort_values(['date'], ascending=False)
-        n = int(np.searchsorted(per.mins.cumsum().values, target_min)) + 1
+        n = int(np.searchsorted(per.mins.cumsum().values, target_for(sid) if target_for else target_min)) + 1
         out.append(d[d.session.isin(per.index[:n])])
     return pd.concat(out, ignore_index=True)
 
@@ -117,8 +141,11 @@ def _one_session(session, rows):
     return res
 
 
-def build(out=OUT, workers=6):
-    C = candidates()
+def build(out=OUT, workers=6, run4=False, speakers=None):
+    """Score every candidate chunk not yet in `out` (resumable).  run4: run 4's speakers
+    and candidate targets; speakers: only these."""
+    if run4: C = candidates(speakers=[s for s in run4_speakers() if not speakers or s in speakers], target_for=run4_target)
+    else: C = candidates(speakers=speakers)
     done = pd.read_parquet(out) if os.path.exists(out) else pd.DataFrame(columns=['chunk_id', 'session'])
     todo = C[~C.chunk_id.isin(set(done.chunk_id))]
     groups = list(todo.groupby('session'))
@@ -136,6 +163,20 @@ def build(out=OUT, workers=6):
     W.to_parquet(out, index=False)
     if failed: print(f'{len(failed)} sessions failed (re-run to retry): {failed[:3]}')
     return W
+
+
+def run4_report(W=None, index_path=INDEX):
+    """Run 4: minutes per speaker at >= 0.95 that pass the word rule, among the scored
+    candidates -- what plan-v4 can draw test + dev + train from."""
+    W = pd.read_parquet(OUT) if W is None else W
+    W = W[W.speaker_id.isin(run4_speakers())]
+    dur = pd.read_parquet(index_path, columns=['chunk_id', 'duration_s']).set_index('chunk_id').duration_s
+    W = W.assign(mins=W.chunk_id.map(dur) / 60, ok=word_ok(W))
+    t = W.groupby('speaker_id').agg(scored_min=('mins', 'sum'), passing_min=('mins', lambda m: m[W.loc[m.index, 'ok']].sum()), sessions=('session', 'nunique'))
+    t['pass_rate'] = t.passing_min / t.scored_min
+    print('run 4 -- minutes passing the word rule per speaker (test 45 + dev 15 + train come out of these):')
+    print(t.round(2).to_string())
+    return t
 
 
 def report(W=None, index_path=INDEX, shares=(0.0, 0.05, 0.10, 0.15, 0.20)):
@@ -164,14 +205,19 @@ def _self_checks():
     assert len(words_in(ws, 0.5, 2.0)) == 1 and len(words_in(ws, 0.0, 2.3)) == 3
     W = pd.DataFrame(dict(n_aligned=[10, 10, 10, 10], n_ref=[10, 10, 10, 20], low_share=[0.0, 0.3, 0.1, 0.0], low_run=[0, 1, 3, 0]))
     assert list(word_ok(W, 0.10)) == [True, False, False, False]    # clean; too many low; a run of 3; half the words unaccounted for
+    sp = run4_speakers()
+    assert len(sp) == len(set(sp)) == 14 and all(s in sp for s in RUN4_NEW + [23558, 30752]), sp
+    assert run4_target(23558) == run4_target(23641) == 2700 and run4_target(30777) == RUN4_PANEL_TARGET
     print('word_quality.py: OK')
 
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); ap.add_argument('--check', action='store_true'); ap.add_argument('--report', action='store_true')
     ap.add_argument('--workers', type=int, default=6)
+    ap.add_argument('--run4', action='store_true', help="run 4's speakers and longer candidate lists (docs/training_plan_v4.md)")
+    ap.add_argument('--speakers', nargs='+', type=int, help='score only these speakers')
     a = ap.parse_args()
     _self_checks()
     if a.check: sys.exit(0)
-    W = pd.read_parquet(OUT) if a.report else build(workers=a.workers)
-    report(W)
+    W = pd.read_parquet(OUT) if a.report else build(workers=a.workers, run4=a.run4, speakers=a.speakers)
+    run4_report(W) if a.run4 else report(W)

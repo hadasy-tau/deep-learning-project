@@ -15,7 +15,7 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
 | 2. Chunk corpus | done: ~1.2 M chunks ≤ 30 s, 330 speakers (`-chunks`) | `chunk_corpus_build.html` |
 | 3. Inference, both arms | done: 65,990 chunks, 267 speakers (`-inference`). Corpus WER A 0.417, B 0.324; after the quality ≥ 0.7 filter 0.387 / 0.292 | `inference.md` |
 | 4–5. Error map, panel | done. The fine-tune helps every speaker (median 24 % of A's error) but rescues no one in particular. Panel: 12 speakers (the 11 of `committees_panel.csv` plus 556; 30601 deferred) | `error_map.md`, `adaptation_plan.md` |
-| 6–7. Adaptation | three runs. Run 2 (2026-09-20, 11 speakers, ≥ 0.7 data) and run 3 (2026-10-02, plan v3: 12 speakers, ≥ 0.95 data, tuned on validation by rule, the control at every budget, seeds 0–2 at 80 min) | `training_run2.md`, `training_run3.md` |
+| 6–7. Adaptation | three runs. Run 2 (2026-09-20, 11 speakers, ≥ 0.7 data) and run 3 (2026-10-02, plan v3: 12 speakers, ≥ 0.95 data, tuned on validation by rule, the control at every budget, seeds 0–2 at 80 min). **Run 4 (the personal-data curve) is prepared, not run** | `training_run2.md`, `training_run3.md`, `training_plan_v4.md` |
 
 ## What the runs found
 
@@ -37,8 +37,17 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
    models, by ivrit.ai's guidelines (`ivrit-ai/eval-forced-alignment`), 10 % double-annotated.
    Re-score runs 2–3 on it without a GPU. Success, fixed in advance: median personalization ≥ 5 %
    with the interval above zero for half the speakers in two of three seeds.
-2. **More personal data:** 80 → 320 → 1,200 minutes per speaker with the matched control. The
-   corpus holds a median of ~15 h per panel speaker at quality ≥ 0.95, ~23 h at ≥ 0.7.
+2. **More personal data: run 4, prepared 2026-10-03** (`training_plan_v4.md`).
+   - **Design:** run 3's curve is extended to 360 minutes for 23558, 30752 and two new speakers,
+     23641 יעקב אשר (Haredi, hard, the fine-tune barely helped) and 23635 פנינה תמנו
+     (Ethiopia-born). 23558 and 23641 go on to 1,440 minutes.
+   - **Same experiment as run 3:** the same data rules, test sets, folds and control definition.
+   - **The decision rule is fixed in advance** (Delta of personalization, top budget − 80 minutes,
+     on the ≥ 0.7 test).
+   - **Prepared:** the word scores (2,295 more sessions), `panel_plan_v4.parquet` and
+     `panel_test07_v4.parquet`, both verified, and the queue, about 8.4 GPU-hours.
+   - **Still to do:** the audio on a CPU pod (`box/data_v4.sh`), then the GPU pod
+     (`box/pod_v4.sh`).
 3. **KL regularization to the base model.**
 4. Later: a personal text LM against an other-speakers LM; similar-speaker groups; speaker-
    conditioned models. Not recommended now: test-time adaptation, in-context learning, prompting.
@@ -50,6 +59,9 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
   `knesset-committees-v3-results`); the audio is cut from `ivrit-ai/knesset-committees`, which is
   gated under the ivrit.ai licence. Whether it should stay public is undecided.
 - `run_panel.py` and `materialize.py` still default `--plan` to plan v1; `pod_v3.sh` passes it.
+- `speaker_index/validate_audio.py` passes the HF token to ffmpeg on the command line, so it is
+  visible in a process listing while the gate runs. It should go through an environment variable
+  or a header file instead.
 
 ## Withdrawn — do not rely on these
 
@@ -67,4 +79,6 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
 - Run 2's adapters and per-cell results: `knesset-asr/knesset-committees-adapters`. Run 3's:
   `knesset-asr/knesset-committees-v3-results` (private); its tables are also in
   `src/training/outputs/` (`results_v3.csv`, `tuning_v3.csv`, `recipe_v3.json`).
-- The panel audio: `knesset-asr/knesset-committees-panel` (plan v1), `-panel-hq` (plan v3, complete).
+- The panel audio: `knesset-asr/knesset-committees-panel` (plan v1), `-panel-hq` (plan v3, complete),
+  `-panel-v4` (run 4, one tar per speaker; written by `box/data_v4.sh`).
+- Run 4's results will go to `knesset-asr/knesset-committees-v4-results` (private).
