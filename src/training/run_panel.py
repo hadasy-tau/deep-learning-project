@@ -51,6 +51,26 @@ subset of it, so its hypotheses are reused and only the rest is transcribed.  A 
 scored before the flag was given gets its test07 scores on the next run, from its
 saved adapter.
 
+Run 4 (docs/training_plan_v4.md).  --cell-speakers trains own cells for those speakers
+only, while the plan keeps every speaker for the control's pool.  The control keeps run
+3's definition -- control_folds over the panel's 12 speakers, at the seed -- and
+--control-extra names speakers outside the panel (23641, 23635): they never enter the
+folds or a pool, they are attached to the fold of --control-attach (23558), and that
+fold's adapter, with their test and dev sessions also kept out of its pool, is labelled
+`ctrl<k>of<K>x`.  --control-evals limits which speakers a control is evaluated on (and
+so which folds are trained at all).  --curve writes outputs/curve_v4.csv: per speaker,
+personalization at the top budget minus at 80 minutes, with a paired bootstrap over test
+chunks shared by every seed, and the plan's decision rule.
+
+    python src/training/run_panel.py --plan src/training/panel_plan_v4.parquet --max-steps 1200 \
+        --cell-speakers 23641 --budgets 360 --seeds 0 --lrs 3e-4 --dropouts 0 --test07-plan src/training/panel_test07_v4.parquet
+    python src/training/run_panel.py --plan src/training/panel_plan_v4.parquet --max-steps 1200 --control-only \
+        --control-folds 2 --control-budgets 360 --seeds 0 --lrs 3e-4 --dropouts 0 \
+        --control-evals 23558 23641 23635 --control-extra 23641 23635 --control-attach 23558 \
+        --test07-plan src/training/panel_test07_v4.parquet
+    python src/training/run_panel.py --curve
+    python src/training/run_panel.py --self-check
+
 Needs the materialized audio (materialize.py extract or download) and a GPU
 for anything but the smoke test.
 """
@@ -287,19 +307,35 @@ def control_folds(speakers, k, seed=0):
     rng = np.random.default_rng(seed); order = list(rng.permutation(sorted(speakers)))
     return [sorted(int(s) for s in order[i::k]) for i in range(k)]
 
+def fold_plan(spk_ids, folds, seed, extra=(), attach=None, evals_only=None):
+    """The control's folds: [(k, members, attached, evals, trainers, label)].  The folds
+    are control_folds over spk_ids minus `extra` -- run 3's assignment when spk_ids are
+    the panel.  `extra` speakers join the fold holding `attach`; that fold is labelled
+    with an `x` because its pool also leaves out their sessions.  evals_only drops every
+    evaluation not in it, and a fold left with none."""
+    extra = [int(s) for s in extra]; universe = sorted(int(s) for s in spk_ids if int(s) not in extra)
+    assert not extra or attach in universe, f'--control-attach {attach} must be a panel speaker'
+    out = []
+    for k, members in enumerate(control_folds(universe, folds, seed)):
+        attached = extra if (extra and attach in members) else []
+        evals = [s for s in members + attached if evals_only is None or s in evals_only]
+        if not evals: continue
+        trainers = [s for s in universe if s not in members] if folds > 1 else universe
+        out.append((k, members, attached, evals, trainers, f'ctrl{k}of{folds}' + ('x' if attached else '')))
+    return out
+
 def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, budget=80, arm='B', site='both', method='lora',
-                rank=8, lr=None, seed=0, dev_min=15, targets='protocol', select='loss', step=None, T07=None):
+                rank=8, lr=None, seed=0, dev_min=15, targets='protocol', select='loss', step=None, T07=None,
+                extra=(), attach=None, evals_only=None):
     """k adapters, each trained on a pool from the speakers NOT in its fold and
     evaluated on the fold's speakers.  With k=1 (the handoff's single adapter)
     the pool spans all the speakers and each is evaluated on an adapter that saw
-    ~budget/11 minutes of them -- stated in the JSON as `saw_own_minutes`."""
+    ~budget/11 minutes of them -- stated in the JSON as `saw_own_minutes`.
+    extra / attach / evals_only: run 4's speakers outside the panel (fold_plan)."""
     import train as T, evaluate as EV
-    spk_ids = sorted(int(s) for s in P.speaker_id.unique()); fold_of = control_folds(spk_ids, folds, seed)
     step = step or {}
     lr = lr if lr is not None else T.DEFAULT_LR[method]; out = []; tag = full_tag(targets, select, step); Pt = apply_targets(P, targets)
-    for k, evals in enumerate(fold_of):
-        trainers = [s for s in spk_ids if s not in evals] if folds > 1 else spk_ids
-        label = f'ctrl{k}of{folds}'
+    for k, members, attached, evals, trainers, label in fold_plan(P.speaker_id.unique(), folds, seed, extra, attach, evals_only):
         name = T.cell_name(label, arm, site, method, budget, rank, lr, seed, tag)
         todo = [s for s in evals if not os.path.exists(os.path.join(RESULTS, f'{name}__eval{s}.json'))]
         if T07 is not None:                    # scored before --test07-plan: add it from the saved adapter
@@ -311,8 +347,8 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
         # Committee meetings have several panel members in them: a trainer's session can be the very meeting an
         # evaluated speaker is tested on (same topic, names, room).  Keep every session of the evaluated speakers'
         # test and dev out of the control's pool, or the control is scored partly on audio it trained on.
-        held = set(P[P.speaker_id.isin(evals) & P.part.isin(['test', 'dev'])].session_id)
-        if T07 is not None: held |= set(T07[T07.speaker_id.isin(evals)].session_id)
+        held = set(P[P.speaker_id.isin(members + attached) & P.part.isin(['test', 'dev'])].session_id)
+        if T07 is not None: held |= set(T07[T07.speaker_id.isin(members + attached)].session_id)
         Pc = Pt[~Pt.session_id.isin(held)]
         tr = pool_budget(Pc, trainers, budget, 'train', seed); dev = pool_budget(Pc, trainers, dev_min, 'dev', seed)
         assert not set(tr.session_id) & held and not set(dev.session_id) & held
@@ -355,21 +391,23 @@ def run_tune(c, P, audio_dir, batch, grad_accum, step, model_override=None):
                         rank=c['rank'], lr=c['lr'], seed=c['seed'], batch=batch, grad_accum=grad_accum, tag=full_tag('protocol', 'loss', step),
                         keep_adapter=False, **step_kw(step))
 
-def tuning_report(out=TUNING):
+def tuning_report(out=TUNING, runs=TUNE_RUNS):
     """One row per tuning run: the settings, the untuned and the best validation
     loss, and rel_drop = the relative drop between them -- the tuning criterion
     (docs/training_plan_v3.md, step 3).  Prints the mean over speakers per recipe
     and budget, with how many speakers each recipe helped."""
     rows = []
-    for d in sorted(glob.glob(os.path.join(TUNE_RUNS, '*', 'train_meta.json'))):
+    for d in sorted(glob.glob(os.path.join(runs, '*', 'train_meta.json'))):
         m = json.load(open(d)); name = os.path.basename(os.path.dirname(d))
         if not m.get('max_steps') or m.get('base_eval_loss') is None or not m.get('evals'): continue
         head = name.split('_')                        # s<speaker>_arm<A>_<site>_<method>_b<budget>_r<rank>_lr<lr>_seed<seed>_<tag>
+        if not head[0][1:].isdigit(): continue        # a control's adapter (runs/ holds them beside the own cells)
         best = min(m['evals'], key=lambda e: e['eval_loss'])
         rows.append(dict(run=name, speaker=head[0][1:], budget=int(head[4][1:]), lr=float(head[6][2:]), rank=int(head[5][1:]),
                          dropout=m.get('dropout') or 0.0, augment=m.get('augment', 'none'), patience=m.get('patience'),
                          base_loss=m['base_eval_loss'], best_loss=best['eval_loss'], rel_drop=1 - best['eval_loss'] / m['base_eval_loss'],
-                         best_step=best.get('step'), stop_step=m.get('global_step'), train_minutes=m.get('train_minutes')))
+                         best_step=best.get('step'), stop_step=m.get('global_step'), train_minutes=m.get('train_minutes'),
+                         seed=int(head[7][4:]), max_steps=m.get('max_steps')))
     if not rows: print('no tuning runs yet'); return None
     T = pd.DataFrame(rows); T.to_csv(out, index=False, float_format='%.5g')
     S = (T.groupby(['budget', 'lr', 'rank', 'dropout', 'augment'])
@@ -469,6 +507,107 @@ def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
     print(R[cols].round(4).to_string(index=False))
     return R
 
+# ---- run 4: the data curve (docs/training_plan_v4.md) ----------------------------------
+CURVE = os.path.join(HERE, 'outputs', 'curve_v4.csv')
+CURVE_REF, CURVE_MIN_GAIN, CURVE_MIN_SPEAKERS = 80, 0.02, 2   # the plan's decision rule, fixed before the run
+
+def _errors(name, suffix, chunk_ids, text):
+    """Per-chunk word errors of a saved hypothesis file, in `chunk_ids` order."""
+    import evaluate as EV
+    h = _hyps(name + suffix)
+    if h is None: return None
+    hyp = dict(zip(h[0], h[1]))
+    if set(chunk_ids) - set(hyp): return None
+    sc = EV.score([text[c] for c in chunk_ids], [hyp[c] for c in chunk_ids])
+    return sc.werr.values.astype(float), sc.n_words.values.astype(float)
+
+def curve_delta(pairs_top, pairs_ref, base_err, n_words, n_boot=2000, seed=0):
+    """Delta = personalization_rel at the top budget minus at the reference budget, each the
+    mean over its seeds.  pairs_*: [(own errors, control errors)] per seed, per chunk;
+    personalization_rel = (control - own) / base, all summed over chunks.  The bootstrap
+    resamples chunks once per draw for every seed and both budgets, so the interval holds
+    the seeds' shared test set fixed.  Returns (delta, lo, hi, p, pers_top, pers_ref)."""
+    def stat(ix):
+        b = base_err[ix].sum(); f = lambda pairs: np.mean([(c[ix].sum() - o[ix].sum()) / b for o, c in pairs])
+        return f(pairs_top) - f(pairs_ref), f(pairs_top), f(pairs_ref)
+    obs = stat(np.arange(len(base_err)))
+    rng = np.random.default_rng(seed); ix = rng.integers(0, len(base_err), size=(n_boot, len(base_err)))
+    d = np.array([stat(i)[0] for i in ix])
+    lo, hi = np.percentile(d, [2.5, 97.5]); p = min(2 * min((d <= 0).mean(), (d >= 0).mean()), 1.0)
+    return obs[0], lo, hi, p, obs[1], obs[2]
+
+def curve_verdict(C, test='test07', min_gain=CURVE_MIN_GAIN, min_speakers=CURVE_MIN_SPEAKERS):
+    """The plan's rule on the >= 0.7 test: 'data limits' if Delta >= +2 points with its
+    interval above zero for at least 2 speakers; 'data does not limit' if every speaker's
+    interval holds zero and its upper end is below +2; else 'undecided'."""
+    c = C[C.test == test]
+    up = ((c.delta >= min_gain) & (c.ci_lo > 0)).sum()
+    if up >= min_speakers: return 'data limits'
+    if ((c.ci_lo <= 0) & (c.ci_hi >= 0) & (c.ci_hi < min_gain)).all(): return 'data does not limit'
+    return 'undecided'
+
+def data_curve(results=os.path.join(HERE, 'outputs', 'results.csv'), out=CURVE, ref=CURVE_REF):
+    """Per speaker and test set: personalization at every budget (mean over seeds, own and
+    control gains apart), and Delta = top budget - `ref` with its shared-chunk bootstrap."""
+    R = pd.read_csv(results); R = R[~R.control & R.control_cell.notna() & (R.targets == 'protocol') & R.cell.str.contains('_hq')]
+    plans = sorted(glob.glob(os.path.join(HERE, 'panel_*.parquet')))
+    text = pd.concat([pd.read_parquet(p, columns=['chunk_id', 'text']) for p in plans]).drop_duplicates('chunk_id').set_index('chunk_id').text
+    import evaluate as EV
+    rows = []
+    for s, g in R.groupby('speaker'):
+        budgets = sorted(g.budget.unique()); top = max(budgets)
+        if ref not in budgets or top == ref: continue
+        for suffix, pre, label in (('', '', 'hq'), ('.test07', 'test07.', 'test07')):
+            col = pre + 'personalization_rel'
+            if col not in g: continue
+            curve = g.groupby('budget').agg(pers=(col, 'mean'), own=(pre + 'delta_rel', 'mean'), seeds=('seed', 'nunique'))
+            def pairs(b):
+                out, ids = [], None
+                for r in g[g.budget == b].itertuples():
+                    h = _hyps(r.cell + suffix)
+                    if h is None: return None, None
+                    ids = h[0] if ids is None else ids
+                    e_own = _errors(r.cell, suffix, ids, text); e_ctl = _errors(r.control_cell, suffix, ids, text)
+                    if e_own is None or e_ctl is None: return None, None
+                    out.append((e_own[0], e_ctl[0]))
+                return out, ids
+            pt, ids = pairs(top); pr, ids_r = pairs(ref)
+            if not pt or not pr or ids != ids_r: continue
+            base = json.load(open(glob.glob(os.path.join(RESULTS, f'base_B_{s}_*' + ('_test07' if label == 'test07' else '_hq') + '.json'))[0], encoding='utf-8'))
+            bh = dict(zip(base['chunk_ids'], base['hyps'])); sb = EV.score([text[c] for c in ids], [bh[c] for c in ids])
+            d, lo, hi, p, p_top, p_ref = curve_delta(pt, pr, sb.werr.values.astype(float), sb.n_words.values.astype(float))
+            rows.append(dict(speaker=s, test=label, ref_budget=ref, top_budget=top, seeds_ref=len(pr), seeds_top=len(pt),
+                             pers_ref=p_ref, pers_top=p_top, delta=d, ci_lo=lo, ci_hi=hi, p=p,
+                             **{f'pers_b{b}': curve.at[b, 'pers'] for b in budgets}, **{f'own_b{b}': curve.at[b, 'own'] for b in budgets}))
+    C = pd.DataFrame(rows)
+    if not len(C): print('no speaker has both the reference and a larger budget yet'); return None
+    C.to_csv(out, index=False, float_format='%.5g')
+    print(C[['speaker', 'test', 'top_budget', 'pers_ref', 'pers_top', 'delta', 'ci_lo', 'ci_hi', 'p']].round(4).to_string(index=False))
+    print(f'decision (>= 0.7 test, docs/training_plan_v4.md): {curve_verdict(C)}')
+    return C
+
+def _self_check():
+    panel = [556, 23558, 30685, 30701, 30718, 30752, 30777, 30813, 30831, 30843, 30859, 30868]
+    # the folds over the panel are run 3's (docs/training_run3.md): an extra speaker never moves them
+    for seed in (0, 1, 2):
+        plain = control_folds(panel, 2, seed)
+        fp = fold_plan(panel + [23641, 23635], 2, seed, extra=[23641, 23635], attach=23558)
+        assert [m for _, m, *_ in fp] == plain, seed
+        x = [f for f in fp if f[2]]; assert len(x) == 1 and 23558 in x[0][1] and x[0][5].endswith('x') and set(x[0][3]) >= {23558, 23641, 23635}
+        assert all(23641 not in f[4] and 23635 not in f[4] for f in fp)                   # never in a pool
+    assert control_folds(panel, 2, 0)[1] == [23558, 30685, 30701, 30718, 30859, 30868]   # run 3's seed-0 fold of 23558
+    only_new = fold_plan(panel + [23641, 23635], 2, 0, extra=[23641, 23635], attach=23558, evals_only=[23641, 23635])
+    assert len(only_new) == 1 and only_new[0][3] == [23641, 23635]
+    # the curve: own beats control by 10 % of base errors at the top, by 0 at the reference
+    base = np.full(50, 10.0); own_t, ctl_t = np.full(50, 8.0), np.full(50, 9.0); own_r = ctl_r = np.full(50, 9.0)
+    d, lo, hi, p, top, refv = curve_delta([(own_t, ctl_t)] * 3, [(own_r, ctl_r)] * 3, base, np.ones(50))
+    assert abs(d - 0.1) < 1e-12 and abs(top - 0.1) < 1e-12 and refv == 0 and lo == hi == d
+    C = pd.DataFrame(dict(test='test07', delta=[0.05, 0.03, 0.0], ci_lo=[0.01, 0.005, -0.01], ci_hi=[0.08, 0.06, 0.01]))
+    assert curve_verdict(C) == 'data limits'
+    assert curve_verdict(C.assign(delta=0.0, ci_lo=-0.01, ci_hi=0.01)) == 'data does not limit'
+    assert curve_verdict(C.assign(delta=[0.05, 0.0, 0.0], ci_lo=[0.01, -0.01, -0.01], ci_hi=[0.08, 0.03, 0.01])) == 'undecided'
+    print('run_panel.py: OK')
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--speakers', nargs='+', type=int); ap.add_argument('--arm', nargs='+', default=['B'], dest='arms')
@@ -493,7 +632,17 @@ if __name__ == '__main__':
     ap.add_argument('--tune', action='store_true', help='train + validate only, no test (runs_tune/); then --tuning-report')
     ap.add_argument('--tuning-report', action='store_true', help='write outputs/tuning.csv from the tuning runs and print the comparison')
     ap.add_argument('--test07-plan', help='also score on this second test set (panel_test07.parquet: plan v2\'s test sessions at quality >= 0.7)')
+    ap.add_argument('--cell-speakers', nargs='+', type=int, help='run 4: own cells only for these speakers; the plan keeps everyone for the control\'s pool')
+    ap.add_argument('--control-evals', nargs='+', type=int, help='run 4: evaluate the control only on these speakers (folds without any are not trained)')
+    ap.add_argument('--control-extra', nargs='+', type=int, default=[], help='run 4: speakers outside the panel -- not in the folds, attached to --control-attach\'s fold')
+    ap.add_argument('--control-attach', type=int, help='run 4: the panel speaker whose fold the --control-extra speakers join')
+    ap.add_argument('--no-report', action='store_true', help='--tune: do not rewrite tuning.csv (parallel workers)')
+    ap.add_argument('--no-summary', action='store_true', help='do not rewrite results.csv at the end (parallel workers; the queue runs it once)')
+    ap.add_argument('--curve', action='store_true', help='run 4: outputs/curve_v4.csv from outputs/results.csv and the saved hypotheses')
+    ap.add_argument('--self-check', action='store_true', help='the fold and curve logic on synthetic data, no GPU')
     a = ap.parse_args()
+    if a.self_check: _self_check(); sys.exit(0)
+    if a.curve: data_curve(); sys.exit(0)
     if a.summary: summary(); sys.exit(0)
     if a.tuning_report: tuning_report(); sys.exit(0)
     if (a.dropouts != [None] or a.augments != ['none'] or a.tune) and not a.max_steps:
@@ -509,7 +658,7 @@ if __name__ == '__main__':
     if a.build_targets:
         import targets as TG
         T = TG.build_targets(P, RESULTS); TG.report(T); T.to_parquet(os.path.join(HERE, 'outputs', 'targets_verbatim.parquet'), index=False); sys.exit(0)
-    C = [] if a.control_only else list(cells(P, a.arms, a.sites, a.methods, a.budgets, a.ranks, a.lrs, a.seeds))
+    C = [] if a.control_only else list(cells(P[P.speaker_id.isin(a.cell_speakers)] if a.cell_speakers else P, a.arms, a.sites, a.methods, a.budgets, a.ranks, a.lrs, a.seeds))
     print(f'{len(C)} cells over {P.speaker_id.nunique()} speakers; test {P[P.part=="test"].duration_s.sum()/60:.0f} min, train {P[P.part=="train"].duration_s.sum()/60:.0f} min available'
           + (f'; then the cross-speaker control in {a.control_folds} fold(s) at {"/".join(map(str, a.control_budgets or [a.control_budget]))} min' if a.control_folds else ''))
     if a.dry_run:
@@ -518,12 +667,14 @@ if __name__ == '__main__':
             for c in C: print('  ' + ('[tune] ' if a.tune else '') + T.cell_name(c['speaker'], c['arm'], c['site'], c['method'], c['budget'], c['rank'], c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']], c['seed'],
                                                 full_tag(a.targets, 'loss', st)))
         if a.control_folds:
-            for k, f in enumerate(control_folds(sorted(int(s) for s in P.speaker_id.unique()), a.control_folds, a.seeds[0])): print(f'  ctrl{k}of{a.control_folds}: evaluates {f}')
+            for k, members, attached, evals, trainers, label in fold_plan(P.speaker_id.unique(), a.control_folds, a.seeds[0], a.control_extra, a.control_attach, a.control_evals):
+                print(f'  {label}: trains on {trainers}, evaluates {evals}')
         sys.exit(0)
     if a.tune:                                 # validation only: nothing here reads the test set
         for st in steps:
             for c in C: run_tune(c, P, a.audio, a.batch, a.grad_accum, st, a.model)
-        tuning_report(); sys.exit(0)
+        if not a.no_report: tuning_report()
+        sys.exit(0)
     for st in steps:
         for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, targets=a.targets, step=st, T07=T07)
     if a.control_folds:                        # one control per recipe, so every sweep point has a budget-matched 'others' adapter
@@ -532,5 +683,6 @@ if __name__ == '__main__':
                 for site in a.sites:
                     for lr in a.lrs:
                         run_control(P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, folds=a.control_folds, budget=cb, arm=a.arms[0], site=site,
-                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], targets=a.targets, step=st, T07=T07)
-    summary()
+                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], targets=a.targets, step=st, T07=T07,
+                                    extra=a.control_extra, attach=a.control_attach, evals_only=a.control_evals)
+    if not a.no_summary: summary()

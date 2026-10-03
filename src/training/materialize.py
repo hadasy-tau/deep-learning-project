@@ -27,6 +27,13 @@ run on different machines:
             rule, so the high-quality test is a subset of it and the two differ
             only in the filter.  Writes panel_test07.parquet (test rows only,
             `hq` marks the chunks of v2's test); extract only adds what is new.
+  plan-v4   laptop.  Run 4 (docs/training_plan_v4.md): plan v2's rule over the panel plus
+            word_quality.RUN4_NEW, with longer train -- TRAIN_FILL minutes per speaker
+            (1,440 for 23558 and 23641, 360 for 23635, up to 800 for the rest of the
+            panel, whose train feeds the large controls).  Test and dev are plan v2's for
+            the 12 panel speakers, and v2's train is a prefix of v4's; both are asserted.
+            Writes panel_plan_v4.parquet.  `plan-test07 --plan panel_plan_v4.parquet`
+            writes panel_test07_v4.parquet the same way.
   verify    the split invariants (no session on two sides, test/dev/train sizes,
             nested budgets are prefixes) and every WAV present and readable.
   upload / download   the WAV folder to / from a private HF dataset, so the GPU
@@ -57,6 +64,9 @@ SUBSET = os.path.join(ROOT, 'src', 'inference', 'subset_stage1.parquet')
 PLAN   = os.path.join(HERE, 'panel_plan.parquet')
 PLAN_V2 = os.path.join(HERE, 'panel_plan_v2.parquet')   # quality-filtered train/dev, v1's test (plan_v2)
 PLAN_TEST07 = os.path.join(HERE, 'panel_test07.parquet')  # v2's test sessions at quality >= 0.7 (plan_test07)
+PLAN_V4 = os.path.join(HERE, 'panel_plan_v4.parquet')   # run 4: v2's rule, longer train (plan_v4)
+PLAN_TEST07_V4 = os.path.join(HERE, 'panel_test07_v4.parquet')
+TEST07_OF = {PLAN_V2: PLAN_TEST07, PLAN_V4: PLAN_TEST07_V4}   # a plan -> its >= 0.7 test set
 AUDIO  = os.path.join(HERE, 'outputs', 'panel_audio')          # git-ignored (src/training/outputs/)
 DL     = os.path.join(HERE, 'outputs', '_shards')
 
@@ -64,6 +74,13 @@ MIN_QUALITY, DEV_MIN, BUDGET_MIN, TEST_FLOOR_MIN = 0.7, 15, 80, 45
 # plan v2: a speaker with too few high-quality minutes for 45 test + 15 dev + 80 train keeps
 # the 80-minute budget and gives up test and dev minutes (docs/training_plan_v3.md § 1)
 SPLIT_MIN = {30843: dict(test=30, dev=10)}
+# plan v4 (docs/training_plan_v4.md): train minutes to fill per speaker, and the minimum each
+# needs (its top budget).  The rest of the panel fills up to RUN4_PANEL_TRAIN: its train is
+# the pool the 1,440-minute controls are drawn from, and a fold of six can hold three
+# speakers with little high-quality audio (556, 30813, 30843).
+TRAIN_FILL = {23558: 1440, 23641: 1440, 23635: 360}
+TRAIN_NEED = {23558: 1440, 23641: 1440, 30752: 360, 23635: 360}
+RUN4_PANEL_TRAIN = 800
 
 def log(msg):
     print(time.strftime('[%H:%M:%S] ') + msg, flush=True)
@@ -128,20 +145,31 @@ def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_F
     budget, newest first -- so nested budgets are prefixes.  SPLIT_MIN overrides test
     and dev for a speaker short of high-quality minutes (30843).  The session that crosses a target is inside it, as in plan()."""
     import word_quality as WQ
+    P = _plan_hq(WQ.panel_speakers(), lambda sid: budget_min, lambda sid: budget_min, out, dev_min, test_min, index_path)
+    P1 = pd.read_parquet(PLAN)
+    log(f'plan v2: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers, '
+        f'{int((~P.chunk_id.isin(set(P1.chunk_id))).sum()):,} chunks not in v1 (to extract) -> {out}')
+    return P
+
+def _plan_hq(speakers, train_fill, train_need, out, dev_min=DEV_MIN, test_min=TEST_FLOOR_MIN, index_path=INDEX):
+    """plan v2's construction for `speakers`: train takes train_fill(sid) minutes and
+    warns below train_need(sid)."""
+    import word_quality as WQ
     W = pd.read_parquet(WQ.OUT); W = W[WQ.word_ok(W)]
     idx = pd.read_parquet(index_path, columns=['chunk_id', 'speaker_id', 'session', 'session_date', 'knesset', 'duration_s', 'quality', 'text', 'shard'])
-    cand = idx[idx.chunk_id.isin(set(W.chunk_id)) & (idx.quality >= WQ.MIN_QUALITY) & idx.speaker_id.isin(WQ.panel_speakers())].copy()
+    cand = idx[idx.chunk_id.isin(set(W.chunk_id)) & (idx.quality >= WQ.MIN_QUALITY) & idx.speaker_id.isin(speakers)].copy()
     sub_ids = set(pd.read_parquet(SUBSET, columns=['chunk_id']).chunk_id)
     rows = []
     for sid, d in cand.groupby('speaker_id'):
+        d = d[~d.session.isin(WQ.EXCLUDE_SESSIONS.get(int(sid), set()))]
         per = d.groupby('session').agg(date=('session_date', 'first'), dur=('duration_s', 'sum')).sort_values(['date', 'session'], ascending=False)
         cum = (per.dur / 60).cumsum().values; part = {}; start = 0
         sm = SPLIT_MIN.get(int(sid), {})
-        for name, want in (('test', sm.get('test', test_min)), ('dev', sm.get('dev', dev_min)), ('train', budget_min)):
+        for name, want, need in (('test', sm.get('test', test_min), None), ('dev', sm.get('dev', dev_min), None), ('train', train_fill(sid), train_need(sid))):
             got = cum[start:] - (cum[start - 1] if start else 0.0)
             k = int(np.argmax(got >= want)) if (got >= want).any() else len(got) - 1
-            if not len(got) or got[k] < want:
-                log(f'  {sid}: only {got[-1] if len(got) else 0:.0f} high-quality {name} minutes (< {want}); raise word_quality.RAW_TARGET_MIN')
+            if not len(got) or got[k] < (need or want):
+                log(f'  {sid}: only {got[-1] if len(got) else 0:.0f} high-quality {name} minutes (< {need or want}); raise word_quality.RAW_TARGET_MIN')
             part.update({per.index[i]: name for i in range(start, start + k + 1)}); start += k + 1
         sel = d[d.session.isin(part)].copy(); sel['part'] = sel.session.map(part)
         sel['session_id'] = sel.session; sel['session'] = sel.session_date + '_' + sel.session_id.astype(str)
@@ -157,10 +185,34 @@ def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_F
     cols = ['chunk_id', 'speaker_id', 'session', 'session_id', 'session_date', 'knesset', 'session_offset_s', 'duration_s', 'quality',
             'text', 'shard', 'part', 'filename', 'start', 'end', 'in_subset', 'train_order', 'budget_cum_min']
     P = P[cols]; P.to_parquet(out, index=False)
-    P1 = pd.read_parquet(PLAN)
-    log(f'plan v2: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers, '
-        f'{int((~P.chunk_id.isin(set(P1.chunk_id))).sum()):,} chunks not in v1 (to extract) -> {out}')
     return P
+
+def plan_v4(out=PLAN_V4, index_path=INDEX):
+    """Run 4's plan (docs/training_plan_v4.md): plan v2's rule for the panel plus
+    word_quality.RUN4_NEW, train filled to TRAIN_FILL (RUN4_PANEL_TRAIN for the rest of
+    the panel).  The panel's test and dev must be plan v2's and v2's train a prefix of
+    v4's, or run 3's cells and controls would not be the same experiment: asserted."""
+    import word_quality as WQ
+    P = _plan_hq(WQ.run4_speakers(), lambda sid: TRAIN_FILL.get(int(sid), RUN4_PANEL_TRAIN),
+                 lambda sid: TRAIN_NEED.get(int(sid), BUDGET_MIN), out, index_path=index_path)
+    check_v4_extends_v2(P)
+    V2 = pd.read_parquet(PLAN_V2)
+    log(f'plan v4: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers, '
+        f'{int((~P.chunk_id.isin(set(V2.chunk_id))).sum()):,} chunks not in v2 (to extract) -> {out}')
+    return P
+
+def check_v4_extends_v2(P, V2=None):
+    """For every speaker of plan v2: the same test and dev chunks, and v2's train is the
+    head of v4's train in train order (so every v2 budget is the same prefix)."""
+    V2 = pd.read_parquet(PLAN_V2) if V2 is None else V2
+    for sid, g2 in V2.groupby('speaker_id'):
+        g4 = P[P.speaker_id == sid]
+        for part in ('test', 'dev'):
+            assert set(g4[g4.part == part].chunk_id) == set(g2[g2.part == part].chunk_id), f'{sid}: plan v4 {part} differs from plan v2'
+        t2 = list(g2[g2.part == 'train'].sort_values('train_order').chunk_id)
+        t4 = list(g4[g4.part == 'train'].sort_values('train_order').chunk_id)
+        assert t4[:len(t2)] == t2, f'{sid}: plan v2 train is not a prefix of plan v4 train'
+    return True
 
 def plan_test07(out=PLAN_TEST07, plan_v2_path=PLAN_V2, index_path=INDEX, min_quality=MIN_QUALITY):
     """The second test set (docs/training_plan_v3.md § 4): the same test sessions as
@@ -258,20 +310,25 @@ def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=T
     def chk(cond, msg):
         nonlocal ok; ok &= bool(cond); print(f'  [{"OK " if cond else "FAIL"}] {msg}')
     print('=== plan ===')
-    test_only = set(P.part) == {'test'}       # plan_test07: a second test set beside plan v2
+    test_only = set(P.part) == {'test'}       # plan_test07: a second test set beside plan v2 (or v4)
+    is_v4 = os.path.basename(plan_path) in (os.path.basename(PLAN_V4), os.path.basename(PLAN_TEST07_V4))
     if test_only:
-        V2 = pd.read_parquet(PLAN_V2); key = lambda D: set(zip(D.speaker_id, D.session_id))
-        chk(key(P) == key(V2[V2.part == 'test']), 'the test sessions are exactly plan v2\'s')
-        chk(not (key(P) & key(V2[V2.part != 'test'])), 'no session shared with plan v2\'s train or dev')
-        chk(set(V2[V2.part == 'test'].chunk_id) == set(P[P.hq].chunk_id), 'plan v2\'s test is the `hq` subset')
+        V2 = pd.read_parquet(PLAN_V4 if is_v4 else PLAN_V2); key = lambda D: set(zip(D.speaker_id, D.session_id))
+        chk(key(P) == key(V2[V2.part == 'test']), 'the test sessions are exactly the base plan\'s')
+        chk(not (key(P) & key(V2[V2.part != 'test'])), 'no session shared with the base plan\'s train or dev')
+        chk(set(V2[V2.part == 'test'].chunk_id) == set(P[P.hq].chunk_id), 'the base plan\'s test is the `hq` subset')
         chk((P.quality >= MIN_QUALITY).all(), f'every chunk has quality >= {MIN_QUALITY}')
+        if is_v4:
+            T3 = pd.read_parquet(PLAN_TEST07)
+            chk(set(P[P.speaker_id.isin(T3.speaker_id)].chunk_id) == set(T3.chunk_id), 'the panel\'s rows are panel_test07\'s, chunk for chunk')
     for sid, g in ([] if test_only else P.groupby('speaker_id')):
         by = {p: set(x.session) for p, x in g.groupby('part')}
         chk(not (by.get('train', set()) & by.get('test', set())) and not (by.get('train', set()) & by.get('dev', set())) and not (by.get('dev', set()) & by.get('test', set())),
             f'{sid}: no session on two sides')
         mins = g.groupby('part').duration_s.sum() / 60
         floor = SPLIT_MIN.get(int(sid), {}).get('test', TEST_FLOOR_MIN) if os.path.abspath(plan_path) != os.path.abspath(PLAN) else TEST_FLOOR_MIN
-        chk(mins.get('test', 0) >= floor * 0.9 and mins.get('train', 0) >= budget_min, f'{sid}: test {mins.get("test", 0):.0f} min, dev {mins.get("dev", 0):.0f}, train {mins.get("train", 0):.0f}')
+        need = TRAIN_NEED.get(int(sid), budget_min) if is_v4 else budget_min
+        chk(mins.get('test', 0) >= floor * 0.9 and mins.get('train', 0) >= need, f'{sid}: test {mins.get("test", 0):.0f} min, dev {mins.get("dev", 0):.0f}, train {mins.get("train", 0):.0f} (needs {need})')
         dates = g.groupby('part').session_date.agg(['min', 'max'])
         chk(dates.loc['train', 'max'] <= dates.loc['test', 'min'], f'{sid}: train ends {dates.loc["train", "max"]} before test starts {dates.loc["test", "min"]}')
         tr = g[g.part == 'train'].sort_values('train_order')
@@ -282,7 +339,12 @@ def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=T
         import word_quality as WQ
         W = pd.read_parquet(WQ.OUT); ok_ids = set(W[WQ.word_ok(W)].chunk_id)
         chk((P.quality >= WQ.MIN_QUALITY).all() and P.chunk_id.isin(ok_ids).all(), f'every chunk (test, dev, train) has quality >= {WQ.MIN_QUALITY} and passes the word rule')
-        chk(sorted(P.speaker_id.unique()) == sorted(WQ.panel_speakers()), f'speakers are the panel plus {WQ.PANEL_ADD}')
+        if is_v4:
+            chk(sorted(P.speaker_id.unique()) == sorted(WQ.run4_speakers()), f'speakers are the panel plus {WQ.PANEL_ADD} and {WQ.RUN4_NEW}')
+            try: chk(check_v4_extends_v2(P), 'plan v2\'s test and dev are kept, and its train is a prefix of v4\'s')
+            except AssertionError as e: chk(False, str(e))
+        else:
+            chk(sorted(P.speaker_id.unique()) == sorted(WQ.panel_speakers()), f'speakers are the panel plus {WQ.PANEL_ADD}')
         bad = [(s, x) for s, xs in WQ.EXCLUDE_SESSIONS.items() for x in xs if ((P.speaker_id == s) & (P.session_id == x)).any()]
         chk(not bad, f'excluded sessions absent {sorted(WQ.EXCLUDE_SESSIONS.items())}')
     if not check_audio:
@@ -306,7 +368,7 @@ def upload(repo, audio_dir=AUDIO, plan_path=PLAN):
     api = HfApi(); api.create_repo(repo, repo_type='dataset', private=True, exist_ok=True)
     P = pd.read_parquet(plan_path)
     name = os.path.basename(plan_path)
-    selection = ('alignment quality >= 0.7' if name in ('panel_plan.parquet', 'panel_test07.parquet') else
+    selection = ('alignment quality >= 0.7' if name == 'panel_plan.parquet' or name.startswith('panel_test07') else
                  'alignment quality >= 0.95 with the word rule of src/training/word_quality.py (high-quality data only, every split)')
     card = f"""---
 license: cc-by-sa-4.0
@@ -335,7 +397,7 @@ def download(repo, audio_dir=AUDIO):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest='cmd', required=True)
-    sub.add_parser('plan'); sub.add_parser('plan-v2'); sub.add_parser('plan-test07')
+    sub.add_parser('plan'); sub.add_parser('plan-v2'); sub.add_parser('plan-v4'); sub.add_parser('plan-test07')
     e = sub.add_parser('extract'); e.add_argument('--max-shards', type=int); e.add_argument('--prefetch', type=int, default=2); e.add_argument('--shards', nargs='+')
     v = sub.add_parser('verify'); v.add_argument('--no-audio', action='store_true')
     for c in ('upload', 'download'): sub.add_parser(c).add_argument('--repo', required=True)
@@ -343,7 +405,10 @@ if __name__ == '__main__':
     a = ap.parse_args()
     if a.cmd == 'plan': print(plan_summary(plan()).to_string())
     elif a.cmd == 'plan-v2': print(plan_summary(plan_v2()).to_string())
-    elif a.cmd == 'plan-test07': plan_test07()
+    elif a.cmd == 'plan-v4': print(plan_summary(plan_v4()).to_string())
+    elif a.cmd == 'plan-test07':
+        base = a.plan if a.plan != PLAN else PLAN_V2           # --plan names the base plan here
+        plan_test07(out=TEST07_OF[os.path.abspath(base)] if os.path.abspath(base) in TEST07_OF else PLAN_TEST07, plan_v2_path=base)
     elif a.cmd == 'extract': extract(plan_path=a.plan, max_shards=a.max_shards, prefetch=a.prefetch, shards=a.shards)
     elif a.cmd == 'verify': sys.exit(0 if verify(plan_path=a.plan, check_audio=not a.no_audio) else 1)
     elif a.cmd == 'upload': upload(a.repo, plan_path=a.plan)
