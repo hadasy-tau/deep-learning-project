@@ -104,11 +104,12 @@ pass the word rule, and the plan built from them:
 
 All the data work happens off the GPU:
 
-1. **Laptop:** word scores, the plans, the gate.
-2. **A CPU pod:** `box/data_v4.sh` extracts the audio from the corpus, verifies it, packs one tar per
-   speaker and uploads to `knesset-asr/knesset-committees-panel-v4` (private).
-3. **A GPU pod** (4× A100 SXM 80 GB, Secure cloud) runs `box/pod_v4.sh`:
-   - **boot**, about 15 minutes: deps, weights, the tars and run 3's results, in parallel.
+1. **Laptop:** the word scores, the plans and the gate. Then `box/data_v4.sh` extracts the 33,061
+   new clips (137 h) from the corpus. That means reading 387 of its 410 shards, about 300 GB, to
+   keep about 16 GB. It verifies the audio and adds the WAVs and both v4 plans to
+   `knesset-asr/knesset-committees-panel-hq`, beside plan v2's clips, which do not change.
+2. **A GPU pod** (4× A100 SXM 80 GB, Secure cloud) runs `box/pod_v4.sh`:
+   - **boot**, about 15 minutes: deps, weights, the audio and run 3's results, in parallel.
    - **run:** one worker per GPU on a shared queue (`box/jobs_v4.py`). The queue starts with the
      overfit check, then the base transcriptions, then the lr check. The 720 and 1,440-minute jobs
      start the moment the lr is decided.

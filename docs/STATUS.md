@@ -46,8 +46,8 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
      on the ≥ 0.7 test).
    - **Prepared:** the word scores (2,295 more sessions), `panel_plan_v4.parquet` and
      `panel_test07_v4.parquet`, both verified, and the queue, about 8.4 GPU-hours.
-   - **Still to do:** the audio on a CPU pod (`box/data_v4.sh`), then the GPU pod
-     (`box/pod_v4.sh`).
+   - **Still to do:** extract the audio on the laptop into `-panel-hq` (`box/data_v4.sh`), then the
+     GPU pod (`box/pod_v4.sh`).
 3. **KL regularization to the base model.**
 4. Later: a personal text LM against an other-speakers LM; similar-speaker groups; speaker-
    conditioned models. Not recommended now: test-time adaptation, in-context learning, prompting.
@@ -79,6 +79,6 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
 - Run 2's adapters and per-cell results: `knesset-asr/knesset-committees-adapters`. Run 3's:
   `knesset-asr/knesset-committees-v3-results` (private); its tables are also in
   `src/training/outputs/` (`results_v3.csv`, `tuning_v3.csv`, `recipe_v3.json`).
-- The panel audio: `knesset-asr/knesset-committees-panel` (plan v1), `-panel-hq` (plan v3, complete),
-  `-panel-v4` (run 4, one tar per speaker; written by `box/data_v4.sh`).
+- The panel audio: `knesset-asr/knesset-committees-panel` (plan v1), `-panel-hq` (plan v3's clips,
+  complete; run 4's are being added by `box/data_v4.sh`).
 - Run 4's results will go to `knesset-asr/knesset-committees-v4-results` (private).
