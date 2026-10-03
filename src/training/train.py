@@ -155,7 +155,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
                method='lora', budget=30, rank=8, lr=None, seed=0,
                epochs=8, batch=8, grad_accum=1, timestamps=False,
                train_rows=None, dev_rows=None, grad_ckpt=None, num_workers=4,
-               tag='', select='loss', select_refs=None, select_other=None,
+               tag='', select='loss',
                max_steps=None, eval_steps=EVAL_STEPS, patience=None, dropout=None,
                augment='none', keep_adapter=True):
     """Train one cell. Returns the output dir; skips it if already finished.
@@ -172,11 +172,9 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     pass: 823 -> 518 ms per LoRA step on an A100 without it, at 21 GB peak.
     tag: appended to the cell name (e.g. 'verbatim' when the targets are not the
     protocol), so variants of one recipe never collide.
-    select: 'loss' picks the epoch with the lowest dev loss; 'forgiven' generates
-    on the dev set each epoch and picks the lowest forgiven-shared WER against
-    select_refs (the protocol dev text) with select_other (arm A's dev
-    transcription) -- the test metric, not the loss that rewards omission
-    (docs/training_next.md § A2).  ~10-20 s per epoch on an A100.
+    select: 'loss', the checkpoint with the lowest dev loss.  Selection on dev
+    forgiven-shared WER ('forgiven', the second run's runs A and B) is removed with
+    that count (docs/personalization_research.md § 1.5).
 
     Step mode (docs/training_plan_v3.md), off unless max_steps is given:
     max_steps: the same number of optimiser steps for every budget (epochs is then
@@ -269,19 +267,9 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
           f', base weights {base_dtype}, grad checkpointing {grad_ckpt}'
           f', lr {lr:g}, method {method}')
 
+    if select != 'loss':
+        raise ValueError(f"select={select!r}: only 'loss' remains (forgiven-WER selection was removed)")
     compute_metrics = None
-    if select == 'forgiven':
-        assert select_refs is not None and select_other is not None, 'select=forgiven needs the dev protocol text and arm A dev hyps'
-        from targets import forgiven_score
-        import evaluate as EV
-        pad = proc.tokenizer.pad_token_id
-        def compute_metrics(ev):
-            preds, labels = ev.predictions, ev.label_ids
-            preds = np.where(preds < 0, pad, preds)
-            hyps = proc.tokenizer.batch_decode(preds, skip_special_tokens=True)
-            f = forgiven_score(select_refs, hyps, select_other); st = EV.score(select_refs, hyps)
-            return dict(forgiven_wer=float(f.werr.sum() / f.n_words.sum()), wer=float(st.werr.sum() / st.n_words.sum()),
-                        runaway=int(st.runaway.sum()))
     if max_steps:                    # step mode
         sched = dict(max_steps=max_steps, warmup_steps=WARMUP_STEPS, lr_scheduler_type='constant_with_warmup',
                      eval_strategy='steps', save_strategy='steps', eval_steps=eval_steps, save_steps=eval_steps)
@@ -292,9 +280,9 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
         output_dir=out, per_device_train_batch_size=batch,
         gradient_accumulation_steps=grad_accum, learning_rate=lr,
         weight_decay=0.01, logging_steps=5, **sched,       # the training-loss curve: one point every 5 steps
-        load_best_model_at_end=True, metric_for_best_model='forgiven_wer' if select == 'forgiven' else 'eval_loss',
+        load_best_model_at_end=True, metric_for_best_model='eval_loss',
         greater_is_better=False, save_total_limit=3,
-        predict_with_generate=(select == 'forgiven'), generation_max_length=448,
+        predict_with_generate=False, generation_max_length=448,
         bf16=use_bf16, fp16=use_fp16, report_to=[], seed=seed,
         remove_unused_columns=False, label_names=['labels'],
         per_device_eval_batch_size=2 * batch,
@@ -344,7 +332,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     meta = dict(global_step=st.global_step, epochs=(float(st.epoch) if max_steps else epochs), train_chunks=len(tr),
                 train_minutes=float(tr.duration_s.sum() / 60), dev_chunks=len(dev),
                 best_eval_loss=min((e['eval_loss'] for e in evals), default=None), evals=evals,
-                select=select, best_epoch=(min(evals, key=lambda e: e['eval_forgiven_wer'] if select == 'forgiven' else e['eval_loss'])['epoch'] if evals else None),
+                select=select, best_epoch=(min(evals, key=lambda e: e['eval_loss'])['epoch'] if evals else None),
                 base_dtype=str(base_dtype), grad_ckpt=bool(grad_ckpt), tag=tag,
                 max_steps=max_steps, eval_steps=eval_steps if max_steps else None, patience=patience, dropout=dropout,
                 augment=augment, base_eval_loss=base_eval_loss,

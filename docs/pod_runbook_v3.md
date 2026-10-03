@@ -43,7 +43,7 @@ nothing here has timed one.
 | `sanity` | overfit check (loss must fall) + one timed tuning run | no | ~5 min |
 | `tune` | stages A (lr), B (rank × dropout), C (augmentation) on 4 speakers × 5 / 80 min; each picked by rule → `outputs/recipe_v3.json` | **no** — validation only | ~3.2 h |
 | `base` | base B on each speaker's high-quality test vs the error map: the hard-stop check | base model only | ~0.3 h |
-| `final` | 12 speakers × 5 / 20 / 80 min, seed 0; the 2-fold control at each budget; both test sets; forgiven count on | yes, once | ~4 h |
+| `final` | 12 speakers × 5 / 20 / 80 min, seed 0; the 2-fold control at each budget; both test sets (the run also scored the forgiven count, since withdrawn) | yes, once | ~4 h |
 | `seeds` | seeds 1 and 2 at 80 min, own adapters and their controls | yes | ~2.5 h |
 | `summary` | `outputs/results.csv`, a last backup | — | seconds |
 
@@ -133,7 +133,6 @@ The backup already holds everything (`results/`, `runs/`, `runs_tune/`, `results
 2. **The base check:** the table `v3_decide.py base` printed.
 3. **The result, per budget:**
    - **personalization:** median `personalization_rel` over speakers, and how many speakers have `personalization_p < 0.05`, on the high-quality test (`personalization_*`) and on the ≥ 0.7 test (`test07.personalization_*`);
-   - **the forgiven count** beside both (`*_f`). On the ≥ 0.7 test, trust a gain only if the forgiven count agrees;
    - **the quality bands:** where the gain was earned (`test07.bands.*`).
 4. **For whom:** the speakers whose personal effect is significant, and whether it holds across seeds 0, 1 and 2 at 80 min. That is the question the seeds were added to answer.
 5. **The style flag:** how many cells have `style_not_speaker`. On high-quality data it should be rare; if not, say so.

@@ -83,6 +83,7 @@ def count_errors(seg):
 # (evaluate.score), '_f' the protocol-aware one (error_analysis.forgiven_counts,
 # which adds werr_A_f, S_A_f, D_A_f, I_A_f and the B set).  Everything downstream
 # keeps the standard output names, so the same chain runs on either measure.
+# The '_f' measure is withdrawn as evidence (docs/personalization_research.md § 1.5); the standard count is the result.
 def corpus_scores(df, suffix=''):
     return pd.Series({'chunks': len(df), 'hours': df.duration_s.sum() / 3600, 'ref_words': int(df.n_words.sum()),
                       'WER_A': df[f'werr_A{suffix}'].sum() / df.n_words.sum(), 'WER_B': df[f'werr_B{suffix}'].sum() / df.n_words.sum(),
@@ -275,7 +276,8 @@ def run(out=OUT, n_boot=1000, n_perm=2000, verbose=True, scoring='standard', seg
     """The whole chain.  scoring='standard' is Stage 1's count; 'forgiven' is the
     protocol-aware one (error_analysis.forgiven_counts) run through the identical
     chain, written with `_forgiven` before the extension.  `seg` lets a caller
-    reuse the scored chunk table between the two."""
+    reuse the scored chunk table between the two.  The 'forgiven' outputs are
+    withdrawn as evidence (docs/personalization_research.md § 1.5); they are written only as a record."""
     assert scoring in ('standard', 'forgiven'), scoring
     os.makedirs(out, exist_ok=True); log = print if verbose else (lambda *a, **k: None)
     f = '' if scoring == 'standard' else '_f'; tagf = '' if scoring == 'standard' else '_forgiven'
@@ -336,7 +338,8 @@ def compare(std, fgv, n_bottom=40):
     return out
 
 def run_all(out=OUT, verbose=True, **kw):
-    """Both scorings from one scored chunk table, plus the comparison."""
+    """Both scorings from one scored chunk table, plus the comparison.  The forgiven
+    side is withdrawn as evidence (docs/personalization_research.md § 1.5); prefer run(scoring='standard')."""
     std = run(out=out, verbose=verbose, scoring='standard', **kw)
     fgv = run(out=out, verbose=verbose, scoring='forgiven', seg=std['seg'], **kw)
     cmp_ = compare(std, fgv)

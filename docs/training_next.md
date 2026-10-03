@@ -1,5 +1,7 @@
 # What to try next: an investigation into improving the adaptation
 
+> **Note (2026-10-03): the forgiven-shared count is withdrawn.** Every "forgiven" or "protocol-aware" number and idea below assumed that a word two models produce and the protocol lacks was spoken; on human-corrected committee clips only about half were (`docs/personalization_research.md` § 1.5). They are kept as a record of what was measured, not as evidence. The standard (protocol) counts stand. A1 and A2 below are built on that assumption; A2 is removed from the code.
+
 Written 2026-09-20 at the end of the second run (`docs/training_run2.md`), before the pod was
 stopped. It sets out what the runs permit and rule out, what the literature says, and a
 ranked plan with costs, so the next session can queue work the way this one did.

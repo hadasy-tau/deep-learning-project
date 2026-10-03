@@ -13,15 +13,12 @@ The acceptance rule from docs/adaptation_plan.md is applied in the summary,
 not hidden: a gain that comes mostly from fewer insertions (share of the
 improvement that is insertions > 0.5) is flagged `style_not_speaker`.
 
-Two additions from docs/training_handoff.md § Before the second run:
+The forgiven-shared count (an inserted word the other arm also produced is not
+charged; `*_f` columns, --forgiven, --select forgiven) is removed: it assumed that two
+models agreeing against the protocol means the protocol is wrong, and on human-corrected
+committee clips that did not hold (docs/personalization_research.md § 1.5).  The second
+and third runs' result files still carry `*_f` columns; the summary drops them.
 
-  forgiven-shared WER   with --forgiven, every cell is also scored under the
-        protocol-aware count (error_analysis.forgiven_counts): an inserted word
-        that the OTHER arm also produced at that chunk is not charged.  Arm A's
-        transcription of each speaker's test set is cached once like arm B's.
-        `*_f` columns.  Off by default since plan v3, which trains and tests on
-        high-quality clips only (docs/training_plan_v3.md); the second run's rows
-        carry it.
   the cross-speaker control (D3)   --control-folds K trains K adapters, each on a
         budget-matched pool drawn from the panel speakers of the other folds,
         and evaluates every speaker on the adapter that never saw them.  K=2 is
@@ -49,8 +46,7 @@ collects the validation results into outputs/tuning.csv.
 The second test set (docs/training_plan_v3.md § 4).  --test07-plan panel_test07.parquet
 also scores every cell and every control evaluation on plan v2's test sessions at
 quality >= 0.7 (materialize.py plan-test07): `test07.*` columns beside the high-quality
-ones, always with the forgiven-shared count (arm A on it, cached once per speaker) and
-split by quality band (`test07.bands.q070` ... `q095`).  The high-quality test is a
+ones, split by quality band (`test07.bands.q070` ... `q095`).  The high-quality test is a
 subset of it, so its hypotheses are reused and only the rest is transcribed.  A cell
 scored before the flag was given gets its test07 scores on the next run, from its
 saved adapter.
@@ -91,43 +87,29 @@ def _shares(s):
     tot = max(int(s.werr.sum()), 1)
     return dict(S=int(s.S.sum()) / tot, D=int(s.D.sum()) / tot, I=int(s.I.sum()) / tot, runaway=int(s.runaway.sum()))
 
-from targets import forgiven_score          # the protocol-aware per-chunk count, shared with train.py's checkpoint selection
-
-def _fshares(s):
-    tot = max(int(s.werr.sum()), 1)
-    return dict(S=int(s.S.sum()) / tot, D=int(s.D.sum()) / tot, I=int(s.I.sum()) / tot, Ish=int(s.Ish.sum()))
-
-def compare(test, hb, ht, ha):
-    """Base vs tuned hypotheses on the same chunks: standard WER, then the
-    forgiven-shared count against arm A's transcription `ha`.  One dict, the
-    forgiven fields suffixed _f."""
+def compare(test, hb, ht):
+    """Base vs tuned hypotheses on the same chunks: WER and CER, the S/D/I shares,
+    the paired bootstrap."""
     import evaluate as EV
     sb, st = EV.score(test.text, hb), EV.score(test.text, ht)
     pb = EV.paired_bootstrap(sb, st)
-    res = dict(**pb, base=_shares(sb), tuned=_shares(st),
-               cer_base=float(sb.cerr.sum() / sb.n_chars.sum()), cer_tuned=float(st.cerr.sum() / st.n_chars.sum()))
-    if ha is not None:
-        fb, ft = forgiven_score(test.text, hb, ha), forgiven_score(test.text, ht, ha)
-        pf = EV.paired_bootstrap(fb, ft)
-        res.update({k + '_f': v for k, v in pf.items() if k not in ('n_segments', 'n_words')}, base_f=_fshares(fb), tuned_f=_fshares(ft))
-    return res
+    return dict(**pb, base=_shares(sb), tuned=_shares(st),
+                cer_base=float(sb.cerr.sum() / sb.n_chars.sum()), cer_tuned=float(st.cerr.sum() / st.n_chars.sum()))
 
 QBANDS = ((0.70, 0.80), (0.80, 0.90), (0.90, 0.95), (0.95, 1.01))
 
-def compare_bands(test, hb, ht, ha):
+def compare_bands(test, hb, ht):
     """compare() within each alignment-quality band of the >= 0.7 test set: where the
     adapter helps, on the clean clips or on the hard ones the high-quality filter drops."""
     import evaluate as EV
     sb, st = EV.score(test.text, hb), EV.score(test.text, ht)
-    fb, ft = forgiven_score(test.text, hb, ha), forgiven_score(test.text, ht, ha)
     out = {}
     for lo, hi in QBANDS:
         m = ((test.quality >= lo) & (test.quality < hi)).values
         if not m.any(): continue
-        pb = EV.paired_bootstrap(sb[m], st[m]); pf = EV.paired_bootstrap(fb[m], ft[m])
+        pb = EV.paired_bootstrap(sb[m], st[m])
         out[f'q{round(lo * 100):03d}'] = dict(minutes=float(test.duration_s[m].sum() / 60), n_segments=int(m.sum()),
-                                             **{k: pb[k] for k in ('wer_base', 'wer_tuned', 'delta_abs', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot')},
-                                             **{k + '_f': pf[k] for k in ('wer_base', 'wer_tuned', 'delta_abs', 'delta_rel', 'p_boot')})
+                                             **{k: pb[k] for k in ('wer_base', 'wer_tuned', 'delta_abs', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot')})
     return out
 
 def score_test07(T07, speaker, arm, test, ht, model, proc, device, audio_dir, batch, name):
@@ -141,12 +123,11 @@ def score_test07(T07, speaker, arm, test, ht, model, proc, device, audio_dir, ba
     known.update(zip(rest.chunk_id, EV.transcribe_short(model, proc, rest, audio_dir, batch=batch, device=device)))
     ht7 = [known[c] for c in t07.chunk_id]
     hb7 = base_hyps(arm, speaker, t07, audio_dir, batch, data='test07')
-    ha7 = base_hyps(OTHER_ARM[arm], speaker, t07, audio_dir, batch, data='test07')
     json.dump(dict(chunk_ids=list(t07.chunk_id), hyps=ht7), open(os.path.join(RESULTS, name + '.test07.hyps.json'), 'w', encoding='utf-8'), ensure_ascii=False)
     res = dict(n_test=int(len(t07)), test_minutes=float(t07.duration_s.sum() / 60), hq_share=float(t07.duration_s[t07.hq].sum() / t07.duration_s.sum()),
-               **compare(t07, hb7, ht7, ha7), bands=compare_bands(t07, hb7, ht7, ha7))
+               **compare(t07, hb7, ht7), bands=compare_bands(t07, hb7, ht7))
     print(f'{name} on the >= 0.7 test: WER {res["wer_base"]:.4f} -> {res["wer_tuned"]:.4f} ({res["delta_rel"]:+.1%}, p {res["p_boot"]:.3f}); '
-          f'forgiven {res["delta_rel_f"]:+.1%}; ' + ' '.join(f'{k} {v["delta_rel"]:+.1%}' for k, v in res['bands'].items()), flush=True)
+          + ' '.join(f'{k} {v["delta_rel"]:+.1%}' for k, v in res['bands'].items()), flush=True)
     return res
 
 def add_test07(out_json, T07, arm, adapter, audio_dir, batch):
@@ -186,9 +167,8 @@ OTHER_ARM = {'A': 'B', 'B': 'A'}
 
 def part_hyps(arm, speaker, part, rows, audio_dir, batch, model=None):
     """The base model on a speaker's train or dev chunks, cached per (arm, speaker,
-    part) -- the raw material for the semi-verbatim targets (targets.py) and for
-    checkpoint selection on dev forgiven WER (train.py).  `model` lets a caller
-    keep one loaded model across speakers."""
+    part) -- the raw material for the semi-verbatim targets (targets.py).  `model`
+    lets a caller keep one loaded model across speakers."""
     import evaluate as EV
     tag = EV.ARMS[arm].replace('/', '__')
     path = os.path.join(RESULTS, f'hyps_{arm}_{speaker}_{part}_{tag}.json')
@@ -220,6 +200,7 @@ def _train_meta(adapter):
     p = os.path.join(adapter, 'train_meta.json')
     return json.load(open(p)) if os.path.exists(p) else {}
 
+# ('…', 'forgiven') named the second run's cells selected on dev forgiven WER ('selF'); that selection is removed
 RECIPE_TAG = {('protocol', 'loss'): '', ('protocol', 'forgiven'): 'selF', ('verbatim', 'loss'): 'verbatim', ('verbatim', 'forgiven'): 'verbatim-selF'}
 
 def full_tag(targets, select, step):
@@ -241,21 +222,9 @@ def apply_targets(P, targets):
     P.loc[m, 'text'] = P.loc[m, 'chunk_id'].map(T).fillna(P.loc[m, 'text'])
     return P
 
-def select_kw(P_protocol, dev_rows, select, audio_dir, eval_batch, arm):
-    """What train_cell needs for checkpoint selection on dev forgiven WER: the protocol
-    dev text (not the training target) and arm A's dev transcription, cached."""
-    if select != 'forgiven': return {}
-    refs = P_protocol.set_index('chunk_id').loc[dev_rows.chunk_id, 'text'].tolist()
-    other = []
-    for sid, g in dev_rows.groupby('speaker_id', sort=False):
-        d = P_protocol[(P_protocol.speaker_id == sid) & (P_protocol.part == 'dev')].reset_index(drop=True)
-        h = dict(zip(d.chunk_id, part_hyps(OTHER_ARM[arm], int(sid), 'dev', d, audio_dir, eval_batch)))
-        other += [h[c] for c in g.chunk_id]
-    return dict(select='forgiven', select_refs=refs, select_other=other)
-
-def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_override=None, forgiven=False, targets='protocol', select='loss', step=None, T07=None):
+def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_override=None, targets='protocol', select='loss', step=None, T07=None):
     import train as T, evaluate as EV
-    if model_override:                         # smoke tests: both arms, so the other-arm transcription is tiny too
+    if model_override:                         # smoke tests
         for a in T.ARMS: T.ARMS[a] = model_override; EV.ARMS[a] = model_override
     c = {**c, 'lr': c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']]}   # the rate actually used, so the summary can join on it
     step = step or {}
@@ -269,19 +238,16 @@ def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_overr
     t0 = time.time(); phase = {}
     Pt = apply_targets(P, targets)
     spk = Pt[Pt.speaker_id == c['speaker']]
-    skw = select_kw(P, spk[spk.part == 'dev'], select, audio_dir, eval_batch, c['arm'])
     adapter = T.train_cell(spk, audio_dir, RUNS, c['speaker'], arm=c['arm'], site=c['site'], method=c['method'], budget=c['budget'],
-                           rank=c['rank'], lr=c['lr'], seed=c['seed'], epochs=epochs, batch=batch, grad_accum=grad_accum, tag=tag, **skw, **step_kw(step))
+                           rank=c['rank'], lr=c['lr'], seed=c['seed'], epochs=epochs, batch=batch, grad_accum=grad_accum, tag=tag, **step_kw(step))
     phase['train'] = time.time() - t0
     spk = P[P.speaker_id == c['speaker']]      # scoring: the protocol test text
     test = spk[spk.part == 'test'].reset_index(drop=True)
     data = step.get('data', '')
     t = time.time(); hb = base_hyps(c['arm'], c['speaker'], test, audio_dir, eval_batch, model_override, data); phase['base'] = time.time() - t
-    # arm A's (the other arm's) transcription of the same chunks, for the forgiven-shared count; cached per speaker
-    t = time.time(); ha = base_hyps(OTHER_ARM[c['arm']], c['speaker'], test, audio_dir, eval_batch, data=data) if forgiven else None; phase['other_arm'] = time.time() - t
     t = time.time(); model, proc, device = EV.load(c['arm'], adapter=adapter); phase['load_tuned'] = time.time() - t
     t = time.time(); ht = EV.transcribe_short(model, proc, test, audio_dir, batch=eval_batch, device=device); phase['transcribe_tuned'] = time.time() - t
-    t = time.time(); cmp = compare(test, hb, ht, ha); phase['score'] = time.time() - t
+    t = time.time(); cmp = compare(test, hb, ht); phase['score'] = time.time() - t
     if T07 is not None:
         t = time.time(); cmp['test07'] = score_test07(T07, c['speaker'], c['arm'], test, ht, model, proc, device, audio_dir, eval_batch, name); phase['test07'] = time.time() - t
     del model
@@ -293,8 +259,7 @@ def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_overr
     os.makedirs(RESULTS, exist_ok=True)
     json.dump(res, open(out_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False, default=float)
     json.dump(dict(chunk_ids=list(test.chunk_id), hyps=ht), open(os.path.join(RESULTS, name + '.hyps.json'), 'w', encoding='utf-8'), ensure_ascii=False)
-    f = f'; forgiven {cmp["wer_base_f"]:.4f} -> {cmp["wer_tuned_f"]:.4f} ({cmp["delta_rel_f"]:+.1%}, p {cmp["p_boot_f"]:.3f})' if ha is not None else ''
-    print(f'{name}: WER {cmp["wer_base"]:.4f} -> {cmp["wer_tuned"]:.4f} ({cmp["delta_rel"]:+.1%}, p {cmp["p_boot"]:.3f}){f} '
+    print(f'{name}: WER {cmp["wer_base"]:.4f} -> {cmp["wer_tuned"]:.4f} ({cmp["delta_rel"]:+.1%}, p {cmp["p_boot"]:.3f}) '
           f'in {(time.time()-t0)/60:.1f} min ' + ' '.join(f'{k} {v:.0f}s' for k, v in phase.items()), flush=True)
     return res
 
@@ -323,7 +288,7 @@ def control_folds(speakers, k, seed=0):
     return [sorted(int(s) for s in order[i::k]) for i in range(k)]
 
 def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, budget=80, arm='B', site='both', method='lora',
-                rank=8, lr=None, seed=0, dev_min=15, forgiven=False, targets='protocol', select='loss', step=None, T07=None):
+                rank=8, lr=None, seed=0, dev_min=15, targets='protocol', select='loss', step=None, T07=None):
     """k adapters, each trained on a pool from the speakers NOT in its fold and
     evaluated on the fold's speakers.  With k=1 (the handoff's single adapter)
     the pool spans all the speakers and each is evaluated on an adapter that saw
@@ -352,18 +317,17 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
         tr = pool_budget(Pc, trainers, budget, 'train', seed); dev = pool_budget(Pc, trainers, dev_min, 'dev', seed)
         assert not set(tr.session_id) & held and not set(dev.session_id) & held
         print(f'{name}: pool of {len(trainers)} speakers, {len(tr)} chunks ({tr.duration_s.sum()/60:.1f} min), dev {len(dev)}; evaluates {evals}', flush=True)
-        skw = select_kw(P, dev, select, audio_dir, eval_batch, arm)
         adapter = T.train_cell(Pt, audio_dir, RUNS, label, arm=arm, site=site, method=method, budget=budget, rank=rank, lr=lr, seed=seed,
-                               epochs=epochs, batch=batch, grad_accum=grad_accum, train_rows=tr, dev_rows=dev, tag=tag, **skw, **step_kw(step))
+                               epochs=epochs, batch=batch, grad_accum=grad_accum, train_rows=tr, dev_rows=dev, tag=tag, **step_kw(step))
         t_train = time.time() - t0; meta = _train_meta(adapter)
         per_spk_min = tr.groupby('speaker_id').duration_s.sum().div(60).to_dict()
         model, proc, device = EV.load(arm, adapter=adapter)
         for s in todo:
             t1 = time.time(); test = P[(P.speaker_id == s) & (P.part == 'test')].reset_index(drop=True)
             data = step.get('data', '')
-            hb = base_hyps(arm, s, test, audio_dir, eval_batch, data=data); ha = base_hyps(OTHER_ARM[arm], s, test, audio_dir, eval_batch, data=data) if forgiven else None
+            hb = base_hyps(arm, s, test, audio_dir, eval_batch, data=data)
             ht = EV.transcribe_short(model, proc, test, audio_dir, batch=eval_batch, device=device)
-            cmp = compare(test, hb, ht, ha)
+            cmp = compare(test, hb, ht)
             if T07 is not None: cmp['test07'] = score_test07(T07, s, arm, test, ht, model, proc, device, audio_dir, eval_batch, f'{name}__eval{s}')
             res = dict(cell=f'{name}__eval{s}', speaker=s, arm=arm, site=site, method=method, budget=budget, rank=rank, lr=lr, seed=seed,
                        targets=targets, select=select, control=True, fold=k, folds=folds, trained_on=trainers, saw_own_minutes=float(per_spk_min.get(s, 0.0)),
@@ -373,8 +337,7 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
                        seconds_train=t_train, seconds_eval=time.time() - t1, model=T.ARMS[arm], decode=EV.DECODE)
             json.dump(res, open(os.path.join(RESULTS, f'{name}__eval{s}.json'), 'w', encoding='utf-8'), indent=2, ensure_ascii=False, default=float)
             json.dump(dict(chunk_ids=list(test.chunk_id), hyps=ht), open(os.path.join(RESULTS, f'{name}__eval{s}.hyps.json'), 'w', encoding='utf-8'), ensure_ascii=False)
-            f = f'; forgiven {cmp["wer_base_f"]:.4f} -> {cmp["wer_tuned_f"]:.4f} ({cmp["delta_rel_f"]:+.1%})' if ha is not None else ''
-            print(f'{name} on {s}: WER {cmp["wer_base"]:.4f} -> {cmp["wer_tuned"]:.4f} ({cmp["delta_rel"]:+.1%}, p {cmp["p_boot"]:.3f}){f} in {time.time()-t1:.0f}s', flush=True)
+            print(f'{name} on {s}: WER {cmp["wer_base"]:.4f} -> {cmp["wer_tuned"]:.4f} ({cmp["delta_rel"]:+.1%}, p {cmp["p_boot"]:.3f}) in {time.time()-t1:.0f}s', flush=True)
             out.append(res)
         del model
     return out
@@ -420,8 +383,12 @@ def _recipe(cell):
     tail = cell.split('__eval')[0].split('_seed', 1)[1]
     return tail.split('_', 1)[1] if '_' in tail else ''
 
+import re
+FORGIVEN_COL = re.compile(r'_f$|(^|\.)(base|tuned)_f\.')   # the withdrawn forgiven-shared count, in older result files
+
 def _table(rows, control_budget=80):
     R = pd.json_normalize(rows)
+    R = R.drop(columns=[c for c in R if FORGIVEN_COL.search(c)])
     if 'control' not in R: R['control'] = False
     R['control'] = R.control.fillna(False).astype(bool)
     for col, default in (('targets', 'protocol'), ('select', 'loss')):
@@ -438,8 +405,8 @@ def _table(rows, control_budget=80):
     if len(ctrl):
         R['_recipe'] = R.cell.map(_recipe)
         keys = ['speaker', 'arm', 'site', 'method', 'rank', 'lr', 'seed', 'targets', 'select', '_recipe']
-        vals = ['delta_abs', 'delta_rel', 'wer_tuned', 'ci_lo', 'ci_hi', 'p_boot'] + [c for c in ('delta_abs_f', 'delta_rel_f', 'wer_tuned_f') if c in ctrl] \
-            + [c for c in ctrl if c.startswith('test07.') and ('delta_abs' in c or c in ('test07.delta_rel', 'test07.delta_rel_f'))]
+        vals = ['delta_abs', 'delta_rel', 'wer_tuned', 'ci_lo', 'ci_hi', 'p_boot'] \
+            + [c for c in ctrl if c.startswith('test07.') and ('delta_abs' in c or c == 'test07.delta_rel')]
         ren = {k: k.replace('delta', 'control_delta').replace('wer_tuned', 'wer_control').replace('ci_', 'control_ci_').replace('p_boot', 'control_p_boot') for k in vals}
         vals.append('cell'); ren['cell'] = 'control_cell'     # which control evaluation was joined: personalization_ci reads its hypotheses
         C = R[R.control][keys + ['budget'] + vals].rename(columns=ren)
@@ -450,8 +417,7 @@ def _table(rows, control_budget=80):
         R = R.drop(columns='_recipe')
         R['personalization_abs'] = R.delta_abs - R.control_delta_abs
         R['personalization_rel'] = R.personalization_abs / R.wer_base
-        if 'delta_abs_f' in R: R['personalization_abs_f'] = R.delta_abs_f - R.control_delta_abs_f
-        # the same on the >= 0.7 test set, overall and per quality band, standard and forgiven
+        # the same on the >= 0.7 test set, overall and per quality band
         for c in [c for c in ren if c.startswith('test07.') and 'delta_abs' in c]:
             p = R[c] - R[ren[c]]; R[c.replace('delta_abs', 'personalization_abs')] = p
             R[c.replace('delta_abs', 'personalization_rel')] = p / R[c.replace('delta_abs', 'wer_base')]
@@ -463,21 +429,13 @@ def _hyps(name):
     d = json.load(open(p, encoding='utf-8'))
     return d['chunk_ids'], d['hyps']
 
-def _other_arm_hyps(arm, speaker, chunk_ids):
-    """The other arm's cached base transcription of exactly these chunks (any plan's cache), or None."""
-    for p in sorted(glob.glob(os.path.join(RESULTS, f'base_{OTHER_ARM[arm]}_{speaker}_*.json'))):
-        d = json.load(open(p, encoding='utf-8'))
-        if d['chunk_ids'] == chunk_ids: return d['hyps']
-    return None
-
 def personalization_ci(R, plans=None):
     """A paired bootstrap on the headline number.  personalization_abs = delta(own) -
     delta(control) = WER(control) - WER(own), because both deltas are taken against the
     same base on the same test chunks -- so it is exactly paired_bootstrap(control, own),
     resampling chunks, and needs only the two saved hypothesis files.  Adds
-    personalization_ci_lo / _ci_hi / _p (absolute WER, like ci_lo / ci_hi), the same with
-    _f under the forgiven-shared count when the other arm's transcription is cached, and
-    test07.* for the >= 0.7 test set.  The point estimate must reproduce the joined
+    personalization_ci_lo / _ci_hi / _p (absolute WER, like ci_lo / ci_hi), and test07.*
+    for the >= 0.7 test set.  The point estimate must reproduce the joined
     personalization_abs: an assert, so a wrong control join cannot pass silently."""
     import evaluate as EV
     plans = plans or sorted(glob.glob(os.path.join(HERE, 'panel_*.parquet')))
@@ -485,7 +443,7 @@ def personalization_ci(R, plans=None):
     rows = R.index[~R.control & R.control_cell.notna()]
     sets = [('', '')] + ([('.test07', 'test07.')] if 'test07.personalization_abs' in R else [])
     for _, pre in sets:
-        for c in ('personalization_ci_lo', 'personalization_ci_hi', 'personalization_p', 'personalization_abs_f', 'personalization_ci_lo_f', 'personalization_ci_hi_f', 'personalization_p_f'):
+        for c in ('personalization_ci_lo', 'personalization_ci_hi', 'personalization_p'):
             if pre + c not in R: R[pre + c] = np.nan
     for i in rows:
         r = R.loc[i]
@@ -497,11 +455,6 @@ def personalization_ci(R, plans=None):
             pb = EV.paired_bootstrap(EV.score(refs, ctrl[1]), EV.score(refs, own[1]))
             assert abs(pb['delta_abs'] - r[pre + 'personalization_abs']) < 1e-9, (r.cell, suffix, pb['delta_abs'], r[pre + 'personalization_abs'])
             R.loc[i, [pre + 'personalization_ci_lo', pre + 'personalization_ci_hi', pre + 'personalization_p']] = pb['ci_lo'], pb['ci_hi'], pb['p_boot']
-            ha = _other_arm_hyps(r.arm, int(r.speaker), own[0])
-            if ha is not None:
-                pf = EV.paired_bootstrap(forgiven_score(refs, ctrl[1], ha), forgiven_score(refs, own[1], ha))
-                R.loc[i, [pre + 'personalization_abs_f', pre + 'personalization_ci_lo_f', pre + 'personalization_ci_hi_f', pre + 'personalization_p_f']] = \
-                    pf['delta_abs'], pf['ci_lo'], pf['ci_hi'], pf['p_boot']
     return R
 
 def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
@@ -510,9 +463,9 @@ def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
     R = _table(rows)
     if 'control_cell' in R: R = personalization_ci(R)
     R.to_csv(out, index=False, float_format='%.5g'); print(f'{len(R)} rows ({int(R.control.sum())} control evaluations) -> {out}')
-    cols = [c for c in ['speaker', 'site', 'lr', 'targets', 'select', 'budget', 'seed', 'control', 'n_test', 'train_steps', 'wer_base', 'wer_tuned', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot', 'wer_base_f', 'wer_tuned_f', 'delta_rel_f', 'p_boot_f',
+    cols = [c for c in ['speaker', 'site', 'lr', 'targets', 'select', 'budget', 'seed', 'control', 'n_test', 'train_steps', 'wer_base', 'wer_tuned', 'delta_rel', 'ci_lo', 'ci_hi', 'p_boot',
                         'improvement_from_insertions', 'style_not_speaker', 'control_delta_rel', 'personalization_rel', 'personalization_ci_lo', 'personalization_ci_hi', 'personalization_p',
-                        'test07.n_test', 'test07.hq_share', 'test07.wer_base', 'test07.delta_rel', 'test07.p_boot', 'test07.delta_rel_f', 'test07.personalization_rel', 'test07.personalization_p'] if c in R]
+                        'test07.n_test', 'test07.hq_share', 'test07.wer_base', 'test07.delta_rel', 'test07.p_boot', 'test07.personalization_rel', 'test07.personalization_p'] if c in R]
     print(R[cols].round(4).to_string(index=False))
     return R
 
@@ -525,13 +478,11 @@ if __name__ == '__main__':
     ap.add_argument('--epochs', type=int, default=8); ap.add_argument('--batch', type=int, default=8); ap.add_argument('--grad-accum', type=int, default=1)
     ap.add_argument('--eval-batch', type=int, default=8); ap.add_argument('--model', help='override the arm\'s checkpoint (smoke tests only)')
     ap.add_argument('--audio', default=AUDIO); ap.add_argument('--dry-run', action='store_true'); ap.add_argument('--summary', action='store_true')
-    ap.add_argument('--forgiven', action='store_true', help='also transcribe with arm A and score the forgiven-shared count (off since plan v3)')
     ap.add_argument('--control-folds', type=int, default=0, help='D3: train the cross-speaker control in K folds after the cells (0 = none)')
     ap.add_argument('--control-budget', type=int, default=80); ap.add_argument('--control-only', action='store_true')
     ap.add_argument('--transcribe-parts', action='store_true', help='both arms over every speaker\'s train and dev chunks (cached), then exit')
     ap.add_argument('--build-targets', action='store_true', help='write outputs/targets_verbatim.parquet from the cached train/dev transcriptions, then exit')
     ap.add_argument('--targets', choices=['protocol', 'verbatim'], default='protocol', help='training target text (docs/training_next.md A1)')
-    ap.add_argument('--select', choices=['loss', 'forgiven'], default='loss', help='checkpoint selection: dev loss, or dev forgiven-shared WER (A2)')
     ap.add_argument('--plan', default=PLAN, help='the data plan; panel_plan_v2.parquet = the high-quality plan (docs/training_plan_v3.md)')
     ap.add_argument('--max-steps', type=int, help='step mode: this many optimiser steps for every budget (docs/training_plan_v3.md)')
     ap.add_argument('--eval-steps', type=int, default=20, help='step mode: validate every N steps')
@@ -565,7 +516,7 @@ if __name__ == '__main__':
         import train as T
         for st in steps:
             for c in C: print('  ' + ('[tune] ' if a.tune else '') + T.cell_name(c['speaker'], c['arm'], c['site'], c['method'], c['budget'], c['rank'], c['lr'] if c['lr'] is not None else T.DEFAULT_LR[c['method']], c['seed'],
-                                                full_tag(a.targets, a.select, st)))
+                                                full_tag(a.targets, 'loss', st)))
         if a.control_folds:
             for k, f in enumerate(control_folds(sorted(int(s) for s in P.speaker_id.unique()), a.control_folds, a.seeds[0])): print(f'  ctrl{k}of{a.control_folds}: evaluates {f}')
         sys.exit(0)
@@ -574,12 +525,12 @@ if __name__ == '__main__':
             for c in C: run_tune(c, P, a.audio, a.batch, a.grad_accum, st, a.model)
         tuning_report(); sys.exit(0)
     for st in steps:
-        for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, forgiven=a.forgiven, targets=a.targets, select=a.select, step=st, T07=T07)
+        for c in C: run_cell(c, P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, a.model, targets=a.targets, step=st, T07=T07)
     if a.control_folds:                        # one control per recipe, so every sweep point has a budget-matched 'others' adapter
         for st in steps:
             for cb in (a.control_budgets or [a.control_budget]):
                 for site in a.sites:
                     for lr in a.lrs:
                         run_control(P, a.audio, a.epochs, a.batch, a.grad_accum, a.eval_batch, folds=a.control_folds, budget=cb, arm=a.arms[0], site=site,
-                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], forgiven=a.forgiven, targets=a.targets, select=a.select, step=st, T07=T07)
+                                    method=a.methods[0], rank=a.ranks[0], lr=lr, seed=a.seeds[0], targets=a.targets, step=st, T07=T07)
     summary()

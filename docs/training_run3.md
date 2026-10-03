@@ -12,12 +12,20 @@ plus `recipe_v3.json` and `targets_verbatim.parquet`). Checked complete against 
 was stopped; a second copy of everything but the audio sits on Dolev's laptop. Git keeps the three
 small tables: `src/training/outputs/results_v3.csv`, `tuning_v3.csv` and `recipe_v3.json`.
 
+> **Revised 2026-10-03: the forgiven-shared count is withdrawn.** The run also scored every cell
+> under a count that did not charge an inserted word arm A also produced (`*_f` columns in the
+> result files). It rests on the assumption that two models agreeing against the protocol means
+> the protocol is wrong; on human-corrected committee clips that held only about half the time
+> (`docs/personalization_research.md` § 1.5). Every forgiven number is removed from this report, and the conclusions that
+> leaned on it (the "stenographer" reading, the semi-verbatim recipe) are restated below. The
+> semi-verbatim targets rest on the same assumption.
+
 **The sentence.** On clean data, with the recipe tuned on validation only and the control run at
 every budget and seed, a personal adapter buys **2–3 points of relative WER over an adapter trained
 on anyone else's committee audio**, stably across three seeds, significantly for about a quarter of
 the speaker-seed pairs and never significantly negative. Everything else in the 12–15 % gain is
-domain. The high-quality filter did not stop the adapter from learning the stenographer's omissions:
-under the protocol-aware count the gain on the clean test is zero.
+domain. How much of any of it is the speaker's speech rather than agreement with the protocol,
+which itself differs from what was said by ~18 % of its words, only a human verbatim test can say.
 
 ## What changed from the second run
 
@@ -92,7 +100,7 @@ across 2019–2025, quality ≥ 0.7):
 | error map | .376 | .390 | .344 | .345 | .275 | .228 | .198 | .287 | .328 | .361 | .218 | .306 |
 
 Every speaker scores far *below* the error map, as clean clips must. Medians: **0.135** on the
-high-quality test (0.083 forgiven), **0.244** on the ≥ 0.7 test (0.145 forgiven). The clean test
+high-quality test, **0.244** on the ≥ 0.7 test. The clean test
 has half the error of the second run's, so every relative gain below is measured against a
 smaller base.
 
@@ -105,11 +113,11 @@ bootstrap. Medians over the 12 speakers.
 
 ### Seed 0, all budgets
 
-| budget | own, HQ | control, HQ | **personalization, HQ** | sig. (of 12) | own, ≥0.7 | control, ≥0.7 | **personalization, ≥0.7** | sig. | personalization, forgiven HQ / ≥0.7 |
-|---|---|---|---|---|---|---|---|---|---|
-| 5 min | +4.3 % | +0.3 % | **+3.1 %** | 4 | +4.2 % | +6.7 % | **−1.9 %** | 2 | +6.2 % / +2.8 % |
-| 20 min | +7.5 % | +7.8 % | **+1.6 %** | 3 | +9.7 % | +10.9 % | **+1.4 %** | 5 | +3.1 % / +2.4 % |
-| 80 min | +12.0 % | +10.1 % | **+2.6 %** | 2 | +15.3 % | +14.3 % | **+2.3 %** | 5 | +1.4 % / +2.0 % |
+| budget | own, HQ | control, HQ | **personalization, HQ** | sig. (of 12) | own, ≥0.7 | control, ≥0.7 | **personalization, ≥0.7** | sig. |
+|---|---|---|---|---|---|---|---|---|
+| 5 min | +4.3 % | +0.3 % | **+3.1 %** | 4 | +4.2 % | +6.7 % | **−1.9 %** | 2 |
+| 20 min | +7.5 % | +7.8 % | **+1.6 %** | 3 | +9.7 % | +10.9 % | **+1.4 %** | 5 |
+| 80 min | +12.0 % | +10.1 % | **+2.6 %** | 2 | +15.3 % | +14.3 % | **+2.3 %** | 5 |
 
 "sig." counts speakers with `personalization_p < 0.05` and a positive effect; no speaker is
 significantly negative at any budget.
@@ -145,31 +153,33 @@ Significant in at least two seeds on the ≥ 0.7 test: 556, 23558, 30701, 30752,
 
 ### By alignment-quality band of the ≥ 0.7 test (80 minutes, all seeds, medians)
 
-| band | minutes | base WER | own, standard | own, forgiven | control | personalization | personalization, forgiven |
-|---|---|---|---|---|---|---|---|
-| 0.70–0.80 | 4 | 0.624 | +20.5 % | +11.0 % | +20.4 % | +0.5 % | +1.6 % |
-| 0.80–0.90 | 11 | 0.447 | +19.7 % | +12.4 % | +19.6 % | +4.0 % | +2.7 % |
-| 0.90–0.95 | 14 | 0.304 | +15.7 % | +4.5 % | +14.6 % | +2.5 % | +2.0 % |
-| ≥ 0.95 | 63 | 0.163 | +14.0 % | +2.9 % | +11.6 % | +2.3 % | +2.1 % |
+| band | minutes | base WER | own | control | personalization |
+|---|---|---|---|---|---|
+| 0.70–0.80 | 4 | 0.624 | +20.5 % | +20.4 % | +0.5 % |
+| 0.80–0.90 | 11 | 0.447 | +19.7 % | +19.6 % | +4.0 % |
+| 0.90–0.95 | 14 | 0.304 | +15.7 % | +14.6 % | +2.5 % |
+| ≥ 0.95 | 63 | 0.163 | +14.0 % | +11.6 % | +2.3 % |
 
 ### The style flag, the error mix and the loops
 
 - **`style_not_speaker` fires in 35 of 36 own cells at 80 minutes** (9/12 at 5, 10/12 at 20), and
   in 33 of 36 control evaluations. Insertions fall from 49 % to 34 % of the errors while deletions
-  double, 10 % → 21 %. On the clean test the own adapters' gain is **+11.6 % standard but −1.5 %
-  forgiven** (worse under the forgiven count for 20 of 36 cells); the control is the same
-  (+10.2 % / −1.5 %). On the ≥ 0.7 test: +14.6 % standard, +4.5 % forgiven.
+  double, 10 % → 21 %. The adapters write fewer words the protocol lacks and drop more words it
+  has. Whether the words they stopped writing were spoken (the adapter learned the protocol's
+  omissions) or not (it stopped hallucinating) cannot be read off the protocol: on 23
+  human-corrected committee clips about half of the insertions were real speech
+  ({N}).
 - **Loops.** Base B produces 132 runaway transcriptions over the twelve ≥ 0.7 test sets (9 on the
   clean one); the 80-minute adapters produce 46 (3). The loop guard re-decoded 90 chunks across
   the run (base 2, final 59, seeds 12 batches) and every re-decode compressed less than the
-  original and was kept. Part of the standard gain on the hard clips is loop suppression, which
-  the forgiven count forgives when arm A looped alike.
+  original and was kept. Part of the gain on the hard clips is loop suppression.
 - **Timing.** Cells took a median of 129–157 s at 20 and 80 minutes (train + both test sets);
-  251 s at 5 minutes, where the once-per-speaker base and arm-A transcriptions land.
+  251 s at 5 minutes, where the once-per-speaker base transcriptions land (arm A's too, for the
+  withdrawn forgiven count).
 - **The 5-minute control is nearly untrained**: 13–22 chunks for 140–160 steps at lr 1e-4. It
   gains +0.3 % on the clean test and +6.7 % on the ≥ 0.7 test, which is why the 5-minute
   personalization has opposite signs on the two tests. Read the 5-minute row as noise around
-  zero, with the forgiven count (+6.2 % / +2.8 %) its most favourable face.
+  zero.
 
 ## Conclusions
 
@@ -181,23 +191,24 @@ Significant in at least two seeds on the ≥ 0.7 test: 556, 23558, 30701, 30752,
 2. **Of the 12–15 % an adapter removes, 10–14 points are domain.** Anyone's 80 minutes of
    committee audio buys them. The control at every budget is what makes this readable; without it
    every cell would read as a 12 % personalization.
-3. **The high-quality filter did not remove the stenographer.** The style flag fires in 35 of 36
-   cells, deletions double, and under the protocol-aware count the adapters gain nothing on the
-   clean test. About 7 omitted words per 100 survive the ≥ 0.95 filter, and the loss finds them.
-   The filter changed the *base* (half the error of run 2's test) more than the *objective*. The
-   semi-verbatim target is the remedy that worked in run 2; § Extra tests it on this data.
+3. **The adapters shift the error mix toward the protocol's.** The style flag fires in 35 of 36
+   cells: insertions fall, deletions double. That is consistent with learning the protocol's
+   omissions, but the protocol cannot show it, and the forgiven count that was meant to is
+   withdrawn. The filter changed the *base* (half the error of run 2's test); whether it changed
+   what the adapter learns needs a human reference.
 4. **For whom.** The effect concentrates where the second run found it: the hardest speakers
    (23558 reproducibly, +9–10 % on the ≥ 0.7 test in every seed; 30701; 556) and 30813, where
    the clean-test "personalization" is the control hurting her and the ≥ 0.7 test shows a real
    own-adapter gain. The S1 speakers, where the Hebrew fine-tune had failed and the most room was
    expected, show no personal component in any seed (30831 and 30685), and neither does the
    low-WER speaker 30859. 30752, a control speaker, shows a small consistent effect.
-5. **Where the gain lives.** The standard gain is largest on the hard clips (+20 % at quality
-   0.7–0.9) but half of it is omission there, and almost all of it is on the clean clips (+14 %
-   standard, +3 % forgiven). Personalization is ~0 on the worst band and +2–4 % elsewhere.
-6. **Budget.** 5 minutes gives a small adapter that has not yet learned to omit (the forgiven
-   personalization is largest there, +6 %), 20 minutes is the low point, 80 minutes the best
-   standard number. The curve is shallow; the second run's reading stands.
+5. **Where the gain lives.** The gain against the protocol is largest on the hard clips (+20 % at
+   quality 0.7–0.9) and +14 % on the clean ones; the control matches it in every band.
+   Personalization is ~0 on the worst band and +2–4 % elsewhere, and does not grow on the
+   cleanest clips.
+6. **Budget.** Personalization is +3 / +1.6 / +2.6 % at 5 / 20 / 80 minutes on the clean test,
+   noisy at 5 minutes (the control there is nearly untrained). The curve is shallow; the second
+   run's reading stands.
 7. **Seeds were worth it.** The seed-to-seed SD of a speaker's personalization is 2.4 points, the
    size of the effect; a single-seed ranking of speakers is not reliable, and the per-speaker
    claims above are made only where all three seeds agree.
@@ -208,50 +219,45 @@ Significant in at least two seeds on the ≥ 0.7 test: 556, 23558, 30701, 30752,
 
 ## Extra: semi-verbatim targets at 80 minutes
 
-Added during the run, because conclusion 3 was already visible at seed 0 and the remedy existed:
-the second run's run D, the protocol text with the words both base models heard put back
+Added during the run as the remedy for conclusion 3. **It rests on the withdrawn assumption**:
+a word goes back when both base models produced it, and only about half of such words were spoken
+on the human-corrected clips (`docs/personalization_research.md` § 1.5), so these targets add roughly as many unspoken words as
+spoken ones. The second run's run D, the protocol text with the words both base models produced put back
 (`targets.py`), trained with the same recipe, seed 0, with its own two-fold control. Both arms
 transcribed every train and dev chunk once (12 minutes on 4 GPUs); the targets cover all 4,814
 train/dev chunks, change 53 % of them and put back **6.5 words per 100** (10.7 on the second run's
 ≥ 0.7 data: the clean filter removed four in ten of the omissions, not all). 12 cells + control:
 31 minutes.
 
-| 80 min, seed 0 | own, HQ std / forgiven | control, HQ | personalization, HQ (sig +/−) | own, ≥0.7 std / forgiven | personalization, ≥0.7 (sig +) | forgiven pers., ≥0.7 (sig +) | runaways, ≥0.7 |
-|---|---|---|---|---|---|---|---|
-| protocol targets | +12.0 % / **−1.5 %** | +10.1 % | +2.6 % (2 / 0) | +15.3 % / +5.5 % | +2.3 % (5) | +2.0 % (3) | 44 → 15 |
-| semi-verbatim | +5.8 % / **+4.0 %** | +6.3 % | +1.1 % (1 / 1) | +7.1 % / +6.6 % | **+2.5 % (6)** | **+2.7 % (6)** | 44 → 30 |
+| 80 min, seed 0 | own, HQ | control, HQ | personalization, HQ (sig +/−) | own, ≥0.7 | personalization, ≥0.7 (sig +) | runaways, ≥0.7 |
+|---|---|---|---|---|---|---|
+| protocol targets | +12.0 % | +10.1 % | +2.6 % (2 / 0) | +15.3 % | +2.3 % (5) | 44 → 15 |
+| semi-verbatim | +5.8 % | +6.3 % | +1.1 % (1 / 1) | +7.1 % | +2.5 % (6) | 44 → 30 |
 
-- **The objective was the stenographer's way in, and the semi-verbatim target closes it on clean
-  data too.** Standard and forgiven gains coincide (+5.8 / +4.0 on the clean test, +7.1 / +6.6 on
-  the ≥ 0.7 test, and within a point in every quality band); the insertion share no longer moves
-  (49 → 46 %, deletions 10 → 11 %, against 49 → 34 % and 10 → 21 % under protocol targets); only
-  two speakers are worse under the forgiven count, by under 2 points and not significantly. As in
-  run 2, the standard gain halves, because a model trained to write what was said is scored
-  against a protocol that did not.
-- **The personal component is unchanged, and now earned.** On the ≥ 0.7 test it is +2.5 %
-  standard and +2.7 % forgiven, significant for 6 of 12 speakers on both counts (5 and 3 under
-  protocol targets). On the clean test it shrinks to +1.1 %: there the control gains as much as
-  the own adapter (+6.3 vs +5.8 %) and 30831 is significantly negative (own +5.4 %, control
-  +11.2 %).
+- **The error mix stops moving toward the protocol's.** The insertion share stays put (49 → 46 %,
+  deletions 10 → 11 %, against 49 → 34 % and 10 → 21 % under protocol targets), and the gain
+  against the protocol halves, as it must when the targets contain words the protocol lacks.
+  Whether that is closer to the speech is not measurable here (see the warning above).
+- **The personal component is about the same.** On the ≥ 0.7 test +2.5 %, significant for 6 of 12
+  speakers (5 under protocol targets). On the clean test it shrinks to +1.1 %: there the control
+  gains as much as the own adapter (+6.3 vs +5.8 %) and 30831 is significantly negative (own
+  +5.4 %, control +11.2 %).
 - **For whom, again:** 23558 (+6.5 % clean, +8.5 % ≥ 0.7, both p < 0.001), 30868 (+4.3 / +4.1 %),
   and now 30859 (+3.3 / +2.9 %) and 30685 (+4.3 % on ≥ 0.7, p < 0.001), who showed nothing under
   protocol targets. 30831 and 30843 are negative: for them "more committee Hebrew" beats "their
   own 80 minutes" under either objective.
 - **The style flag is not a useful instrument when the gain is small.** It still fires in 10 of
   12 semi-verbatim cells although the insertion share barely moves, because it is the *share* of
-  a now-small improvement. The S/D/I shares and the forgiven agreement are the evidence.
+  a now-small improvement.
 - **Loops.** The semi-verbatim adapters suppress fewer runaways (44 → 30 against 44 → 15), but,
   unlike run 2 where they *added* loops, none above the base: the loop guard holds.
 
 ## What to do next
 
-- **Report the forgiven and the ≥ 0.7 numbers beside the standard ones**, always. The standard
-  number on the clean test (+12 %) is the one most likely to mislead.
-- **Make the semi-verbatim target the recipe.** Twice now (run 2 on ≥ 0.7 data, this run on
-  ≥ 0.95 data) it makes the standard and forgiven counts agree, hurts no one, and leaves the
-  personal component intact. Data filtering reduces the omissions; only the objective removes
-  their reward. Seeds 1 and 2 of it would complete the picture (12 cells + control each, ~30 min
-  on 4 GPUs).
+- **Build a human verbatim test** before the next training run (`docs/personalization_research.md`
+  § 4, P0): every number above is measured against the protocol, which is ~18 % off the speech.
+- **Do not adopt the semi-verbatim target** on this evidence: its case rested on the forgiven count.
+  Re-score both recipes on the human test first; the hypotheses are saved.
 - **The sharing axis** (similar-speaker groups against random ones, `training_next.md`) is the
   natural next experiment: the control already shows that a random group buys 10 points; the
   question is whether a *similar* group closes the remaining 2–3.

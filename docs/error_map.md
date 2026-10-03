@@ -1,5 +1,7 @@
 # The per-speaker error map — committees corpus
 
+> **Note (2026-10-03):** § The same map, protocol-aware is withdrawn as evidence (`docs/personalization_research.md` § 1.5); the standard count is the result.
+
 Stage 1's analysis, re-done on the corpus the project moved to. Written from the
 run of 2026-09-15; every number is measured. The code is
 `src/evaluation/error_map.py` (plain functions, self-checks at the bottom); the
@@ -195,6 +197,8 @@ measured on audio arm B had trained on, in the cleaner register; the committee n
 honest one.
 
 ## The same map, protocol-aware
+
+> **Withdrawn as evidence (2026-10-03).** This count forgives an insertion arm A also produced, on the reading that two models agreeing means the protocol dropped a spoken word. On human-corrected committee clips about half of such shared words were not spoken (`docs/personalization_research.md` § 1.5). The section and its `committees_*_forgiven.*` tables are kept as a record; cite the standard map.
 
 § Beyond Stage 1 showed that B's insertions are mostly the protocol's omissions. This section
 re-runs the whole map under one alternative count, **forgiven-shared WER**: an inserted word
