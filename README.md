@@ -59,7 +59,8 @@ docs/                          design.md + design.html are the one-page overview
                                the current plan and pod_runbook_v3.md the GPU session --
                                read that one first on the pod; training_run2.md and
                                training_run3.md the runs; personalization_research.md
-                               what to try next; training_handoff.md is historical
+                               what to try next; STATUS.md where it all stands;
+                               docs/archive/ is history, not instructions
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
@@ -103,44 +104,9 @@ KnessetCorpus — so the tables join directly.
 
 ## State
 
-- **Speaker index** — built and published. Text validation passed with zero cross-person
-  errors over 55.4 h held out. Its audio gate (`speaker_index/validate_audio.py`, GPU) has run
-  only on the adaptation panel (run 2: 5.4 % of the panel's chunks closer to another speaker's
-  voice, `docs/training_run2.md` § The audio gate), not over the index; it is the check that
-  would catch both text sources copying the same wrong speaker header.
-- **Chunk corpus** — built and uploaded. Nothing was filtered at build time, deliberately:
-  filtering is the consumer's decision. Filter on `quality` (≥ 0.7 is the recommendation).
-- **Inference** — done. Both arms verified against a fixed 10-chunk sample, then run over a
-  1 h/speaker subset (65,990 chunks, pinned in `src/inference/subset_stage1.parquet`):
-  every subset chunk has both hypotheses, the 22 acceptance checks of
-  `src/inference/validate_final.py` pass, and the result is published as
-  `knesset-asr/knesset-committees-inference`. Corpus WER A 0.417, B 0.324. Arm A is run with
-  the language forced to Hebrew, as B always was; its first, auto-detect run is kept as
-  `hypothesis_A_auto` because Whisper mis-detected 6.7 % of chunks (mostly under 3 s).
-- **Error map** — done (`docs/error_map.md`). After the quality ≥ 0.7 filter: 58,180 chunks,
-  217 h, 267 speakers; corpus WER A 0.387, B 0.292. Every speaker is helped by the fine-tune,
-  median 24 % of A's error removed (52 % on the plenums). Corpus hours do not predict WER; the
-  share of a speaker's chunks the filter removed does (rho ≈ 0.6–0.7), which is the labels
-  question. Subgroup rules separate gain (speaking rate strongest, then religion, nationality,
-  age) or difficulty (religious orientation, gender), never both — the reverse of VoxKnesset.
-  `committees_adaptation_candidates.csv` is the input to the sharing axis. Beyond Stage 1: B's
-  insertions are mostly words arm A also produced (73 %), the digit problem is
-  1 % of errors, the per-speaker ranking is reliable (split-half 0.75–0.85), and 2018–19
-  sessions and the Finance committee are the hard conditions. The "protocol-aware" (forgiven-shared)
-  count that stopped charging for words both models added is **withdrawn**: on human-corrected
-  committee clips only about half of such shared words were actually spoken (docs/personalization_research.md § 1.5);
-  the standard count is the result.
-- **Adaptation** — the second training run is done (`docs/training_run2.md`, 2026-09-20: 11
-  speakers, arm B, LoRA; personal minus control +2 to +5 points, concentrated in the hardest
-  speakers). Plan v3 (`docs/training_plan_v3.md`) followed: 12 speakers, high-quality
-  data only (`src/training/panel_plan_v2.parquet`: 6,887 chunks, 30.0 h, session-disjoint by
-  date), validation-only tuning picked by rule, the budget-matched control at every budget, seeds
-  0-2 at 80 minutes, and a second test set at quality ≥ 0.7 (`panel_test07.parquet`). The audio
-  is `knesset-asr/knesset-committees-panel-hq`. On the pod: `docs/pod_runbook_v3.md`. **Run on
-  2026-10-02: `docs/training_run3.md`** -- personalization +2-3 points of relative WER at 80 minutes,
-  stable over three seeds; the rest of the 12-15 % gain is domain. The protocol itself differs from the
-  speech by ~18 % of its words, so how much of any gain is the speaker rather than the reference needs a
-  human verbatim test (`docs/personalization_research.md`).
+Where the project stands, what the runs found, what comes next and which earlier claims are
+withdrawn: **[`docs/STATUS.md`](docs/STATUS.md)**, the one document kept current. The rest of
+`docs/` is reference or dated record; `docs/archive/` is history, not instructions.
 
 Self-checks, no GPU and no network beyond the cached data:
 

@@ -482,7 +482,7 @@ if __name__ == '__main__':
     ap.add_argument('--control-budget', type=int, default=80); ap.add_argument('--control-only', action='store_true')
     ap.add_argument('--transcribe-parts', action='store_true', help='both arms over every speaker\'s train and dev chunks (cached), then exit')
     ap.add_argument('--build-targets', action='store_true', help='write outputs/targets_verbatim.parquet from the cached train/dev transcriptions, then exit')
-    ap.add_argument('--targets', choices=['protocol', 'verbatim'], default='protocol', help='training target text (docs/training_next.md A1)')
+    ap.add_argument('--targets', choices=['protocol', 'verbatim'], default='protocol', help='training target text (docs/archive/training_next.md A1)')
     ap.add_argument('--plan', default=PLAN, help='the data plan; panel_plan_v2.parquet = the high-quality plan (docs/training_plan_v3.md)')
     ap.add_argument('--max-steps', type=int, help='step mode: this many optimiser steps for every budget (docs/training_plan_v3.md)')
     ap.add_argument('--eval-steps', type=int, default=20, help='step mode: validate every N steps')

@@ -3,7 +3,7 @@
 Written 2026-09-29 and revised 2026-10-01, after the second run (`docs/training_run2.md`).
 **Run on 2026-10-02: `docs/training_run3.md` has the results and conclusions.**
 The project narrows to three things that decide whether the personalization result can be
-trusted. Parked from `docs/training_next.md`:
+trusted. Parked from `docs/archive/training_next.md`:
 
 - similar-speaker groups;
 - the word-for-word test set.
@@ -116,7 +116,7 @@ Rate is tuned first because it mattered most in the second run. With alpha = 2 �
 - **The forgiven-shared count is withdrawn** (2026-10-03, docs/personalization_research.md § 1.5). It was on in the run (`--forgiven`) on the assumption that a word both models produce and the protocol lacks was spoken; on human-corrected committee clips that held for only about half of them. Its `*_f` columns in the run's results are not evidence, and the option is removed from the code.
 - **The control:** a random group of the *other* panel speakers, in 2 folds, trained on the same number of minutes and evaluated on every speaker it never heard. It runs at **each** budget (`--control-folds 2 --control-budgets 5 20 80`). Personalization = the own adapter's gain − the control's gain, on the same test clips (`run_panel._table`). This is the comparison that tells "learned this voice" apart from "learned committee Hebrew".
   - **No shared meetings** (fixed 2026-10-02). A committee meeting often has several panel members in it, so a trainer's session can be the very meeting an evaluated speaker is tested on. In the first version, the 80-minute control trained on 2 of 30843's test meetings (about 4 of the 30 test minutes) and 1 of 30831's. The control's pool now excludes every session of the evaluated speakers' test (both test sets) and dev.
-- **Not in this plan:** comparing *similar*-speaker groups against random groups of the same size (`training_next.md`, "sharing"). It can follow on the chosen recipe: about 44 short runs.
+- **Not in this plan:** comparing *similar*-speaker groups against random groups of the same size (`archive/training_next.md`, "sharing"). It can follow on the chosen recipe: about 44 short runs.
 - **Metrics:** standard WER (and CER) on the high-quality test set, with the error-type split and the style flag. (The forgiven-shared count that ran beside it is withdrawn; see *Cells* above.)
 
 **Two test sets** (added 2026-10-02). Quality comes from a Whisper-family aligner, so the ≥ 0.95 filter keeps the clips a Whisper model already finds easy. On the second run's test sets it kept only 31–40% of the speech of the hardest speakers (23558, 30701, 30843), the speakers the project is about, against 64% overall. `docs/adaptation_plan.md` asks for results with and without the filter. So every cell and every control evaluation is also scored on a second test set:
@@ -182,112 +182,10 @@ python src/training/run_panel.py --plan $V2 --max-steps 400 --budgets 5 20 80 --
     --test07-plan src/training/panel_test07.parquet
 ```
 
-## Handoff: continuing from here (written 2026-10-01)
+## How to run it
 
-For whoever runs the training next, a person or a fresh Claude session on a GPU box. Read § 1–5 above first: they carry the decisions. This section is only the *how*, in order.
-
-**On the pod, follow `docs/pod_runbook_v3.md`** (added 2026-10-02): `src/training/box/pod_v3.sh` runs the steps below stage by stage, and `src/training/box/v3_decide.py` applies the tuning rule and the base-WER check by rule. What follows is the manual equivalent.
-
-### Where things stand (updated 2026-10-03)
-- **Code:** everything plan v3 needs is on `main` (`src/training/box/pod_v3.sh`, `v3_decide.py`, the loop guard, the personalization interval, the control's meeting-leak fix).
-- **Run 3** executed this plan on 2026-10-02 on 4× A100 (12 speakers, seeds 0–2 at 80 minutes, plus a semi-verbatim extra); its write-up is `docs/training_run3.md` and its files are in `knesset-asr/knesset-committees-v3-results` (private).
-- **Data plan:** `src/training/panel_plan_v2.parquet` (12 speakers, 6,887 clips, 30.0 h) and `panel_test07.parquet` (6,158 clips, 20.3 h), committed with `word_quality.parquet`.
-- **Audio:** `knesset-asr/knesset-committees-panel-hq` holds all 10,972 WAVs both plans need (checked file by file on 2026-10-02).
-- **Access:** the project datasets live in the HF organization `knesset-asr` (the old personal-account names redirect). All are public and ungated since 2026-10-02 except `knesset-committees-v3-results`; whether the audio should stay public is open, since the source is gated under the ivrit.ai licence.
-
-### 1. Get the audio onto the GPU box, one of two ways
-- **(a) From HuggingFace (recommended).** **`knesset-asr/knesset-committees-panel-hq`** holds all 10,972 WAVs of both plans, plus `panel_plan_v2.parquet` and a card. This takes a few minutes:
-  ```bash
-  python src/training/materialize.py download --repo knesset-asr/knesset-committees-panel-hq   # -> src/training/outputs/panel_audio/
-  ```
-  It was kept private because the audio comes from ivrit.ai's gated `ivrit-ai/knesset-committees`; it has been public since 2026-10-02, and that licence question is open.
-- **(b) Extract on the box itself.** It needs read access to `knesset-asr/knesset-committees-chunks`. 186 shards pass through, about 125 GB; each is deleted after use, and the run is resumable. That's under an hour on a datacenter link, CPU only.
-  ```bash
-  python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet --prefetch 3
-  ```
-
-Then, either way, any clip not in `panel-hq` yet (§ 1, § 4 *Two test sets*). Extraction pulls only the clips not already on disk:
-```bash
-python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet --prefetch 3
-python src/training/materialize.py extract --plan src/training/panel_test07.parquet --prefetch 3
-```
-
-Either way, both must pass before anything else:
-```bash
-python src/training/materialize.py verify --plan src/training/panel_plan_v2.parquet    # splits, filters, every WAV readable
-python src/training/materialize.py verify --plan src/training/panel_test07.parquet    # same test sessions as v2, v2's test is the hq subset
-```
-
-### 2. Set up the box
-- **GPU:** one A100 (40 or 80 GB). LoRA also fits a 24 GB card, about 2× slower.
-- **Disk:** about 10 GB for audio, adapters and model weights.
-```bash
-git clone https://github.com/hadasy-tau/deep-learning-project.git && cd deep-learning-project
-pip install -r src/training/requirements.txt         # torch: the box's CUDA wheel; on a RunPod PyTorch template use a venv first (pod_runbook_v3.md § Known pod quirks)
-hf auth login                                        # typed interactively; never paste a token into a chat or a file
-source src/training/box/env.sh                       # RunPod: caches on the container disk, BLAS thread cap
-# a pod can be preempted: mirror results every 30 min to a private dataset YOU can write to
-nohup python src/training/backup.py --repo knesset-asr/<a new private dataset, e.g. knesset-committees-v3-results> --every 30 > backup.log 2>&1 &
-```
-
-### 3. Two sanity checks (about 15 minutes)
-```bash
-python - <<'EOF'                                     # the loop learns: 20 clips driven to near-zero loss
-import sys, pandas as pd; sys.path.insert(0, 'src/training'); import train
-P = pd.read_parquet('src/training/panel_plan_v2.parquet')
-train.overfit_check(P, 'src/training/outputs/panel_audio', speaker=30685, arm='B')
-EOF
-V2=src/training/panel_plan_v2.parquet
-python src/training/run_panel.py --tune --plan $V2 --max-steps 400 --speakers 30685 --budgets 80 --seeds 0 --lrs 3e-4
-python src/training/run_panel.py --tuning-report
-```
-- **First check:** the overfit check's loss must fall steeply. If it doesn't, stop.
-- **Second check:** the single tuning run should take about 2–4 minutes, and its `rel_drop` should be positive. Multiply its time by about 70 to price the whole plan, and tell Hadas before spending it.
-
-### 4. Tuning: validation only, three stages
-```bash
-S="30685 23558 30718 30859"
-T="python src/training/run_panel.py --tune --plan $V2 --max-steps 400 --speakers $S --budgets 5 80 --seeds 0 --eval-batch 64"
-$T --lrs 1e-4 3e-4 1e-3                                          # A: 24 runs
-python src/training/run_panel.py --tuning-report                 # pick A by the rule below
-$T --lrs <A> --ranks 8 16 --dropouts 0 0.1                       # B: 24 runs (rank 8 / dropout 0 is skipped: run in A)
-python src/training/run_panel.py --tuning-report
-$T --lrs <A> --ranks <B> --dropouts <B> --augments specaug specaug+tempo     # C: 16 runs
-python src/training/run_panel.py --tuning-report
-```
-- **How to choose** (§ 2), separately for each budget, from `tuning.csv`: a setting replaces the current best only if it raises the mean `rel_drop` over the 4 speakers by at least 1% (absolute) **and** helps at least 3 of the 4. Otherwise keep the simpler setting: lower rank, no dropout, no augmentation.
-- **If 5 and 80 minutes disagree,** 20 minutes takes 80's value. Write the disagreement down; it's a finding.
-- **Never** look at test WER while choosing. `--tune` doesn't compute it.
-
-### 5. The final run: test set used once
-```bash
-python src/training/run_panel.py --plan $V2 --max-steps 400 --budgets 5 20 80 --seeds 0 --eval-batch 64 \
-    --lrs <A> --ranks <B> --dropouts <B> --augments <C or none> --control-folds 2 --control-budgets 5 20 80 \
-    --test07-plan src/training/panel_test07.parquet
-python src/training/run_panel.py --summary                       # outputs/results.csv
-```
-- **Time:** about 2–2.5 hours. It's idempotent, so kill and rerun it freely.
-- **If 5 and 80 minutes chose different settings,** run the command once per budget group with that group's flags, adding `--control-only` for the second group's controls only where needed. Each recipe gets its own controls through its cell name.
-- **Base transcriptions** of the new high-quality test set are made once per speaker and cached as `outputs/results/base_B_<speaker>_…_hq.json`, next to the second run's caches, never over them.
-
-### 6. Reading the results
-- **New rows** are the ones with `hq` in `cell`.
-- **The headline column** is `personalization_rel`, the own adapter's gain minus the control's gain at the same budget. Its interval is `personalization_ci_lo`, `personalization_ci_hi` (absolute WER) with `personalization_p`: a paired bootstrap of the control's hypotheses against the own adapter's on the same clips. A personalization whose interval crosses zero isn't a result, and neither is a gain whose (`ci_lo`, `ci_hi`) does. For scale: in the second run, re-scored this way, 1–4 of 11 speakers per recipe had a significant personal effect at 80 minutes, mostly 30843 and 23558.
-- **Report both test sets side by side:** `personalization_rel` (≥ 0.95) and `test07.personalization_rel` (≥ 0.7), `test07.bands.*` says on which clips it was earned.
-- **If `--test07-plan` was missed**, rerun the same command with it: scored cells are not retrained; their ≥ 0.7 scores are added from the saved adapters.
-- **`style_not_speaker`** marks gains that are mostly fewer insertions. On high-quality clips these should be rare. If they aren't, say so.
-- **Base-WER sanity check:** the base WER on the high-quality test set should come out *below* each speaker's `wer_B` in `src/evaluation/outputs/committees_speaker_performance.csv`, because these clips are cleaner. If it comes out more than 0.10 *above*, materialization or scoring is broken: stop.
-
-### 7. What to bring back
-The backup loop already mirrors everything to your private dataset:
-- `outputs/results.csv`, `outputs/results/*.json` and `*.hyps.json`;
-- `outputs/tuning.csv`;
-- `runs/` (adapters + `train_meta.json`) and `runs_tune/` (`train_meta.json`);
-- the run logs, passed with `backup.py --logs`.
-
-§ 5 describes what each file holds, for the analysis notebook.
-
-### Gotchas
-- **On a Linux box,** DataLoader workers are forked and nothing special is needed. On Windows, `train_cell(num_workers=0)` is required: the collator is a lambda, and spawned workers re-import the script.
-- **`--dropouts 0` names the cell the same as no dropout flag**, on purpose. That's how stage B skips the stage-A cell.
-- **The second run's rows in `results.csv`** are a different data plan and test set; don't pool them with the `hq` rows.
+This plan was run on 2026-10-02 (run 3, `docs/training_run3.md`). To run it again, follow
+`docs/pod_runbook_v3.md`, which drives `src/training/box/pod_v3.sh` stage by stage and applies
+the tuning rule and the base-WER check by rule (`box/v3_decide.py`). The manual walk-through
+that stood here duplicated the runbook and went stale; it was removed on 2026-10-03 (git
+history has it). Where the project stands now is `docs/STATUS.md`.

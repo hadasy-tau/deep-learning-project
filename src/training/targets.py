@@ -8,7 +8,7 @@ back roughly as many unspoken words as spoken ones.  Kept so the second and thir
 `verbatim` cells stay reproducible; do not read their results as evidence about what the
 speaker said.  The forgiven-shared count that used to live here is removed.
 
-docs/training_next.md § A1.  The reference is a cleaned protocol: words the speaker said
+docs/archive/training_next.md § A1.  The reference is a cleaned protocol: words the speaker said
 and the stenographer dropped count as insertions against both models, and a model trained
 toward the protocol learns to drop them too (docs/training_run2.md: 34 % of the base
 model's errors are insertions arm A also produced).  This builds a target closer to what
