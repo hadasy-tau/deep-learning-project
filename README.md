@@ -55,8 +55,11 @@ docs/                          design.md + design.html are the one-page overview
                                whole flow, end to end. Then the build records:
                                committees_handoff.md, speaker_index_plan.md,
                                chunk_corpus_build.html, inference.md, error_map.md,
-                               adaptation_plan.md for the design, and training_handoff.md --
-                               read that one first on the GPU box
+                               adaptation_plan.md for the design; training_plan_v3.md
+                               the current plan and pod_runbook_v3.md the GPU session --
+                               read that one first on the pod; training_run2.md and
+                               training_run3.md the runs; personalization_research.md
+                               what to try next; training_handoff.md is historical
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
@@ -88,8 +91,12 @@ Gated means an accepted licence on the dataset page and an `HF_TOKEN` in the env
 | Dataset | Holds |
 |---|---|
 | [`knesset-asr/knesset-committees-speakers`](https://huggingface.co/datasets/knesset-asr/knesset-committees-speakers) | An **index, not audio**: 5,158,763 rows naming a `(session, start, end)` span, each carrying a verified Knesset `PersonID` and its demographics. 3,345 h of identified MK speech, 268 speakers, Knessets 20–25 |
-| `knesset-asr/knesset-committees-chunks` | **Private.** The corpus itself: ~1.2 M chunks of ≤30 s, 330 speakers, 410 parquet shards, FLAC inline. Exact totals in `docs/committees_handoff.md` |
-| [`knesset-asr/knesset-committees-inference`](https://huggingface.co/datasets/knesset-asr/knesset-committees-inference) | **Private.** Both models' transcriptions of the Stage-1 subset -- 65,990 chunks, 230 h, 267 speakers, 1 h per MK -- beside the protocol reference. `inference.parquet` (one row per chunk, `hypothesis_A`/`hypothesis_B`/`hypothesis_A_auto`), `inference_long.parquet` (per chunk and arm, with timing and errors), `coverage.parquet` (every corpus chunk: what ran on which arm). Validated end to end; corpus WER A 0.417, B 0.324 |
+| [`knesset-asr/knesset-committees-chunks`](https://huggingface.co/datasets/knesset-asr/knesset-committees-chunks) | The corpus itself: ~1.2 M chunks of ≤30 s, 330 speakers, 410 parquet shards, FLAC inline. Exact totals in `docs/committees_handoff.md` |
+| [`knesset-asr/knesset-committees-inference`](https://huggingface.co/datasets/knesset-asr/knesset-committees-inference) | Both models' transcriptions of the Stage-1 subset -- 65,990 chunks, 230 h, 267 speakers, 1 h per MK -- beside the protocol reference. `inference.parquet` (one row per chunk, `hypothesis_A`/`hypothesis_B`/`hypothesis_A_auto`), `inference_long.parquet` (per chunk and arm, with timing and errors), `coverage.parquet` (every corpus chunk: what ran on which arm). Validated end to end; corpus WER A 0.417, B 0.324 |
+
+All `knesset-asr` datasets are public and ungated since 2026-10-02, except the run-3 results
+(`knesset-committees-v3-results`, private). Whether the audio should stay public is open: it is
+cut from `ivrit-ai/knesset-committees`, which is gated under the ivrit.ai licence.
 
 `speaker_id` throughout is the Knesset's official `PersonID` — the same id space as
 KnessetCorpus — so the tables join directly.
@@ -97,9 +104,10 @@ KnessetCorpus — so the tables join directly.
 ## State
 
 - **Speaker index** — built and published. Text validation passed with zero cross-person
-  errors over 55.4 h held out. Its audio gate (`speaker_index/validate_audio.py`) is written
-  but has never run; it needs a GPU, and it is the check that would catch both text sources
-  copying the same wrong speaker header.
+  errors over 55.4 h held out. Its audio gate (`speaker_index/validate_audio.py`, GPU) has run
+  only on the adaptation panel (run 2: 5.4 % of the panel's chunks closer to another speaker's
+  voice, `docs/training_run2.md` § The audio gate), not over the index; it is the check that
+  would catch both text sources copying the same wrong speaker header.
 - **Chunk corpus** — built and uploaded. Nothing was filtered at build time, deliberately:
   filtering is the consumer's decision. Filter on `quality` (≥ 0.7 is the recommendation).
 - **Inference** — done. Both arms verified against a fixed 10-chunk sample, then run over a
@@ -124,7 +132,7 @@ KnessetCorpus — so the tables join directly.
   the standard count is the result.
 - **Adaptation** — the second training run is done (`docs/training_run2.md`, 2026-09-20: 11
   speakers, arm B, LoRA; personal minus control +2 to +5 points, concentrated in the hardest
-  speakers). Plan v3 (`docs/training_plan_v3.md`) is ready for the GPU: 12 speakers, high-quality
+  speakers). Plan v3 (`docs/training_plan_v3.md`) followed: 12 speakers, high-quality
   data only (`src/training/panel_plan_v2.parquet`: 6,887 chunks, 30.0 h, session-disjoint by
   date), validation-only tuning picked by rule, the budget-matched control at every budget, seeds
   0-2 at 80 minutes, and a second test set at quality ≥ 0.7 (`panel_test07.parquet`). The audio

@@ -19,7 +19,7 @@ Base B on the high-quality test (12 speakers, WER 0.139):
 | finding | number | what it means |
 |---|---|---|
 | error mix | substitutions 40 %, deletions 10 %, **insertions 49 %** | half the errors are words the model wrote and the protocol did not |
-| insertions that arm A also produces (Stage 1) | 73 % | spoken words the stenographer dropped |
+| insertions that arm A also produces (Stage 1) | 73 % | read as spoken words the stenographer dropped; § 1.5 found about half were (19 of 36) |
 | **substitutions and deletions that arm A makes identically** | **66 %** of 4,796 | two models with different training data agreeing on the same "error" points to the reference's conventions |
 | substitutions that are near-misses (one character, or a prefix letter) | 58 % (44 % on the ≥ 0.7 test) | spelling and morphology conventions, not mishearings |
 | errors on a word only this speaker uses (in their train text, in no other panel speaker's) | **1.0 %** | personal vocabulary is not where the errors are |

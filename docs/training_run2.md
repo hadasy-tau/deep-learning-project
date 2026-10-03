@@ -20,7 +20,7 @@ what came out. Everything here was measured on one RunPod A100 SXM 80 GB pod (EU
 
 Progress per cell is in `src/training/outputs/run_seed0.log` and `run_followups.log`; every
 30 minutes `src/training/backup.py` mirrors results and adapters to the private dataset
-`knesset-asr/knesset-committees-adapters`.
+`knesset-asr/knesset-committees-adapters` (public since 2026-10-02).
 
 ## The box
 
@@ -479,7 +479,7 @@ nohup python src/training/backup.py --repo knesset-asr/knesset-committees-adapte
 ```
 
 Model weights re-download on first use (~6 GB, minutes). `runs/` (the adapters, 1.3 GB) and
-`outputs/results/` are on the volume and mirrored in the private dataset; `run_panel.py` skips
+`outputs/results/` are on the volume and mirrored in the backup dataset; `run_panel.py` skips
 every scored cell, so re-launching any of this session's commands is a no-op, and a new
 sweep (`docs/training_next.md`) only trains what is new. The detached-launch pattern:
 
