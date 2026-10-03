@@ -7,12 +7,12 @@
 > **On the GPU pod: `docs/pod_runbook_v3.md`**, which drives plan v3 through `box/pod_v3.sh <stage>`,
 > with the tuning rule and the base-WER check applied by `box/v3_decide.py`.
 
-What to do on the GPU box, in order, and what to bring back. **Read
-`docs/training_handoff.md` first** — it carries the decisions, the panel and the two rules for
-reading the results. The design is
-`docs/adaptation_plan.md`; the panel is `src/evaluation/outputs/committees_panel.csv`;
-the audio it needs is described by `panel_plan.parquet` (one row per chunk: who, which
-session, which split, which shard).
+What is in this folder, how run 2 was driven, and what to bring back. For a new run, **read
+`docs/pod_runbook_v3.md` first**. `docs/training_handoff.md` is historical (runs 1–2) but keeps
+the two rules for reading results. The design is `docs/adaptation_plan.md`; the panel is
+`src/evaluation/outputs/committees_panel.csv` plus 556 (`word_quality.PANEL_ADD`); the audio
+plan v3 uses is described by `panel_plan_v2.parquet` and `panel_test07.parquet` (run 2 used
+`panel_plan.parquet`): one row per chunk, with who, which session, which split, which shard.
 
 | file | holds |
 |---|---|
@@ -31,42 +31,17 @@ session, which split, which shard).
 ## The machine
 
 LoRA on `whisper-large-v3` is comfortable on 24 GB with bf16 (L4, A10G). Full fine-tuning
-(the method axis) needs 40 GB (A100) with 8-bit Adam. The first experiment is LoRA only, so
+(the method axis) needs 40 GB (A100) with 8-bit Adam. Every run so far is LoRA only, so
 24 GB is enough. Disk: 10 GB for the audio and adapters, plus 2 GB per shard in flight if
 you extract on the box. Network: extraction pulls ~85 GB once.
 
-## The session
+## The session (run 2, historical)
 
-```bash
-git clone https://github.com/hadasy-tau/deep-learning-project.git && cd deep-learning-project
-pip install -r src/training/requirements.txt          # torch: use the CUDA wheel for the box
-huggingface-cli login                                 # read access to the chunk corpus
-
-# 1. the audio: EITHER fetch the folder the laptop extracted (3 GB) ...
-python src/training/materialize.py download --repo knesset-asr/knesset-committees-panel
-# ... OR extract it here (85 GB pass through, ~45 min on a fast link, resumable)
-python src/training/materialize.py extract
-python src/training/materialize.py verify             # splits + every wav present and readable
-
-# 2. the labels: the audio gate on the panel (ECAPA), never run before
-pip install speechbrain torchaudio
-python src/preprocessing/speaker_index/validate_audio.py --per-speaker 12 --min-segments 8
-#    a panel speaker whose segments fail leaves the panel: swap in the alternate from the panel file
-
-# 3. the training loop learns at all (20 examples to near-zero loss, ~10 min)
-python - <<'PY'
-import sys, pandas as pd; sys.path.insert(0, 'src/training'); import train
-P = pd.read_parquet('src/training/panel_plan.parquet')
-train.overfit_check(P, 'src/training/outputs/panel_audio', speaker=30831, arm='B')
-PY
-
-# 4. the experiment: arm B, LoRA at both sites, budgets 5 / 20 / 80 min, one seed (33 cells),
-#    then the cross-speaker control in two folds; detached, so it survives the shell
-nohup python src/training/backup.py --repo <user>/knesset-committees-adapters --every 30 &
-setsid nohup python src/training/run_panel.py --arm B --budgets 5 20 80 --seeds 0 --eval-batch 64 \
-    --control-folds 2 --control-budget 80 > src/training/outputs/run_seed0.log 2>&1 < /dev/null &
-python src/training/run_panel.py --summary            # outputs/results.csv
-```
+Run 2 (2026-09-20) was driven by hand on `panel_plan.parquet`, 11 speakers at quality ≥ 0.7,
+with `run_panel.py --arm B --budgets 5 20 80 --seeds 0 --control-folds 2 --control-budget 80`
+and the follow-up chains in `box/` (`followups.sh`, `next_runs.sh`, `run_d.sh`); the full
+record is `docs/training_run2.md`. A new run follows `docs/pod_runbook_v3.md`, which drives
+`box/pod_v3.sh`. The flags below still exist.
 
 Recipe options added on 2026-09-20 (`docs/training_run2.md` for what each did):
 `--lrs 3e-4` (the rate to use; 1e-3 restores epoch 1 everywhere), `--sites decoder_mlp`,
@@ -135,7 +110,7 @@ and the shards stay on the box.
 
 - Long-form scoring on whole personal-test recordings (D7's secondary protocol): the chunks
   are on disk, the recordings are not.
-- The cross-speaker control (D3): `run_panel.py` trains on the speaker only; the
-  budget-matched "trained on others" arm is the next driver.
-- The sharing axis, and the method / site / rank axes: `run_panel.py` takes them as arguments
-  (`--sites`, `--methods`, `--ranks`, `--lrs`) but the first experiment does not use them.
+- The sharing axis (similar-speaker groups against random ones) and the method axis (full
+  fine-tuning, DoRA, IA3): `run_panel.py` takes `--methods`, but no run has used anything but
+  LoRA. The site (`--sites encoder`, `decoder_mlp`) and rank (8, 16) axes were varied in runs 2
+  and 3; the cross-speaker control (`--control-folds`) has run in every run since run 2.

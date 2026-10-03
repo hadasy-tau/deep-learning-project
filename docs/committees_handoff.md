@@ -46,7 +46,7 @@ One caveat that remains: the *speakers* overlap with the plenum training data. R
 - Ear check (35 clips, shared verdicts): https://claude.ai/code/artifact/a775c7c4-1fa5-4d45-8889-f1449dad971b
 
 **HuggingFace.**
-- **`knesset-asr/knesset-committees-chunks`** is the corpus. It is **private**, so every read needs `huggingface_hub.get_token()` or `HF_TOKEN`.
+- **`knesset-asr/knesset-committees-chunks`** is the corpus. It was private when this was written; since 2026-10-02 it and the other `knesset-asr` datasets are public and ungated, except `knesset-committees-v3-results` (whether the audio should stay public is an open question: the source is gated under the ivrit.ai licence). Reads work without a token; `ivrit-ai/knesset-committees` still needs one.
 - `knesset-asr/knesset-committees-speakers` is the speaker index it was built from, pinned to revision `56b19714`.
 - `ivrit-ai/knesset-committees` is the source audio. You should not need it.
 
@@ -112,7 +112,7 @@ Mismatches, handled in `error_map.py` rather than by editing the corpus:
 
 ## Open problems to keep in mind, not fix
 
-- **Speaker labels are verified against the protocol, not the voice.** The ECAPA speaker-embedding check (`src/preprocessing/speaker_index/validate_audio.py`, Step 4.2 of `docs/speaker_index_plan.md`) has never been run and needs a GPU. Committee cross-talk is heavy; the protocol records who held the floor, not who was audible. If per-speaker WER looks anomalous for one speaker, suspect labels before suspecting the model.
+- **Speaker labels are verified against the protocol, not the voice.** The ECAPA speaker-embedding check (`src/preprocessing/speaker_index/validate_audio.py`, Step 4.2 of `docs/speaker_index_plan.md`) needs a GPU; it has run once, on the adaptation panel only (run 2, 2026-09-20; `docs/training_run2.md` § The audio gate): 5.4 % of the panel's chunks sit closer to another speaker's voice, concentrated in 30843's dev session. It has not been run over the corpus. Committee cross-talk is heavy; the protocol records who held the floor, not who was audible. If per-speaker WER looks anomalous for one speaker, suspect labels before suspecting the model.
 - **The ear check was spot-checked, not swept.** A time-origin offset between audio and alignment would give fluent but wrong-text chunks for a whole session. It would show up as that session's WER near 1.0 under **both** models.
 
 ## Conventions in this repo

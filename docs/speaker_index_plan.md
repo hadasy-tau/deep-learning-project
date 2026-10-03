@@ -210,8 +210,10 @@ Recall of 1.000 is structural, not luck: Path A requires gold ∧ name ∧ seat,
 requires name ∧ seat, so A's assignments are a strict subset of B's. The only open
 question was whether B's *extra* assignments are right.
 
-**Step 4.2 has not run.** It needs a GPU. The text gate passing does not substitute for
-it — it is the only check that catches both sources copying the same wrong header.
+**Step 4.2 has run only on the adaptation panel** (run 2, 2026-09-20; `docs/training_run2.md`
+§ The audio gate: 5.4 % of the panel's chunks closer to another speaker), not over the index. It
+needs a GPU. The text gate passing does not substitute for it — it is the only check that
+catches both sources copying the same wrong header.
 
 ## Files
 
@@ -296,7 +298,8 @@ alias tables from all ~7,000 Path-A sessions) → audio check.
   materialized locally from `ivrit-ai/knesset-committees` by `session/start/end`.
 - **Former MKs speaking as guests** get `label = former_mk` with a full `speaker_id` and
   demographics; `label == 'mk'` stays "MK on the recording date".
-- **Dataset** `knesset-asr/knesset-committees-speakers`, private until Step 4 passes.
+- **Dataset** `knesset-asr/knesset-committees-speakers`, private until Step 4 passes. *(It was
+  published after the text gate; public and ungated since 2026-10-02.)*
   README credits ivrit.ai and the Knesset Corpus; licence CC-BY-SA 4.0 (inherited).
 - **Runs on the local Mac** in `.venv` (pandas, pyarrow, huggingface_hub, requests,
   rapidfuzz). No GPU except the optional Step 4 embedding check.

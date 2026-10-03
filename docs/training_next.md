@@ -6,6 +6,13 @@ Written 2026-09-20 at the end of the second run (`docs/training_run2.md`), befor
 stopped. It sets out what the runs permit and rule out, what the literature says, and a
 ranked plan with costs, so the next session can queue work the way this one did.
 
+> **Superseded (2026-10-03).** The current plan is `docs/training_plan_v3.md`, run on 2026-10-02
+> (run 3). Where the items below stand: 1, 3 and 4 ran in run 2 (§ Status at the end); E1, the
+> audio gate, ran in run 2; E2 (seeds 1–2 at 80 minutes, a third S2 speaker, 556) ran in run 3;
+> item 2's decoding guard is `evaluate.py`'s loop guard (PR #31), its training-side parts did not
+> run; 5, 6 and 8 are open. The "rule against filtering harder than quality ≥ 0.7" this file
+> cites was reversed by plan v3, which trains and tests on ≥ 0.95.
+
 ## What the evidence fixes
 
 Six facts from `src/training/outputs/results.csv` (66 own cells and 22–44 control
@@ -124,7 +131,8 @@ length per chunk — as a diagnostic only. Not a replacement for the count.
 
 ### E. The speakers and the labels
 
-**E1. The audio gate.** Never run. 30813 is worse at every site and rate and her base WER is
+**E1. The audio gate.** *(Ran later the same day, run 2: 5 % foreign-voice chunks, 30813 clean;
+see § Status.)* 30813 is worse at every site and rate and her base WER is
 far below her error-map value; both fit mislabelled chunks. It needs `ffmpeg`, `speechbrain`,
 `torchaudio`, gated access to `ivrit-ai/knesset-committees` and `segments.parquet` (521 MB).
 CPU only, two to four hours, runs beside anything else.
@@ -143,7 +151,7 @@ Useful for the write-up's "why session-disjoint" paragraph; does not change the 
 |---|---|---|---|---|
 | 1 | **A1 + A2**: semi-verbatim targets (reinsert words arms A and B agree on) and checkpoint selection on dev forgiven WER; 80 min, lr 3e-4, 11 cells + control | ~2.5 h GPU | removes the cause of fact 2; may expose the acoustic personal component | Pakhomov 2001; McNamara 2412.07937; hesitation tagging 2506.04076 |
 | 2 | **Recipe hygiene, once, before any paper table**: sample timestamps (40–50 %) and previous-text (50 %) into training as ivrit-ai did, mask prompt tokens from the loss, lr 3e-4 with weight decay 0.05, early stop on dev loss + dev WER; decode with Whisper's compression-ratio / logprob fallback and a repeated-n-gram rewind guard, re-cache both arms; report the repeated-5-gram rate beside `runaway` | small code, ~1 h GPU to re-run 80-min cells + re-cache | fixes facts 4 and 6; no change to the personal component expected | ivrit-ai train-whisper.py and blog; Radford 2212.04356 Table 7; CrisperWhisper 2.0 |
-| 3 | **E1 audio gate** on the panel, CPU, in the background of 1–2 | 0 GPU | explains or clears 30813; validates labels | handoff § open problems; ParlaSpeech 2409.15397 practice |
+| 3 | **E1 audio gate** on the panel, CPU, in the background of 1–2 | 0 GPU | explains or clears 30813; validates labels | handoff § open problems (removed 2026-10-03, in git history); ParlaSpeech 2409.15397 practice |
 | 4 | **Site ablation at the decoder MLPs** (`fc1`/`fc2`, LoRA r=8), 80 min, 11 cells + control | ~1.3 h | tests whether speaker information lands where q/v did not look | Müller-Eberstein 2406.04240 |
 | 5 | **B1 self-training with augmentation** (pseudo-labels from the base, SpecAugment / speed perturbation) | ~2 h | isolates the acoustic component by construction; the literature has no speaker-specific evidence for typical speakers, so a null is informative | Interspeech 2025 noisy-student on dysarthric speech |
 | 6 | **B4 generic committee adapter from non-panel speakers, then personal on top**; optionally x-vector conditioning of the decoder on the pooled adapter | ~3 h + extraction | the deployable result; conditioning gains are predicted only for the hardest speakers | kNN-Whisper 2410.18850; x-vector 2505.12991 |
@@ -152,7 +160,7 @@ Useful for the write-up's "why session-disjoint" paragraph; does not change the 
 
 **Not adopted from the survey, and why.** *Segment-level agreement filtering* (drop training chunks
 whose protocol-vs-model CER is worst) is standard corpus practice, but the handoff's rule
-against filtering harder than quality ≥ 0.7 applies to it for the same reason: the chunks it
+against filtering harder than quality ≥ 0.7 (since reversed by plan v3) applies to it for the same reason: the chunks it
 removes are the ones the model finds hard, which is the object of study. Use it only as a
 diagnostic contrast, never as the main recipe. *Rank* changes: the survey's small-data results
 (r=8 best at tens of files) agree with ours. *Style/coverage tokens* (Reverb) are the principled

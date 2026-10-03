@@ -206,7 +206,7 @@ alignment quality ≥ 0.7), sent through the real pipeline to both arms:
 | per-chunk, B vs A | — | B better on 9, tie on 1 |
 
 All 14 pipeline invariants passed. The HF mirror was exercised once against
-`knesset-asr/knesset-committees-inference` (private).
+`knesset-asr/knesset-committees-inference` (private at the time; public since 2026-10-02).
 
 The WER level is the committees register, not the pipeline: the reference is a
 cleaned stenographic protocol, while both models faithfully transcribe the
@@ -320,7 +320,7 @@ descriptor`), fixed with `ulimit -n 4096`. **128 in flight: ~24 h, $94–104.**
 ### Result (2026-09-13)
 
 The subset is complete on both arms and published as
-`knesset-asr/knesset-committees-inference` (private): 65,990/65,990 chunks with
+`knesset-asr/knesset-committees-inference` (private at the time; public since 2026-10-02): 65,990/65,990 chunks with
 both hypotheses, 267 speakers, 0 unrecovered errors, all 22 acceptance checks
 of `validate_final.py` passed. Corpus WER on the subset, Stage 1's method:
 **A 0.417, B 0.324** (B better by 22 %). Empty hypotheses A 0.30 % / B 0;

@@ -33,7 +33,7 @@ trusted. Parked from `docs/training_next.md`:
 
 **The rule, for every split** (`src/training/word_quality.py`, function `word_ok`):
 1. the clip's `quality` is ≥ 0.95;
-2. at most 10% of its words have probability < 0.5. Fixed from `word_quality.py --report`: the strictest value that leaves every speaker 140 minutes. At 5%, the smallest speaker falls short.
+2. at most 10% of its words have probability < 0.5. Fixed from `word_quality.py --report`: the strictest value that leaves every speaker the 140 minutes the splits need. At 5%, the smallest speaker falls short. *Those 140 minutes are among the ~250 candidate minutes per speaker that `word_quality.py` scores (`RAW_TARGET_MIN = 250`), not a limit of the corpus: it holds a median of ~15 h per panel speaker at quality ≥ 0.95 and ~23 h at ≥ 0.7 (measured 2026-10-03 on the corpus index). Scoring more candidates gives more data.*
 3. no run of 3 or more such words in a row;
 4. the words found in the clip's time span account for its reference text, within 20%.
 
@@ -43,7 +43,7 @@ trusted. Parked from `docs/training_next.md`:
 - **train:** older sessions, newest first, at least 80 minutes, so the 5/20/80 budgets nest.
 
 **Panel change, revised 2026-10-02: 12 speakers** (`word_quality.PANEL_ADD`).
-- **30843 stays.** The first version swapped 30843 out: about 120 high-quality minutes, short of the 140 needed. But 30843 is one of the three speakers where the second run found a personal effect, and the hard speakers are the project's question. So 30843 keeps the 80-minute budget and gives up test and dev minutes instead: **30 min test, 10 min dev** (`materialize.SPLIT_MIN`). The validation session 2235355, flagged by the audio gate, stays excluded.
+- **30843 stays.** The first version swapped 30843 out: about 120 high-quality minutes among the scored candidates, short of the 140 needed (the corpus holds about 3 h of hers at ≥ 0.95). But 30843 is one of the three speakers where the second run found a personal effect, and the hard speakers are the project's question. So 30843 keeps the 80-minute budget and gives up test and dev minutes instead: **30 min test, 10 min dev** (`materialize.SPLIT_MIN`). The validation session 2235355, flagged by the audio gate, stays excluded.
   - The ≥ 0.7 test (§ 4) gives 30843 91 minutes.
 - **556 חיים כץ stays too,** as an extra S2 speaker. The caveat is 15 h of plenum exposure, the reason he was an alternate.
 - **30601 ינון אזולאי is deferred** (decided 2026-10-02, after being added the same day). "Hard and left behind", from outside the original panel: WER_B 0.455, higher than anyone on the panel, and the fine-tune removes only 18% of arm A's error; 44 corpus hours, 146 minutes passing the word rule. He is left for a later run, if one is needed:
@@ -188,21 +188,19 @@ For whoever runs the training next, a person or a fresh Claude session on a GPU 
 
 **On the pod, follow `docs/pod_runbook_v3.md`** (added 2026-10-02): `src/training/box/pod_v3.sh` runs the steps below stage by stage, and `src/training/box/v3_decide.py` applies the tuning rule and the base-WER check by rule. What follows is the manual equivalent.
 
-### Where things stand
-- **Code:** PR [hadasy-tau/deep-learning-project#23](https://github.com/hadasy-tau/deep-learning-project/pull/23) (`training-plan-v3` → `main`). Train from `main` once it's merged, otherwise from the branch. It includes Dolev's second run.
-- **Data plan:** `src/training/panel_plan_v2.parquet`, built and verified, and committed along with `word_quality.parquet` and `panel_test07.parquet`.
-  - The first version (6,462 clips, 27.9 h, 11 speakers) was rebuilt on 2026-10-02 with 13 speakers, then with 12 (§ 1, 30601 deferred): 6,887 clips, 30.0 h.
-- **Audio:** the first version's 6,462 WAVs were extracted on Hadas's laptop on 2026-10-01 into `src/training/outputs/panel_audio/<speaker>/<clip>.wav` (git-ignored): 3.1 GB, 46 minutes for 186 shards at about 80 Mbit/s, and `verify` passed every check. They are in `knesset-asr/knesset-committees-panel-hq`.
-  - **Completed on 2026-10-02:** 30843's clips and the ≥ 0.7 test's extra ones were extracted and uploaded to `panel-hq` (10,380 of the 10,972 WAVs both plans need were there by 15:40; the last ≥ 0.7 test clips were uploading). Step 1 fetches whatever is still missing; only clips not on disk are pulled.
-  - Nothing has been trained on any of it yet.
-- **Access:** every project dataset now lives in the HF organization `knesset-asr` (moved 2026-10 from the personal accounts; the old names redirect): `knesset-committees-chunks` (the corpus), `-speakers`, `-inference`, `-panel` (the v1 panel audio, ≥ 0.7), `-adapters` (the second run's adapters and the 462 per-experiment result files, removed from git) and `-panel-hq` (the plan-v3 audio).
+### Where things stand (updated 2026-10-03)
+- **Code:** everything plan v3 needs is on `main` (`src/training/box/pod_v3.sh`, `v3_decide.py`, the loop guard, the personalization interval, the control's meeting-leak fix).
+- **Run 3** executed this plan on 2026-10-02 on 4× A100 (12 speakers, seeds 0–2 at 80 minutes, plus a semi-verbatim extra); its write-up is `docs/training_run3.md` and its files are in `knesset-asr/knesset-committees-v3-results` (private).
+- **Data plan:** `src/training/panel_plan_v2.parquet` (12 speakers, 6,887 clips, 30.0 h) and `panel_test07.parquet` (6,158 clips, 20.3 h), committed with `word_quality.parquet`.
+- **Audio:** `knesset-asr/knesset-committees-panel-hq` holds all 10,972 WAVs both plans need (checked file by file on 2026-10-02).
+- **Access:** the project datasets live in the HF organization `knesset-asr` (the old personal-account names redirect). All are public and ungated since 2026-10-02 except `knesset-committees-v3-results`; whether the audio should stay public is open, since the source is gated under the ivrit.ai licence.
 
 ### 1. Get the audio onto the GPU box, one of two ways
-- **(a) From HuggingFace (recommended).** The laptop's WAVs are uploaded to the private dataset **`knesset-asr/knesset-committees-panel-hq`**, in the project's HF organization `knesset-asr` (Hadas and Dolev are members): all 6,462 WAVs, 3.0 GB, plus `panel_plan_v2.parquet` and a card. It needs an HF token with read access to the `knesset-asr` organization. A fine-grained token scoped only to a personal account gets a 404. This takes a few minutes:
+- **(a) From HuggingFace (recommended).** **`knesset-asr/knesset-committees-panel-hq`** holds all 10,972 WAVs of both plans, plus `panel_plan_v2.parquet` and a card. This takes a few minutes:
   ```bash
   python src/training/materialize.py download --repo knesset-asr/knesset-committees-panel-hq   # -> src/training/outputs/panel_audio/
   ```
-  It is private because the audio comes from ivrit.ai's gated `ivrit-ai/knesset-committees`. Making it public would hand the audio to people who never accepted ivrit.ai's terms, so ask them first.
+  It was kept private because the audio comes from ivrit.ai's gated `ivrit-ai/knesset-committees`; it has been public since 2026-10-02, and that licence question is open.
 - **(b) Extract on the box itself.** It needs read access to `knesset-asr/knesset-committees-chunks`. 186 shards pass through, about 125 GB; each is deleted after use, and the run is resumable. That's under an hour on a datacenter link, CPU only.
   ```bash
   python src/training/materialize.py extract --plan src/training/panel_plan_v2.parquet --prefetch 3
@@ -224,8 +222,8 @@ python src/training/materialize.py verify --plan src/training/panel_test07.parqu
 - **GPU:** one A100 (40 or 80 GB). LoRA also fits a 24 GB card, about 2× slower.
 - **Disk:** about 10 GB for audio, adapters and model weights.
 ```bash
-git clone https://github.com/hadasy-tau/deep-learning-project.git && cd deep-learning-project   # (git checkout training-plan-v3 if not merged)
-pip install -r src/training/requirements.txt         # torch: the box's CUDA wheel; audiomentations is new in v3
+git clone https://github.com/hadasy-tau/deep-learning-project.git && cd deep-learning-project
+pip install -r src/training/requirements.txt         # torch: the box's CUDA wheel; on a RunPod PyTorch template use a venv first (pod_runbook_v3.md § Known pod quirks)
 hf auth login                                        # typed interactively; never paste a token into a chat or a file
 source src/training/box/env.sh                       # RunPod: caches on the container disk, BLAS thread cap
 # a pod can be preempted: mirror results every 30 min to a private dataset YOU can write to
