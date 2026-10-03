@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Run 4 on a GPU pod (docs/training_plan_v4.md).  All the data work happened before the pod
-# (laptop + data_v4.sh on a CPU pod), so this only boots and runs the queue (jobs_v4.py).
+# (word scores, plans, gate, and data_v4.sh extracting the audio into panel-hq), so this only
+# boots and runs the queue (jobs_v4.py).
 #
-#   bash src/training/box/pod_v4.sh boot      # deps, model weights, run 4's audio tars, run 3's results -- in parallel
+#   bash src/training/box/pod_v4.sh boot      # deps, model weights, run 4's audio (panel-hq), run 3's results -- in parallel
 #   bash src/training/box/pod_v4.sh run       # backup loop + one queue worker per GPU (SLOTS per GPU), until the queue is empty
 #   bash src/training/box/pod_v4.sh status    # the queue: done / running / failed, elapsed, cost, remaining
 #   bash src/training/box/pod_v4.sh finish    # results.csv, the data curve, last backup, verified file by file
@@ -17,7 +18,7 @@ cd "$(dirname "$0")/../../.."
 source src/training/box/env.sh
 
 PY=${PY:-python}
-AUDIO_REPO=knesset-asr/knesset-committees-panel-v4
+AUDIO_REPO=knesset-asr/knesset-committees-panel-hq        # plan v2's clips plus run 4's (data_v4.sh)
 PRIOR_REPO=knesset-asr/knesset-committees-v3-results     # run 3: the 5/20/80-minute cells of 23558 and 30752
 RESULTS_REPO=${RESULTS_REPO:-knesset-asr/knesset-committees-v4-results}
 OUT=src/training/outputs; LOGS=$OUT/logs; mkdir -p "$LOGS" "$OUT/results"
@@ -35,15 +36,11 @@ stage_boot() {
     local p_pip=$!
     $PY -c "from huggingface_hub import get_token; import sys; sys.exit(0 if get_token() else 'not logged in to HuggingFace: run  hf auth login  (typed, never pasted into a chat)')"
     $PY - "$AUDIO_REPO" <<'EOF' > "$LOGS/boot_audio.log" 2>&1 &
-import os, sys, tarfile, concurrent.futures as cf
+import sys, time
 from huggingface_hub import snapshot_download
-d = snapshot_download(sys.argv[1], repo_type='dataset', local_dir='src/training/outputs/panel_tars', max_workers=16)
-tars = sorted(f for f in os.listdir(d) if f.endswith('.tar'))
-def untar(f):
-    with tarfile.open(os.path.join(d, f)) as tf: tf.extractall('src/training/outputs/panel_audio')
-    os.remove(os.path.join(d, f)); return f
-with cf.ThreadPoolExecutor(8) as ex:
-    for f in ex.map(untar, tars): print('unpacked', f, flush=True)
+t = time.time()
+snapshot_download(sys.argv[1], repo_type='dataset', local_dir='src/training/outputs', allow_patterns=['panel_audio/*'], max_workers=32)
+print(f'panel audio: downloaded in {(time.time() - t) / 60:.1f} min', flush=True)
 EOF
     local p_audio=$!
     $PY -c "from huggingface_hub import snapshot_download as s; s('ivrit-ai/whisper-large-v3'); print('model weights: cached')" > "$LOGS/boot_model.log" 2>&1 &
