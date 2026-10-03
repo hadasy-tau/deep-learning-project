@@ -1,0 +1,7 @@
+ speaker  sampled  flagged  share flagged_by_part test_dev_sessions_flagged   ok
+   23641       45        0    0.0              {}                        [] True
+   23635       45        0    0.0              {}                        [] True
+
+reference population: 30 speakers from the same sessions, 3.1% of their segments flagged
+
+no new-speaker chunk flagged

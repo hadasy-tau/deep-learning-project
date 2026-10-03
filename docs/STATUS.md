@@ -44,6 +44,8 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
    - **Same experiment as run 3:** the same data rules, test sets, folds and control definition.
    - **The decision rule is fixed in advance** (Delta of personalization, top budget − 80 minutes,
      on the ≥ 0.7 test).
+   - **Audio gate on 23641 and 23635** (`box/gate_v4.py`, 2026-10-03): 0 of 45 sampled chunks flagged
+     for each, against 3.1 % for the 30 speakers heard in the same sessions. Nothing excluded.
    - **Prepared:** the word scores (2,295 more sessions), `panel_plan_v4.parquet` and
      `panel_test07_v4.parquet`, both verified, and the queue, about 8.4 GPU-hours.
    - **Still to do:** extract the audio on the laptop into `-panel-hq` (`box/data_v4.sh`), then the
