@@ -2,7 +2,7 @@
 
 > **Note (2026-10-03): the forgiven-shared count is withdrawn.** Every "forgiven" or "protocol-aware" number below assumed that a word two models produce and the protocol lacks was spoken; on human-corrected committee clips only about half were (`docs/personalization_research.md` § 1.5). They are kept as a record of what was measured, not as evidence. The standard (protocol) counts stand.
 
-Written on the GPU box on 2026-09-20, as the run went. `docs/training_handoff.md` is the
+Written on the GPU box on 2026-09-20, as the run went. `docs/archive/training_handoff.md` is the
 plan and the rules for reading results; this file is what was decided on the box, why, and
 what came out. Everything here was measured on one RunPod A100 SXM 80 GB pod (EU-RO-1).
 
@@ -39,7 +39,7 @@ Progress per cell is in `src/training/outputs/run_seed0.log` and `run_followups.
 
 ## Why the first run took 30 minutes a cell
 
-Profiled phase by phase before any cell was trained (`docs/training_handoff.md` § Before the
+Profiled phase by phase before any cell was trained (`docs/archive/training_handoff.md` § Before the
 second run, point 1). In order of weight:
 
 1. **BLAS thread oversubscription.** Whisper's log-mel extraction is a numpy STFT and a mel
@@ -359,7 +359,7 @@ session. Per speaker the forgiven personal effect is now positive for 30718 (+15
 
 **The cost.** Runaway decodes rise from 10 to 17 over the eleven test sets: the targets contain
 repetitions and fillers, and a model trained toward them loops more readily. That is the
-decode-hygiene item (training_next.md § D) becoming necessary rather than optional.
+decode-hygiene item (archive/training_next.md § D) becoming necessary rather than optional.
 
 **Reading.** The semi-verbatim objective does what it was built for — it removes the
 stenographer from what the adapter learns — and it moves the personal component up, but it
@@ -383,7 +383,7 @@ drops the forgiven median from 11.6 to 2.0 % and the personal share to zero. The
 plain in the epochs it picks — 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3 against the loss's uniform 2 —
 and in the dev sets: 15 minutes is 40–120 chunks, too few for a generation-based WER to rank
 epochs that differ by a point or two; the loss, averaged over every token, is the steadier
-signal. The idea (training_next.md § A2) was sound and is now measured: not at this dev size.
+signal. The idea (archive/training_next.md § A2) was sound and is now measured: not at this dev size.
 
 **Therefore run A's gain in the personal component is the targets', and run A was
 handicapped by its selection rule.** The clean reading of the semi-verbatim objective needs
@@ -481,7 +481,7 @@ nohup python src/training/backup.py --repo knesset-asr/knesset-committees-adapte
 Model weights re-download on first use (~6 GB, minutes). `runs/` (the adapters, 1.3 GB) and
 `outputs/results/` are on the volume and mirrored in the backup dataset; `run_panel.py` skips
 every scored cell, so re-launching any of this session's commands is a no-op, and a new
-sweep (`docs/training_next.md`) only trains what is new. The detached-launch pattern:
+sweep (`docs/archive/training_next.md`) only trains what is new. The detached-launch pattern:
 
 ```bash
 setsid nohup python src/training/run_panel.py <args> > src/training/outputs/<name>.log 2>&1 < /dev/null &
@@ -489,4 +489,4 @@ setsid nohup python src/training/run_panel.py <args> > src/training/outputs/<nam
 
 Committed with this session: the code changes (`train.py`, `evaluate.py`, `run_panel.py`,
 `backup.py`, `box/`), `outputs/results.csv` and `outputs/results/*.json` (force-added; the
-folder is otherwise git-ignored), the run logs, this document, and `training_next.md`.
+folder is otherwise git-ignored), the run logs, this document, and `archive/training_next.md`.

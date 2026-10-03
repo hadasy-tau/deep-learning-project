@@ -258,7 +258,7 @@ train/dev chunks, change 53 % of them and put back **6.5 words per 100** (10.7 o
   § 4, P0): every number above is measured against the protocol, which is ~18 % off the speech.
 - **Do not adopt the semi-verbatim target** on this evidence: its case rested on the forgiven count.
   Re-score both recipes on the human test first; the hypotheses are saved.
-- **The sharing axis** (similar-speaker groups against random ones, `training_next.md`) is the
+- **The sharing axis** (similar-speaker groups against random ones, `archive/training_next.md`) is the
   natural next experiment: the control already shows that a random group buys 10 points; the
   question is whether a *similar* group closes the remaining 2–3.
 - **30601** stays deferred; bringing him in needs the audio gate first (`training_plan_v3.md` § 1).

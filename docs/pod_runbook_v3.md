@@ -115,6 +115,11 @@ tail -f src/training/outputs/logs/all.log
 It stops at the first stage that fails. To run a stage by hand instead, call it by name. The
 order matters: `tune` before `final` and `seeds`, which refuse until the recipe is final.
 
+## Gotchas
+
+- **On a Linux box,** DataLoader workers are forked and nothing special is needed. On Windows, `train_cell(num_workers=0)` is required: the collator is a lambda, and spawned workers re-import the script.
+- **`--dropouts 0` names the cell the same as no dropout flag**, on purpose. That's how stage B skips the stage-A cell.
+
 ## Stop rules
 
 | where | condition | what to do |

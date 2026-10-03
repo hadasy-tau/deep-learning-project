@@ -115,5 +115,6 @@ before the model.
 | [`training_run2.md`](training_run2.md) | the second training run (2026-09-20): log, decisions, results |
 | [`training_run3.md`](training_run3.md) | the third training run (2026-10-02, plan v3): log, results, conclusions |
 | [`personalization_research.md`](personalization_research.md) | after run 3: what the remaining errors are, what the literature says, and the ranked next steps |
-| [`training_handoff.md`](training_handoff.md) | historical: the setup of runs 1–2; still the source of the two rules for reading results |
-| [`design.html`](design.html) | the same design as a page, with diagrams — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |
+| [`archive/`](archive/) | superseded documents (`training_handoff.md`, the run-1/2 setup; `training_next.md`, the options after run 2). History, not instructions |
+| [`STATUS.md`](STATUS.md) | **where the project stands now**: results so far, next steps, withdrawn claims. The one document kept current |
+| [`design.html`](design.html) | a display copy of this page, with a diagram; `design.md` is the source and the HTML is not kept in sync — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |

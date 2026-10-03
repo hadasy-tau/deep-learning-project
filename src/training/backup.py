@@ -1,6 +1,6 @@
 """Copy the run's small artefacts to a private HuggingFace dataset, every N minutes.
 
-docs/training_handoff.md § Operational: a preempted pod loses everything, so the
+docs/archive/training_handoff.md § Operational: a preempted pod loses everything, so the
 results (outputs/results/*.json, results.csv) and the adapters (runs/<cell>/
 adapter_*.safetensors, a few MB each at r=8) go to a private dataset on a
 loop.  Trainer checkpoints (checkpoint-*/, optimizer state, ~3x the adapter)
