@@ -76,7 +76,7 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
      - On the ≥ 0.7 test from 80 minutes to the top budget: 23558 +9.7 → +4.1 % (Δ −5.6 [−7.7, −3.6]),
        23641 +3.3 → +2.3, 30752 +4.7 → +1.7, 23635 +0.4 → −0.1.
      - The own adapters improve (23558 +29 → +34 %), but the control improves as fast.
-     - A full pass over the data (the best checkpoint at about 0.85 of a pass) and r = 32 (no
+     - A full pass over the data (at 1,440 minutes the best checkpoint comes after about one pass, 0.83–1.11) and r = 32 (no
        consistent gain, one seed) do not change it.
      - The rule says "undecided" only because 23558's interval lies below zero.
    - **Added 2026-10-04: 5 minutes for 23641 and 23635** (1× H100, about 20 min, about $1), at run 3's
@@ -108,6 +108,7 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
 | The "attributable error" analysis (35 %, adapters add 10–16 %, 54 % of personal fixes are conventions) | `personalization_research.md` § 1.1–1.2 | built on the same arm-A proxy |
 | The semi-verbatim targets as the recipe; "the adapter learns the stenographer" | runs 2–3 | both rested on the forgiven count |
 | "~140 high-quality minutes per speaker" as a data limit | plan v3 | a cap of the 250 candidate minutes scored, not of the corpus |
+| "At 1,440 minutes the best checkpoint came at about 0.84–0.9 of a pass", validation stops improving "within the first pass" | `training_run4.md` § The recipe as run | true of the controls only; the own adapters peak after 0.93–1.11 passes (all runs: 0.83–1.11, stopped at 1.02–1.23). The conclusion stands: about one pass, far below the step cap |
 
 ## Where things are
 

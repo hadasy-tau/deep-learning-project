@@ -343,9 +343,36 @@ the personal margin stays between +1.6\% and +3.1\% on the clean test at every
 budget. At 5 minutes both adapters are unreliable: they are worse than arm~B for some
 speakers, and the personal margin has opposite signs on the two test sets.
 
-% TODO: add conclusions from the ongoing larger-data run (four speakers, well beyond
-% 80 minutes each): does the gain, and the personal margin, keep growing with more
-% speaker data?
+\paragraph{Beyond 80 minutes.}
+To test whether personalization is limited by the amount of speaker data, we train
+23558 and 23641, a speaker outside the 12 with one of the highest WERs, on up to
+1{,}440 minutes (24 hours) of their own speech, each budget with its own control
+(Figure~\ref{fig:curve}, Appendix~\ref{app:training}). The own adapter keeps
+improving, with diminishing returns: on the full test, from +29.4\% at 80 minutes to
++34.3\% at 24 hours for 23558, and from +17.4\% to +23.4\% for 23641. The control
+improves at least as fast (for 23558, from +19.7\% to +30.2\%), so the added gain
+comes mostly from committee speech in general, and personalization does not grow. It
+shrinks as a share of the gain, for 23558 from a third to an eighth, but it does not
+vanish: at 24 hours it is +4.1\% for 23558 and +2.3\% for 23641. Longer training does
+not change this: validation loss stops improving after about one pass over the data,
+and a larger adapter (rank 32) does not help (Appendix~\ref{app:training}). Two more
+speakers, trained on up to 360 minutes, show the same pattern
+(Figure~\ref{fig:curve6h}).
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/stage2_data_curve_24h.png}
+    \caption{Relative WER reduction over arm~B for the two speakers trained on up to
+    1{,}440 minutes, on the full test (top) and the clean test (bottom). Blue: the
+    speaker's own adapter. Orange: the control, trained on the same minutes from other
+    speakers. Green: personalization (own $-$ control). Filled markers are means of
+    seeds 0--2 (small dots: the single seeds), hollow markers seed 0. The dotted line
+    marks 80 minutes, the largest budget of the main experiment. Above each panel: the
+    change in personalization from 80 to 1{,}440 minutes, with its 95\%
+    paired-bootstrap interval. At 5 minutes both adapters are unreliable
+    (Section~\ref{sec:adaptation}).}
+    \label{fig:curve}
+\end{figure}
 
 \paragraph{Personal versus Shared Adaptation.}
 At 80 minutes, the median personalization over the 36 speaker--seed pairs is +2.4\%
@@ -413,16 +440,19 @@ across seeds.
 
 \paragraph{More audio gives more gain, but mostly not personal gain.}
 From 5 to 80 minutes the own adapter's gain roughly triples, and the control's grows
-almost as fast.
+almost as fast. Up to 24 hours of a speaker's own speech, the own adapter keeps
+improving, and a control trained on as much audio from other speakers improves as
+fast: the added gain does not require the speaker's own speech, and the personal
+margin does not grow with it.
 
 \paragraph{Adaptation is cheap.}
 An adapter converges in about two passes over its data. The recipe is insensitive to
 rank, augmentation and, at 80 minutes, the learning rate, but Whisper's dropout
 prevents learning.
 
-Whether the personal margin grows with substantially more speaker data is tested in a
-follow-up on four speakers, now running. Further directions are adaptation on similar
-rather than random speakers and evaluation against verbatim human transcripts.
+Further directions are adaptation on similar rather than random speakers, training
+objectives that separate the voice from the committee setting, and evaluation against
+verbatim human transcripts.
 
 
 % ============================================================
@@ -469,6 +499,11 @@ to be explored.
 \paragraph{Tuning on validation loss.} The rank, dropout, augmentation and learning
 rate were chosen on the validation loss of four speakers. The rejected settings,
 including rank 16, were never scored on the test sets.
+
+\paragraph{Few speakers beyond 80 minutes.} The longer budgets cover four speakers,
+two of them up to 24 hours, and the rank-32 check uses one seed, so the finding that
+the personal margin does not grow with more speaker data holds for these speakers,
+and may not hold for every speaker.
 
 \paragraph{A random control group.} The control pools speakers at random, so it does
 not test whether \emph{similar} speakers could replace a speaker's own audio; we leave
@@ -598,6 +633,56 @@ Seeds & 0 at every budget; 1 and 2 at 80 minutes \\
 \end{tabular}
 \caption{Training hyperparameters, identical for every own and control adapter.}
 \label{tab:hyperparams}
+\end{table}
+
+\paragraph{Beyond 80 minutes.}
+Four speakers are trained beyond 80 minutes: 23558 and 23641 up to 1{,}440 minutes,
+and 30752 and 23635 up to 360. 23558 and 30752 are from the 12. 23641 and 23635 add
+profiles the 12 lack: a Haredi speaker with one of the highest WERs, whom the Hebrew
+fine-tune helped little, and an Ethiopian-born woman. Their data follow the same rules
+(Appendix~\ref{app:data}), with the newest meetings held out for testing. The budgets
+are 5, 20, 80, 160 and 360 minutes, and 720 and 1{,}440 for the first two, each a
+separate adapter on a nested subset. For 23558 and 30752 the 5, 20 and 80-minute
+adapters are those of the main experiment. Seeds 0--2 are run at 80 minutes and at
+each speaker's largest budget, and seed 0 elsewhere. Every budget has its own control.
+23641 and 23635 are not in the two folds, so they are scored against the control of
+23558's fold, whose pool excludes their meetings.
+
+The recipe of Table~\ref{tab:hyperparams} is kept, with three changes. The step cap
+grows with the data, to 1{,}200 steps at 160 and 360 minutes and 3{,}000 at 720 and
+1{,}440, and no run reaches it. The learning rate was checked again at 360 minutes by
+the same rule, and $10^{-3}$ was worse than $3\times10^{-4}$ for all four speakers
+(mean drop 0.381 against 0.391), so $3\times10^{-4}$ is kept. Finally, the patience of
+four validations (80 steps) is about half a pass over 360 minutes of data but a tenth
+of a pass over 1{,}440, so at 720 and 1{,}440 minutes training may not stop before one
+full pass. At 1{,}440 minutes the best checkpoint comes after 0.83--1.11 passes, and
+training stops at 1.02--1.23 passes: validation loss stops improving after about one
+pass.
+
+\paragraph{Adapter capacity.}
+If a rank-8 adapter could not hold both the committee setting and the voice, more data
+could crowd out the personal part. We therefore repeat the 1{,}440-minute own adapters
+of 23558 and 23641 and their control at rank 32 (15.7M trainable parameters,
+$\alpha=64$), seed 0. Personalization moves in both directions
+(Table~\ref{tab:capacity}), by up to 5 points, of the order of the seed-to-seed
+variation, and no rank-32 adapter comes near 23558's +9.7\% at 80 minutes. The own
+adapter itself gains no more at rank 32.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{llrr}
+\toprule
+Speaker & Test & Rank 8 & Rank 32 \\
+\midrule
+23558 & full  & +2.6 & +4.4 \\
+23558 & clean & +7.1 & +2.9 \\
+23641 & full  & +1.5 & +2.2 \\
+23641 & clean & +1.7 & +6.7 \\
+\bottomrule
+\end{tabular}
+\caption{Personalization (\%) at 1{,}440 minutes, seed 0, with a rank-8 and a rank-32
+adapter.}
+\label{tab:capacity}
 \end{table}
 
 \begin{figure*}[t]
@@ -787,6 +872,32 @@ is adapted on earlier meetings and tested on their newest ones, which is also ho
     20 steps; line style: seed; dot: the checkpoint early stopping restored.}
     \label{fig:lcspeakers}
 \end{figure*}
+
+Figure~\ref{fig:curve6h} shows the two speakers trained on up to 360 minutes. As for
+the speakers trained on 24 hours, the own adapter keeps improving (on the full test,
+from +23.3\% to +26.9\% for 30752 and from +15.0\% to +19.5\% for 23635), the control
+improves as fast, and personalization at 360 minutes is no higher than at 80 (30752
+from +4.7\% to +1.7\%, 23635 from +0.4\% to $-0.1\%$).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/stage2_data_curve_6h.png}
+    \caption{As Figure~\ref{fig:curve}, for the two speakers trained on up to 360
+    minutes.}
+    \label{fig:curve6h}
+\end{figure}
+
+% NOTE: this paragraph can probably be dropped; the result is clear without it.
+\paragraph{Decision rule.}
+Before the longer runs we fixed a rule on the full test, comparing each speaker's
+personalization at the largest budget with that at 80 minutes: personalization grows
+with speaker data if the difference is at least +2 points, with its interval above
+zero, for at least two of the four speakers, and it does not if every interval
+contains zero with an upper end below +2. Neither holds. No interval lies above zero,
+and for three speakers the interval contains zero with an upper end below +2, but for
+23558 it lies below zero ($-5.6$, $[-7.7,-3.6]$). By its wording the rule is therefore
+undecided, while the direction of the result is against personalization growing with
+speaker data.
 
 
 % ------------------------------------------------------------
