@@ -108,6 +108,9 @@ All the data work happens off the GPU:
    new clips (137 h) from the corpus. That means reading 387 of its 410 shards, about 300 GB, to
    keep about 16 GB. It verifies the audio and adds the WAVs and both v4 plans to
    `knesset-asr/knesset-committees-panel-hq`, beside plan v2's clips, which do not change.
+   - A snapshot of 44,033 small WAVs downloads at about 5 files/s, which would be about 2.3 h of
+     GPU boot (measured 2026-10-04). So the clips also go up as 14 tars of lossless FLAC, one per
+     speaker, 11.7 GB, under `panel_packs/`. The pod decodes them back to WAV (`box/packs_v4.py`).
 2. **A GPU pod** (4× A100 SXM 80 GB, Secure cloud) runs `box/pod_v4.sh`:
    - **boot**, about 15 minutes: deps, weights, the audio and run 3's results, in parallel.
    - **run:** one worker per GPU on a shared queue (`box/jobs_v4.py`). The queue starts with the
