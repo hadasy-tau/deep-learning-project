@@ -1,5 +1,7 @@
 # Training run 4: the personal-data curve
 
+> Corrected 2026-10-04: the best checkpoint at 1,440 minutes comes after about one pass, not within the first; see `docs/STATUS.md` § Withdrawn.
+
 Run on 2026-10-04. The plan is `docs/training_plan_v4.md`, amended the same day (`docs/STATUS.md`).
 A dated record: where the project stands is `docs/STATUS.md`.
 
