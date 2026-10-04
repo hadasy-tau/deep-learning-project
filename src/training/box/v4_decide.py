@@ -37,12 +37,15 @@ SPEAKERS = [23558, 23641, 30752, 23635]               # run 4: two panel speaker
 TUNE_BUDGET = 360
 LRS = [3e-4, 1e-3]
 INCUMBENT = dict(V3.INCUMBENT)                          # lr 3e-4, rank 8, dropout 0, augment none
-MAX_STEPS = {20: 400, 80: 400, 160: 1200, 360: 1200, 720: 3000, 1440: 3000, 1200: 3000}
+MAX_STEPS = {5: 400, 20: 400, 80: 400, 160: 1200, 360: 1200, 720: 3000, 1440: 3000, 1200: 3000}
 # 720 and 1,440 minutes: early stopping may not stop before one full pass over the train set.
 # Added 2026-10-04 after the first 45 jobs: at 360 minutes the best checkpoint came after ~1.3
 # passes, so the fixed patience (80 steps) would end a 1,440-minute run before it had seen half
 # its data (docs/STATUS.md, run 4).
 MIN_EPOCHS = {720: 1, 1440: 1, 1200: 1}
+# 5 minutes (added 2026-10-04, for the two new speakers): run 3's 5-minute recipe, whose lr check
+# picked 1e-4 there (outputs/recipe_v3.json), so their points match 23558's and 30752's from run 3.
+LR_V3 = {5: 1e-4}
 
 
 def pick(T=None, save=True):
@@ -70,7 +73,8 @@ def flags(budget, rank=None):
     """run_panel flags for one budget.  20, 80 and 160 never depend on the pick; 360 and above refuse before it.
     rank: the capacity check at the top budget (r = 32; alpha = 2r keeps the adapter's scale)."""
     budget = int(budget)
-    if budget <= 160: lr = INCUMBENT['lr']
+    if budget in LR_V3: lr = LR_V3[budget]
+    elif budget <= 160: lr = INCUMBENT['lr']
     else:
         if not os.path.exists(RECIPE): raise SystemExit(f'the lr at {TUNE_BUDGET} min is not picked yet: run `v4_decide.py pick` after the tuning jobs')
         lr = json.load(open(RECIPE))['lr'][str(budget)]
@@ -107,6 +111,7 @@ def _self_check():
     global RECIPE
     RECIPE = os.path.join(tempfile.mkdtemp(), 'recipe.json')
     assert flags(80) == '--lrs 0.0003 --ranks 8 --dropouts 0 --augments none --max-steps 400', flags(80)
+    assert flags(5) == '--lrs 0.0001 --ranks 8 --dropouts 0 --augments none --max-steps 400', flags(5)
     assert flags(160).endswith('--max-steps 1200') and '--lrs 0.0003' in flags(160)
     try: flags(360); raise AssertionError('flags(360) before pick must refuse')
     except SystemExit: pass
