@@ -38,6 +38,11 @@ TUNE_BUDGET = 360
 LRS = [3e-4, 1e-3]
 INCUMBENT = dict(V3.INCUMBENT)                          # lr 3e-4, rank 8, dropout 0, augment none
 MAX_STEPS = {20: 400, 80: 400, 160: 1200, 360: 1200, 720: 3000, 1440: 3000, 1200: 3000}
+# 720 and 1,440 minutes: early stopping may not stop before one full pass over the train set.
+# Added 2026-10-04 after the first 45 jobs: at 360 minutes the best checkpoint came after ~1.3
+# passes, so the fixed patience (80 steps) would end a 1,440-minute run before it had seen half
+# its data (docs/STATUS.md, run 4).
+MIN_EPOCHS = {720: 1, 1440: 1, 1200: 1}
 
 
 def pick(T=None, save=True):
@@ -61,15 +66,16 @@ def pick(T=None, save=True):
     return R
 
 
-def flags(budget):
-    """run_panel flags for one budget.  20, 80 and 160 never depend on the pick; 360 and above refuse before it."""
+def flags(budget, rank=None):
+    """run_panel flags for one budget.  20, 80 and 160 never depend on the pick; 360 and above refuse before it.
+    rank: the capacity check at the top budget (r = 32; alpha = 2r keeps the adapter's scale)."""
     budget = int(budget)
     if budget <= 160: lr = INCUMBENT['lr']
     else:
         if not os.path.exists(RECIPE): raise SystemExit(f'the lr at {TUNE_BUDGET} min is not picked yet: run `v4_decide.py pick` after the tuning jobs')
         lr = json.load(open(RECIPE))['lr'][str(budget)]
-    return (f'--lrs {V3._fmt(lr)} --ranks {INCUMBENT["rank"]} --dropouts {V3._fmt(INCUMBENT["dropout"])} '
-            f'--augments {INCUMBENT["augment"]} --max-steps {MAX_STEPS[budget]}')
+    return (f'--lrs {V3._fmt(lr)} --ranks {rank or INCUMBENT["rank"]} --dropouts {V3._fmt(INCUMBENT["dropout"])} '
+            f'--augments {INCUMBENT["augment"]} --max-steps {MAX_STEPS[budget]}' + (f' --min-epochs {MIN_EPOCHS[budget]}' if budget in MIN_EPOCHS else ''))
 
 
 def base(audio_dir=None, batch=64, speakers=None):
@@ -110,7 +116,8 @@ def _self_check():
         return pd.DataFrame(rows + [dict(speaker='30685', budget=80, lr=1e-3, rank=8, dropout=None, augment='none', rel_drop=.9)])
     R = pick(table([.40] * 4, [.43, .43, .43, .39]))                     # +0.02 mean, 3 of 4: 1e-3 wins at 360
     assert np.isclose(R['lr']['360'], 1e-3) and np.isclose(R['lr']['1440'], 1e-3) and np.isclose(R['lr']['160'], 3e-4)
-    assert flags(1440) == '--lrs 0.001 --ranks 8 --dropouts 0 --augments none --max-steps 3000', flags(1440)
+    assert flags(1440) == '--lrs 0.001 --ranks 8 --dropouts 0 --augments none --max-steps 3000 --min-epochs 1', flags(1440)
+    assert flags(1440, rank=32).startswith('--lrs 0.001 --ranks 32 ') and '--min-epochs' not in flags(360)
     R = pick(table([.40] * 4, [.405, .405, .405, .405]))                 # +0.005: below the line, 3e-4 stays
     assert np.isclose(R['lr']['360'], 3e-4) and flags(360).startswith('--lrs 0.0003')
     try: pick(table([.40] * 4, [.43] * 4).query('speaker != "23635"')); raise AssertionError('a missing speaker must refuse')
@@ -124,6 +131,6 @@ if __name__ == '__main__':
     a = ap.parse_args()
     if a.self_check: _self_check(); sys.exit(0)
     if a.cmd == 'pick': pick()
-    elif a.cmd == 'flags': print(flags(a.args[0]))
+    elif a.cmd == 'flags': print(flags(a.args[0], rank=int(a.args[1]) if len(a.args) > 1 else None))
     elif a.cmd == 'base': sys.exit(0 if base(batch=a.batch, speakers=[int(x) for x in a.args]) else 1)
     else: ap.error('give a command or --self-check')

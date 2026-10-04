@@ -64,7 +64,7 @@ AUGMENTS = {'none': (), 'specaug': ('specaug',), 'specaug+tempo': ('specaug', 't
             'specaug+tempo+noise': ('specaug', 'tempo', 'noise')}
 
 
-def recipe_tag(max_steps=None, eval_steps=EVAL_STEPS, patience=None, dropout=None, augment='none', data=''):
+def recipe_tag(max_steps=None, eval_steps=EVAL_STEPS, patience=None, dropout=None, augment='none', data='', min_epochs=None):
     """The step-mode settings as a cell-name suffix, so no two recipes share a
     directory or a results file.  Empty in epoch mode (the old cells' names)."""
     if not max_steps:
@@ -75,7 +75,22 @@ def recipe_tag(max_steps=None, eval_steps=EVAL_STEPS, patience=None, dropout=Non
     if patience: t.append(f'pat{patience}')
     if dropout: t.append(f'do{dropout:g}')
     if augment and augment != 'none': t.append('aug-' + augment.replace('+', '-'))
+    if min_epochs: t.append(f'minep{min_epochs:g}')
     return '_'.join(t)
+
+
+def _min_steps_early_stopping(patience, min_steps):
+    """EarlyStoppingCallback that may not stop before `min_steps` (docs/training_plan_v4.md):
+    at 720 and 1,440 minutes the fixed patience would end training before one pass over the
+    data, so the largest budgets would not really have been seen.  It keeps counting
+    validations without improvement all along, so once min_steps is reached it stops at the
+    first validation where patience is used up; the best checkpoint is restored as before."""
+    from transformers import EarlyStoppingCallback
+    class MinStepsEarlyStopping(EarlyStoppingCallback):
+        def on_evaluate(self, args, state, control, metrics, **kwargs):
+            super().on_evaluate(args, state, control, metrics, **kwargs)
+            if state.global_step < min_steps: control.should_training_stop = False
+    return MinStepsEarlyStopping(early_stopping_patience=patience)
 
 
 class ChunkDataset(Dataset):
@@ -157,7 +172,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
                train_rows=None, dev_rows=None, grad_ckpt=None, num_workers=4,
                tag='', select='loss',
                max_steps=None, eval_steps=EVAL_STEPS, patience=None, dropout=None,
-               augment='none', keep_adapter=True):
+               augment='none', keep_adapter=True, min_epochs=None):
     """Train one cell. Returns the output dir; skips it if already finished.
 
     lr defaults per method (see DEFAULT_LR) because one value cannot serve both
@@ -302,7 +317,11 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
         # (before the callback is added, so this evaluation cannot count toward patience)
         base_eval_loss = float(trainer.evaluate()['eval_loss'])
         if patience:
-            trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=patience))
+            if min_epochs:      # run 4's largest budgets: at least min_epochs passes before early stopping may stop
+                min_steps = int(np.ceil(min_epochs * len(tr) / (batch * grad_accum)))
+                trainer.add_callback(_min_steps_early_stopping(patience, min_steps))
+            else:
+                trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=patience))
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
     trainer.train()
@@ -334,7 +353,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
                 best_eval_loss=min((e['eval_loss'] for e in evals), default=None), evals=evals,
                 select=select, best_epoch=(min(evals, key=lambda e: e['eval_loss'])['epoch'] if evals else None),
                 base_dtype=str(base_dtype), grad_ckpt=bool(grad_ckpt), tag=tag,
-                max_steps=max_steps, eval_steps=eval_steps if max_steps else None, patience=patience, dropout=dropout,
+                max_steps=max_steps, eval_steps=eval_steps if max_steps else None, patience=patience, dropout=dropout, min_epochs=min_epochs,
                 augment=augment, base_eval_loss=base_eval_loss,
                 best_step=(min(evals, key=lambda e: e['eval_loss']).get('step') if (evals and max_steps) else None),
                 **meta_extra)
@@ -406,3 +425,32 @@ def overfit_check(chunks, audio_dir, speaker, arm='B', n=20, steps=60, batch=4):
             print(f'  step {s:3d}  loss {loss.item():.4f}')
     print(f'first {np.mean(losses[:5]):.4f} -> last {np.mean(losses[-5:]):.4f}')
     return losses
+
+
+def _self_check():
+    from types import SimpleNamespace as NS
+    assert recipe_tag(400, patience=4, data='hq') == 'hq_ms400_pat4'                       # run 3's cells keep their names
+    assert recipe_tag(3000, patience=4, data='hq', min_epochs=1) == 'hq_ms3000_pat4_minep1'
+    # the min-steps rule on a validation curve that stops improving at once: without it, stop at
+    # the 4th validation (step 80); with min_steps 200, keep going and stop at the first
+    # validation from step 200 on, since patience has long been used up
+    def run(cb, losses):
+        args = NS(metric_for_best_model='eval_loss', greater_is_better=False)
+        state = NS(best_metric=None, global_step=0)
+        for k, l in enumerate(losses, 1):
+            state.global_step = 20 * k; control = NS(should_training_stop=False)
+            cb.on_evaluate(args, state, control, {'eval_loss': l})
+            if state.best_metric is None or l < state.best_metric: state.best_metric = l
+            if control.should_training_stop: return state.global_step
+        return None
+    from transformers import EarlyStoppingCallback
+    flat = [0.5] + [0.6] * 20
+    assert run(EarlyStoppingCallback(early_stopping_patience=4), flat) == 100
+    assert run(_min_steps_early_stopping(4, 200), flat) == 200
+    late = [0.5] * 3 + [0.4] + [0.6] * 20                                                   # an improvement at step 80 resets the count
+    assert run(_min_steps_early_stopping(4, 60), late) == 160
+    print('train.py: OK')
+
+
+if __name__ == '__main__':
+    _self_check()

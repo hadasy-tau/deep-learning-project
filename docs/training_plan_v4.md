@@ -1,5 +1,7 @@
 # Training plan v4: the personal-data curve
 
+> Amended 2026-10-04 (min-epochs at 720/1,440, an r = 32 capacity check): see `docs/STATUS.md`, run 4.
+
 Written 2026-10-03, before any GPU time. A dated record: where the project stands is
 `docs/STATUS.md`.
 
