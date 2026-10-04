@@ -18,7 +18,6 @@ cd "$(dirname "$0")/../../.."
 source src/training/box/env.sh
 
 PY=${PY:-python}
-AUDIO_REPO=knesset-asr/knesset-committees-panel-hq        # plan v2's clips plus run 4's (data_v4.sh)
 PRIOR_REPO=knesset-asr/knesset-committees-v3-results     # run 3: the 5/20/80-minute cells of 23558 and 30752
 RESULTS_REPO=${RESULTS_REPO:-knesset-asr/knesset-committees-v4-results}
 OUT=src/training/outputs; LOGS=$OUT/logs; mkdir -p "$LOGS" "$OUT/results"
@@ -35,13 +34,8 @@ stage_boot() {
     pip install -q -r src/training/requirements.txt > "$LOGS/pip.log" 2>&1 &
     local p_pip=$!
     $PY -c "from huggingface_hub import get_token; import sys; sys.exit(0 if get_token() else 'not logged in to HuggingFace: run  hf auth login  (typed, never pasted into a chat)')"
-    $PY - "$AUDIO_REPO" <<'EOF' > "$LOGS/boot_audio.log" 2>&1 &
-import sys, time
-from huggingface_hub import snapshot_download
-t = time.time()
-snapshot_download(sys.argv[1], repo_type='dataset', local_dir='src/training/outputs', allow_patterns=['panel_audio/*'], max_workers=32)
-print(f'panel audio: downloaded in {(time.time() - t) / 60:.1f} min', flush=True)
-EOF
+    # 14 packs of FLAC clips, decoded back to WAV in parallel: the 44,033 WAVs one by one run at ~5 files/s (box/packs_v4.py)
+    $PY src/training/box/packs_v4.py fetch > "$LOGS/boot_audio.log" 2>&1 &
     local p_audio=$!
     $PY -c "from huggingface_hub import snapshot_download as s; s('ivrit-ai/whisper-large-v3'); print('model weights: cached')" > "$LOGS/boot_model.log" 2>&1 &
     local p_model=$!

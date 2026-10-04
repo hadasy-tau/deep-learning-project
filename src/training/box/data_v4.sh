@@ -5,7 +5,8 @@
 #
 #   bash src/training/box/data_v4.sh data      # extract both v4 plans (only clips not on disk), verify with audio
 #   bash src/training/box/data_v4.sh upload    # add the new WAVs and both plans to $REPO; check every file arrived
-#   bash src/training/box/data_v4.sh all       # data -> upload
+#   bash src/training/box/data_v4.sh packs     # one tar of FLAC clips per speaker, to $REPO/panel_packs/ (what the GPU pod fetches)
+#   bash src/training/box/data_v4.sh all       # data -> upload -> packs
 #
 # The clips go into knesset-committees-panel-hq beside plan v2's, which do not change: the plans
 # (panel_plan_v2 / _v4, panel_test07 / _v4) say which run used which clips.  Both datasets and
@@ -56,10 +57,16 @@ PYEOF
     say "upload: every v4 clip in $REPO"
 }
 
+stage_packs() {
+    $PY src/training/box/packs_v4.py pack
+    $PY src/training/box/packs_v4.py upload
+    say "packs: in $REPO/panel_packs/"
+}
+
 run() { say "== $1"; "stage_$1" 2>&1 | tee -a "$LOGS/data_v4_$1.log"; }
 
 case "${1:-}" in
-    data|upload) run "$1" ;;
-    all) run data; run upload; say "all: done" ;;
+    data|upload|packs) run "$1" ;;
+    all) run data; run upload; run packs; say "all: done" ;;
     *) awk 'NR > 1 && !/^#/ { exit } NR > 1' "$0"; exit 1 ;;
 esac
