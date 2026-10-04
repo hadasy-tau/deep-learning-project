@@ -1,0 +1,48 @@
+{
+ "picked": true,
+ "lr": {
+  "20": 0.0003,
+  "80": 0.0003,
+  "160": 0.0003,
+  "360": 0.0003,
+  "720": 0.0003,
+  "1440": 0.0003,
+  "1200": 0.0003
+ },
+ "rank": 8,
+ "dropout": 0.0,
+ "augment": "none",
+ "max_steps": {
+  "20": 400,
+  "80": 400,
+  "160": 1200,
+  "360": 1200,
+  "720": 3000,
+  "1440": 3000,
+  "1200": 3000
+ },
+ "table": [
+  {
+   "budget": 360,
+   "lr": 0.0003,
+   "rank": 8,
+   "dropout": 0.0,
+   "augment": "none",
+   "mean_rel_drop": 0.39062921201210354,
+   "gain_vs_incumbent": 0.0,
+   "helped": "-",
+   "passes": "incumbent"
+  },
+  {
+   "budget": 360,
+   "lr": 0.001,
+   "rank": 8,
+   "dropout": 0.0,
+   "augment": "none",
+   "mean_rel_drop": 0.38062493520602925,
+   "gain_vs_incumbent": -0.010004276806074297,
+   "helped": "0/4",
+   "passes": false
+  }
+ ]
+}
