@@ -1,6 +1,6 @@
 # Where the project stands
 
-**Updated 2026-10-03.** This is the one document that changes as the project moves. Every other
+**Updated 2026-10-04.** This is the one document that changes as the project moves. Every other
 document is either a stable reference (the README, `design.md`, `committees_handoff.md`,
 `adaptation_plan.md`, `pod_runbook_v3.md`, the folder READMEs) or a dated record that is not
 edited afterwards (the build records, `error_map.md`, the training plans and run logs,
@@ -15,7 +15,7 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
 | 2. Chunk corpus | done: ~1.2 M chunks ≤ 30 s, 330 speakers (`-chunks`) | `chunk_corpus_build.html` |
 | 3. Inference, both arms | done: 65,990 chunks, 267 speakers (`-inference`). Corpus WER A 0.417, B 0.324; after the quality ≥ 0.7 filter 0.387 / 0.292 | `inference.md` |
 | 4–5. Error map, panel | done. The fine-tune helps every speaker (median 24 % of A's error) but rescues no one in particular. Panel: 12 speakers (the 11 of `committees_panel.csv` plus 556; 30601 deferred) | `error_map.md`, `adaptation_plan.md` |
-| 6–7. Adaptation | three runs. Run 2 (2026-09-20, 11 speakers, ≥ 0.7 data) and run 3 (2026-10-02, plan v3: 12 speakers, ≥ 0.95 data, tuned on validation by rule, the control at every budget, seeds 0–2 at 80 min). **Run 4 (the personal-data curve) is prepared, not run** | `training_run2.md`, `training_run3.md`, `training_plan_v4.md` |
+| 6–7. Adaptation | four runs. Run 2 (2026-09-20, 11 speakers, ≥ 0.7 data); run 3 (2026-10-02, plan v3: 12 speakers, ≥ 0.95 data, tuned on validation by rule, the control at every budget, seeds 0–2 at 80 min); run 4 (2026-10-04, the personal-data curve to 360 / 1,440 min: more data does not raise personalization) | `training_run2.md`, `training_run3.md`, `training_run4.md` |
 
 ## What the runs found
 
@@ -37,7 +37,8 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
    models, by ivrit.ai's guidelines (`ivrit-ai/eval-forced-alignment`), 10 % double-annotated.
    Re-score runs 2–3 on it without a GPU. Success, fixed in advance: median personalization ≥ 5 %
    with the interval above zero for half the speakers in two of three seeds.
-2. **More personal data: run 4, prepared 2026-10-03** (`training_plan_v4.md`).
+2. **More personal data: run 4, done 2026-10-04** (`training_plan_v4.md`, `training_run4.md`). Ruled out as
+   the route to personalization in this setup; re-score on the human test (1) before closing it for good.
    - **Design:** run 3's curve is extended to 360 minutes for 23558, 30752 and two new speakers,
      23641 יעקב אשר (Haredi, hard, the fine-tune barely helped) and 23635 פנינה תמנו
      (Ethiopia-born). 23558 and 23641 go on to 1,440 minutes.
@@ -68,8 +69,16 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
      - The aim is to rule out "more data" with the two objections closed.
      - The 12 jobs had been put on hold to decide this, and the queue read the hold as the end and
        closed the run (fixed: `jobs_v4._finished`).
-   - **Still to do:** the second pass on a new pod (`box/pod_v4.sh resume`, then `run`, `finish`):
-     15 jobs, about 1 h on 4 GPUs.
+   - **Second pass, same day** (new pod, about 0.9 h, about $6): the 12 held jobs plus the r = 32 check.
+     The backup was verified (338/338), a laptop copy was made (876 files), and the pod was
+     terminated. **Run 4 is done: `docs/training_run4.md`.**
+   - **Result:** personalization does not grow with personal data, up to 1,440 minutes.
+     - On the ≥ 0.7 test from 80 minutes to the top budget: 23558 +9.7 → +4.1 % (Δ −5.6 [−7.7, −3.6]),
+       23641 +3.3 → +2.3, 30752 +4.7 → +1.7, 23635 +0.4 → −0.1.
+     - The own adapters improve (23558 +29 → +34 %), but the control improves as fast.
+     - A full pass over the data (the best checkpoint at about 0.85 of a pass) and r = 32 (no
+       consistent gain, one seed) do not change it.
+     - The rule says "undecided" only because 23558's interval lies below zero.
 3. **KL regularization to the base model.**
 4. Later: a personal text LM against an other-speakers LM; similar-speaker groups; speaker-
    conditioned models. Not recommended now: test-time adaptation, in-context learning, prompting.
@@ -103,4 +112,6 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
   `src/training/outputs/` (`results_v3.csv`, `tuning_v3.csv`, `recipe_v3.json`).
 - The panel audio: `knesset-asr/knesset-committees-panel` (plan v1); `-panel-hq` (plans v2 and v4,
   all clips, plus `panel_packs/`, one FLAC tar per speaker).
-- Run 4's results will go to `knesset-asr/knesset-committees-v4-results` (private).
+- Run 4's results, adapters and hypotheses: `knesset-asr/knesset-committees-v4-results` (private; laptop
+  copy `src/training/outputs/v4_backup/`). Its tables are in `src/training/outputs/` (`results_v4.csv`,
+  `curve_v4.csv`, `capacity_v4.csv`, `recipe_v4.json`, `tuning_v4.csv`).
