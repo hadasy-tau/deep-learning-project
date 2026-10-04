@@ -15,8 +15,9 @@ own idempotence (scored cells and finished adapters are skipped) makes every rer
     python src/training/box/jobs_v4.py --self-check
 
 What runs (seeds: 3 at 80 and at each speaker's top budget, seed 0 elsewhere):
-  23558  160 360 720 1440   (5/20/80 are run 3's)      23641  20 80 160 360 720 1440
-  30752  160 360            (5/20/80 are run 3's)      23635  20 80 160 360
+  23558  160 360 720 1440   (5/20/80 are run 3's)      23641  5 20 80 160 360 720 1440
+  30752  160 360            (5/20/80 are run 3's)      23635  5 20 80 160 360
+(5 minutes for 23641 and 23635 was added after the run, 2026-10-04, at run 3's 5-minute recipe.)
 Controls: run 3's folds over the panel (run_panel.fold_plan), one job per fold that
 evaluates any of these speakers at a (budget, seed) that has own cells; 23641 and 23635 are
 attached to 23558's fold.  If the plan holds fewer than 1,440 train minutes for 23558 or
@@ -37,9 +38,9 @@ PANEL_NEW = [23641, 23635]; ATTACH = 23558
 SEEDS3 = [0, 1, 2]
 # per speaker: budget -> seeds.  The top of 23558 and 23641 is 1440, or 1200 if the plan is short (top_budget)
 OWN = {23558: {160: [0], 360: SEEDS3, 720: [0], 1440: SEEDS3},
-       23641: {20: [0], 80: SEEDS3, 160: [0], 360: SEEDS3, 720: [0], 1440: SEEDS3},
+       23641: {5: [0], 20: [0], 80: SEEDS3, 160: [0], 360: SEEDS3, 720: [0], 1440: SEEDS3},
        30752: {160: [0], 360: SEEDS3},
-       23635: {20: [0], 80: SEEDS3, 160: [0], 360: SEEDS3}}
+       23635: {5: [0], 20: [0], 80: SEEDS3, 160: [0], 360: SEEDS3}}
 LR_CHECK = [3e-4, 1e-3]          # the 360-minute seed-0 cells at both rates are the lr check (v4_decide.py)
 # The capacity check (added 2026-10-04): at each long-branch speaker's top budget, seed 0, the own
 # adapter and 23558's fold control at r = 32 -- if r = 8 cannot absorb 1,440 minutes, it shows here.
@@ -259,7 +260,10 @@ def _self_check():
             k = int(j['id'].split('ctrl')[-1][0]); members = RPM.control_folds(panel, 2, seed)[k]
             assert all(int(x) in members + PANEL_NEW for x in j['cmd'].split('--control-evals ')[1].split(' --')[0].split())
     assert all('decide' in j['deps'] for j in J if '_b1440_' in j['id'] or '_b720_' in j['id'] or (('_b360_' in j['id']) and '_lr' not in j['id']))
-    assert not any('decide' in j['deps'] for j in J if '_b160_' in j['id'] or '_b80_' in j['id'] or '_b20_' in j['id'])
+    assert not any('decide' in j['deps'] for j in J if any(f'_b{b}_' in j['id'] for b in (5, 20, 80, 160)))
+    # 5 minutes: the new speakers only, with one copy of 23558's fold control for them (run 3 has 23558's own)
+    assert {j['id'] for j in J if '_b5_' in j['id']} == {'own_23641_b5_s0', 'own_23635_b5_s0', 'ctrl_b5_s0_ctrl1of2x'}, \
+        sorted(j['id'] for j in J if '_b5_' in j['id'])
     P2 = P.assign(duration_s=[1300 * 60 if s == 23641 else d for s, d in zip(P.speaker_id, P.duration_s)])
     assert 'own_23641_b1200_s1' in {j['id'] for j in build_jobs(P2)}            # the 1,200 fallback
     Qt = dict(jobs=[dict(id='a', status='done', deps=[]), dict(id='b', status='hold', deps=['a'])])
