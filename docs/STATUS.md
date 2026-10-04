@@ -79,6 +79,11 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
      - A full pass over the data (the best checkpoint at about 0.85 of a pass) and r = 32 (no
        consistent gain, one seed) do not change it.
      - The rule says "undecided" only because 23558's interval lies below zero.
+   - **Added 2026-10-04: 5 minutes for 23641 and 23635** (1× H100, about 20 min, about $1), at run 3's
+     5-minute recipe (lr 1e-4), with a copy of 23558's fold control, so all four curves start at 5. The
+     verdict and every Δ are unchanged (they compare 80 with the top budget). Backup verified; laptop
+     copy 918/918; pod terminated. At 5 minutes the controls are weak on the clean test (−5 and −10 %), so
+     the 5-minute personalization there (+14, +10) is mostly a poor control, not a strong own adapter.
 3. **KL regularization to the base model.**
 4. Later: a personal text LM against an other-speakers LM; similar-speaker groups; speaker-
    conditioned models. Not recommended now: test-time adaptation, in-context learning, prompting.
