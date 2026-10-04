@@ -546,10 +546,34 @@ def curve_verdict(C, test='test07', min_gain=CURVE_MIN_GAIN, min_speakers=CURVE_
     if ((c.ci_lo <= 0) & (c.ci_hi >= 0) & (c.ci_hi < min_gain)).all(): return 'data does not limit'
     return 'undecided'
 
+def capacity(R, out=os.path.join(HERE, 'outputs', 'capacity_v4.csv')):
+    """The capacity check (docs/STATUS.md, run 4): personalization of the r = 32 cells
+    beside the r = 8 cell of the same speaker, budget and seed.  If r = 32 is clearly higher, the
+    adapter's size, not the data, was the limit."""
+    big = R[R['rank'] > 8]
+    if not len(big): return None
+    cols = ['personalization_rel', 'personalization_ci_lo', 'personalization_ci_hi', 'test07.personalization_rel',
+            'test07.personalization_ci_lo', 'test07.personalization_ci_hi', 'delta_rel', 'test07.delta_rel']
+    rows = []
+    for r in big.itertuples(index=False):
+        base = R[(R.speaker == r.speaker) & (R.budget == r.budget) & (R.seed == r.seed) & (R['rank'] == 8)]
+        if not len(base): continue
+        b, rr = base.iloc[0], big[(big.cell == r.cell)].iloc[0]
+        rows.append(dict(speaker=r.speaker, budget=r.budget, seed=r.seed, rank=getattr(r, 'rank'),
+                         **{f'r{getattr(r, "rank")}.{c}': rr[c] for c in cols if c in rr}, **{f'r8.{c}': b[c] for c in cols if c in b}))
+    C = pd.DataFrame(rows)
+    if len(C):
+        C.to_csv(out, index=False, float_format='%.5g')
+        print('capacity check (r = 32 vs r = 8, same speaker, budget, seed):')
+        print(C[[c for c in C if c in ('speaker', 'budget', 'seed') or c.endswith('personalization_rel')]].round(4).to_string(index=False))
+    return C
+
 def data_curve(results=os.path.join(HERE, 'outputs', 'results.csv'), out=CURVE, ref=CURVE_REF):
     """Per speaker and test set: personalization at every budget (mean over seeds, own and
     control gains apart), and Delta = top budget - `ref` with its shared-chunk bootstrap."""
     R = pd.read_csv(results); R = R[~R.control & R.control_cell.notna() & (R.targets == 'protocol') & R.cell.str.contains('_hq')]
+    capacity(R)
+    R = R[R['rank'] == 8]                      # the curve is run 3's adapter; the r = 32 check is reported apart
     plans = sorted(glob.glob(os.path.join(HERE, 'panel_*.parquet')))
     text = pd.concat([pd.read_parquet(p, columns=['chunk_id', 'text']) for p in plans]).drop_duplicates('chunk_id').set_index('chunk_id').text
     import evaluate as EV
@@ -626,6 +650,7 @@ if __name__ == '__main__':
     ap.add_argument('--max-steps', type=int, help='step mode: this many optimiser steps for every budget (docs/training_plan_v3.md)')
     ap.add_argument('--eval-steps', type=int, default=20, help='step mode: validate every N steps')
     ap.add_argument('--patience', type=int, default=4, help='step mode: stop after N validations without improvement (fixed, not tuned)')
+    ap.add_argument('--min-epochs', type=float, help='step mode: early stopping may not stop before this many passes over the train set (run 4: 720 and 1,440 min)')
     ap.add_argument('--dropouts', nargs='+', type=float, default=[None], help="step mode: Whisper's `dropout` (0 in the checkpoint)")
     ap.add_argument('--augments', nargs='+', default=['none'], choices=['none', 'specaug', 'specaug+tempo', 'specaug+tempo+noise'])
     ap.add_argument('--control-budgets', nargs='+', type=int, help='train the control at each of these budgets (default: --control-budget)')
@@ -652,7 +677,8 @@ if __name__ == '__main__':
     if T07 is not None:
         assert set(P[P.part == 'test'].chunk_id) <= set(T07.chunk_id), f'{a.test07_plan} does not contain {a.plan}\'s test set: rebuild it (materialize.py plan-test07)'
     data_tag = '' if os.path.abspath(a.plan) == os.path.abspath(PLAN) else 'hq'
-    steps = [dict(max_steps=a.max_steps, eval_steps=a.eval_steps, patience=a.patience, dropout=d, augment=g, data=data_tag)
+    steps = [dict(max_steps=a.max_steps, eval_steps=a.eval_steps, patience=a.patience, dropout=d, augment=g, data=data_tag,
+                  **({'min_epochs': a.min_epochs} if a.min_epochs else {}))
              for d in a.dropouts for g in a.augments] if a.max_steps else [{}]
     if a.transcribe_parts: transcribe_parts(P, a.audio, a.eval_batch); sys.exit(0)
     if a.build_targets:

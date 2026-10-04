@@ -8,6 +8,8 @@
 #   bash src/training/box/pod_v4.sh status    # the queue: done / running / failed, elapsed, cost, remaining
 #   bash src/training/box/pod_v4.sh finish    # results.csv, the data curve, last backup, verified file by file
 #   bash src/training/box/pod_v4.sh all       # boot -> run -> finish, then stop the pod (STOP_POD=0 to keep it)
+#   bash src/training/box/pod_v4.sh resume    # a new pod after a partial run: boot, then restore the finished jobs,
+#                                             # the queue and the recipe from $RESULTS_REPO, and release jobs on hold
 #
 # The queue starts with the overfit check and the base transcriptions; the lr decision at 360
 # minutes (v4_decide.py pick) is a job too, so 720/1440 minutes start the moment it is made.
@@ -59,6 +61,25 @@ EOF
         && $PY src/training/box/v4_decide.py --self-check && $J --self-check
     $J build
     say "boot: $(( (SECONDS - t0) / 60 )) min; $GPUS GPU(s) x $SLOTS slot(s)"
+}
+
+stage_resume() {
+    stage_boot
+    # the finished work, from the backup: every result and hypothesis (run 3's included), the queue's
+    # statuses and the lr decision.  build keeps the statuses and refreshes the commands.
+    $PY - "$RESULTS_REPO" <<'EOF'
+import os, shutil, sys
+from huggingface_hub import snapshot_download
+d = snapshot_download(sys.argv[1], repo_type='dataset', local_dir='src/training/outputs/_restore',
+                      allow_patterns=['results/*', 'logs/queue_v4.json', 'logs/recipe_v4.json', 'logs/tuning_v4.csv'], max_workers=16)
+os.makedirs('src/training/outputs/results', exist_ok=True)
+for f in os.listdir(os.path.join(d, 'results')):
+    shutil.copy2(os.path.join(d, 'results', f), os.path.join('src/training/outputs/results', f))
+for f in ('queue_v4.json', 'recipe_v4.json', 'tuning_v4.csv'):
+    if os.path.exists(os.path.join(d, 'logs', f)): shutil.copy2(os.path.join(d, 'logs', f), os.path.join('src/training/outputs', f))
+print('restored', len(os.listdir('src/training/outputs/results')), 'result files, the queue and the recipe')
+EOF
+    $J build && $J release && $J status --gpus "$GPUS"
 }
 
 stage_backup() {
@@ -113,7 +134,7 @@ stop_pod() {
 run() { say "== $1"; "stage_$1" 2>&1 | tee -a "$LOGS/pod_v4_$1.log"; }
 
 case "${1:-}" in
-    boot|run|finish|backup) run "$1" ;;
+    boot|run|finish|backup|resume) run "$1" ;;
     status) $J status --gpus "$GPUS" ;;
     all)
         run boot; run run; run finish && { say "all: done, backup verified -- stopping the pod"; stop_pod; } ;;

@@ -11,6 +11,7 @@ own idempotence (scored cells and finished adapters are skipped) makes every rer
     python src/training/box/jobs_v4.py dry-run --gpus 4     # the jobs, GPU-hours, and the wall time on N GPUs
     python src/training/box/jobs_v4.py worker --gpu 0       # take jobs until none can become ready
     python src/training/box/jobs_v4.py status               # done / running / failed, elapsed and cost so far
+    python src/training/box/jobs_v4.py release              # jobs put on hold by hand -> pending
     python src/training/box/jobs_v4.py --self-check
 
 What runs (seeds: 3 at 80 and at each speaker's top budget, seed 0 elsewhere):
@@ -40,6 +41,9 @@ OWN = {23558: {160: [0], 360: SEEDS3, 720: [0], 1440: SEEDS3},
        30752: {160: [0], 360: SEEDS3},
        23635: {20: [0], 80: SEEDS3, 160: [0], 360: SEEDS3}}
 LR_CHECK = [3e-4, 1e-3]          # the 360-minute seed-0 cells at both rates are the lr check (v4_decide.py)
+# The capacity check (added 2026-10-04): at each long-branch speaker's top budget, seed 0, the own
+# adapter and 23558's fold control at r = 32 -- if r = 8 cannot absorb 1,440 minutes, it shows here.
+CAPACITY_RANK, CAPACITY_SPEAKERS = 32, [23558, 23641]
 PRICE = 1.59                     # A100 SXM 80 GB, secure cloud, $ per GPU-hour (2026-10-03)
 
 
@@ -65,6 +69,7 @@ def est_min(budget, n_evals=1):
     validation every 20 steps, ~1.5 min to score one speaker's two test sets."""
     sys.path.insert(0, HERE); import v4_decide as V4
     chunks = budget * 60 / 15.7; steps = min(V4.MAX_STEPS[budget], max(160, 2 * chunks / 8 + 80))
+    if budget in V4.MIN_EPOCHS: steps = max(steps, V4.MIN_EPOCHS[budget] * chunks / 8 + 80)
     return (steps * 0.52 + steps / 20 * 4 + 60) / 60 + 1.5 * n_evals
 
 
@@ -101,6 +106,16 @@ def build_jobs(P):
                 job(f'ctrl_b{b}_s{seed}_{label}', f'{RP} --control-only --control-folds 2 --control-budgets {b} --budgets {b} --seeds {seed} '
                     f'{flags(b)} --control-evals {" ".join(map(str, ev))} --control-extra {" ".join(map(str, PANEL_NEW))} --control-attach {ATTACH}',
                     deps=[f'base_{s}' for s in ev if s in spec] + after(b), est=est_min(b, len(ev)))
+    rflags = lambda b: f'$({DECIDE} flags {b} {CAPACITY_RANK})'
+    for s in CAPACITY_SPEAKERS:
+        b = max(spec[s])
+        job(f'own_{s}_b{b}_s0_r{CAPACITY_RANK}', f'{RP} --cell-speakers {s} --budgets {b} --seeds 0 {rflags(b)}',
+            deps=[f'base_{s}', 'decide'], est=est_min(b))
+    b = max(spec[CAPACITY_SPEAKERS[0]]); ev = sorted(CAPACITY_SPEAKERS)
+    for k, members, attached, e, trainers, label in RPM.fold_plan(panel + PANEL_NEW, 2, 0, PANEL_NEW, ATTACH, ev):
+        job(f'ctrl_b{b}_s0_{label}_r{CAPACITY_RANK}', f'{RP} --control-only --control-folds 2 --control-budgets {b} --budgets {b} --seeds 0 '
+            f'{rflags(b)} --control-evals {" ".join(map(str, e))} --control-extra {" ".join(map(str, PANEL_NEW))} --control-attach {ATTACH}',
+            deps=[f'base_{x}' for x in e] + ['decide'], est=est_min(b, len(e)))
     ids = [j['id'] for j in jobs]; assert len(ids) == len(set(ids)), 'duplicate job ids'
     assert all(d in ids for j in jobs for d in j['deps']), 'a dependency that is not a job'
     return jobs
@@ -145,6 +160,14 @@ def build(P):
     print(f'{len(jobs)} jobs, {sum(j["est"] for j in jobs) / 60:.1f} GPU-hours estimated -> {QUEUE}')
 
 
+def release():
+    with locked() as Q:
+        n = 0
+        for j in Q['jobs']:
+            if j['status'] == 'hold': j['status'] = 'pending'; n += 1
+    print(f'released {n} job(s) from hold')
+
+
 def _ready(Q):
     st = {j['id']: j['status'] for j in Q['jobs']}
     return [j for j in Q['jobs'] if j['status'] == 'pending' and all(st[d] == 'done' for d in j['deps'])]
@@ -158,6 +181,16 @@ def _dead(Q):
     return [j['id'] for j in Q['jobs'] if j['status'] == 'pending' and blocked(j['id'])]
 
 
+def _finished(Q):
+    """True when no job can run any more: nothing running, nothing on hold (a job put on hold by hand
+    is waited for, never read as the end -- run 4's first pass closed itself that way), and every
+    pending job blocked by a failure."""
+    st = [j['status'] for j in Q['jobs']]
+    if 'running' in st or 'hold' in st: return False
+    pending = st.count('pending')
+    return pending == 0 or len(_dead(Q)) == pending
+
+
 def worker(gpu, poll=20):
     os.makedirs(LOGS, exist_ok=True); name = f'gpu{gpu}.pid{os.getpid()}'
     while True:
@@ -167,9 +200,8 @@ def worker(gpu, poll=20):
                 j = max(ready, key=lambda j: (j['prio'], j['est']))
                 j.update(status='running', start=time.time(), gpu=gpu, worker=name); jid, cmd = j['id'], j['cmd']
             else:
-                pending = [j for j in Q['jobs'] if j['status'] == 'pending']; running = [j for j in Q['jobs'] if j['status'] == 'running']
-                if not running and (not pending or len(_dead(Q)) == len(pending)):
-                    print(f'[{name}] nothing left to run ({len(pending)} pending blocked)', flush=True); return
+                if _finished(Q):
+                    print(f'[{name}] nothing left to run ({sum(j["status"] == "pending" for j in Q["jobs"])} pending blocked)', flush=True); return
                 jid = None
         if jid is None: time.sleep(poll); continue
         log = os.path.join(LOGS, f'job_{jid}.log'); t0 = time.time()
@@ -230,13 +262,18 @@ def _self_check():
     assert not any('decide' in j['deps'] for j in J if '_b160_' in j['id'] or '_b80_' in j['id'] or '_b20_' in j['id'])
     P2 = P.assign(duration_s=[1300 * 60 if s == 23641 else d for s, d in zip(P.speaker_id, P.duration_s)])
     assert 'own_23641_b1200_s1' in {j['id'] for j in build_jobs(P2)}            # the 1,200 fallback
+    Qt = dict(jobs=[dict(id='a', status='done', deps=[]), dict(id='b', status='hold', deps=['a'])])
+    assert not _finished(Qt) and _finished(dict(jobs=[dict(id='a', status='done', deps=[])]))
+    assert _finished(dict(jobs=[dict(id='a', status='failed', deps=[]), dict(id='b', status='pending', deps=['a'])]))
+    assert {'own_23558_b1440_s0_r32', 'own_23641_b1440_s0_r32', 'ctrl_b1440_s0_ctrl1of2x_r32'} <= ids
+    assert all('flags 1440 32)' in j['cmd'] for j in J if j['id'].endswith('_r32'))
     w1, w4 = simulate(J, 1), simulate(J, 4)
     assert abs(w1 - sum(j['est'] for j in J)) < 1e-6 and w4 < w1 / 3, (w1, w4)
     print(f'jobs_v4 self-check: OK ({len(J)} jobs, {w1 / 60:.1f} GPU-h, {w4 / 60:.1f} h on 4 GPUs)')
 
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser(); ap.add_argument('cmd', nargs='?', choices=['build', 'dry-run', 'worker', 'status'])
+    ap = argparse.ArgumentParser(); ap.add_argument('cmd', nargs='?', choices=['build', 'dry-run', 'worker', 'status', 'release'])
     ap.add_argument('--gpu', type=int, default=0); ap.add_argument('--gpus', type=int, default=4)
     ap.add_argument('--self-check', action='store_true')
     a = ap.parse_args()
@@ -252,4 +289,5 @@ if __name__ == '__main__':
             print(f'\n{len(J)} jobs; {gh:.1f} GPU-hours; on {a.gpus} GPU(s) ~{w:.1f} h wall incl. ~15 min boot = ~${w * a.gpus * PRICE:.0f}')
     elif a.cmd == 'worker': worker(a.gpu)
     elif a.cmd == 'status': status(a.gpus)
+    elif a.cmd == 'release': release()
     else: ap.error('give a command or --self-check')

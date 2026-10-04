@@ -51,7 +51,25 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
    - **Audio ready (2026-10-04):** all 44,033 clips of both v4 plans are extracted and verified, and
      they are in `-panel-hq` as WAVs. They are also there as 14 lossless FLAC packs (`panel_packs/`,
      11.7 GB), which is what the pod fetches: 44k small files download at about 5 files/s.
-   - **Still to do:** the GPU pod (`box/pod_v4.sh all`).
+   - **First pass, 2026-10-04** (4× A100, about 1.4 h, about $9; `knesset-asr/knesset-committees-v4-results`):
+     - 45 of 57 jobs ran, everything up to 360 minutes, with the backup verified (326/326).
+     - The lr check kept 3e-4: 1e-3 was worse for 4 of 4 speakers.
+     - **Personalization does not grow from 80 to 360 minutes; it shrinks.** On the ≥ 0.7 test
+       23558 goes +9.7 → +6.0 % (Δ −3.7 [−5.6, −1.9]), 23641 +3.3 → +2.2, 30752 +4.7 → +1.7,
+       23635 +0.4 → −0.1. The own adapters keep improving (23558 +29 → +33 %), but the control
+       improves as fast. The rule's verdict is "undecided": no speaker shows "data limits", and
+       23558's interval lies below zero.
+   - **Amendment before the 720/1,440 jobs (2026-10-04):**
+     - At 360 minutes early stopping came after about 1.3 passes. At 1,440 the fixed patience would
+       stop before half a pass, so those budgets would not really be seen. So 720 and 1,440 get
+       `--min-epochs 1`: no stopping before one full pass, and the best checkpoint is still chosen
+       on validation.
+     - The capacity check is added back: r = 32 at 1,440, seed 0, own and control.
+     - The aim is to rule out "more data" with the two objections closed.
+     - The 12 jobs had been put on hold to decide this, and the queue read the hold as the end and
+       closed the run (fixed: `jobs_v4._finished`).
+   - **Still to do:** the second pass on a new pod (`box/pod_v4.sh resume`, then `run`, `finish`):
+     15 jobs, about 1 h on 4 GPUs.
 3. **KL regularization to the base model.**
 4. Later: a personal text LM against an other-speakers LM; similar-speaker groups; speaker-
    conditioned models. Not recommended now: test-time adaptation, in-context learning, prompting.
