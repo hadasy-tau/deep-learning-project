@@ -48,8 +48,10 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
      for each, against 3.1 % for the 30 speakers heard in the same sessions. Nothing excluded.
    - **Prepared:** the word scores (2,295 more sessions), `panel_plan_v4.parquet` and
      `panel_test07_v4.parquet`, both verified, and the queue, about 8.4 GPU-hours.
-   - **Still to do:** extract the audio on the laptop into `-panel-hq` (`box/data_v4.sh`), then the
-     GPU pod (`box/pod_v4.sh`).
+   - **Audio ready (2026-10-04):** all 44,033 clips of both v4 plans are extracted and verified, and
+     they are in `-panel-hq` as WAVs. They are also there as 14 lossless FLAC packs (`panel_packs/`,
+     11.7 GB), which is what the pod fetches: 44k small files download at about 5 files/s.
+   - **Still to do:** the GPU pod (`box/pod_v4.sh all`).
 3. **KL regularization to the base model.**
 4. Later: a personal text LM against an other-speakers LM; similar-speaker groups; speaker-
    conditioned models. Not recommended now: test-time adaptation, in-context learning, prompting.
@@ -81,6 +83,6 @@ out to be wrong, add one line at its top pointing here, and list it under § Wit
 - Run 2's adapters and per-cell results: `knesset-asr/knesset-committees-adapters`. Run 3's:
   `knesset-asr/knesset-committees-v3-results` (private); its tables are also in
   `src/training/outputs/` (`results_v3.csv`, `tuning_v3.csv`, `recipe_v3.json`).
-- The panel audio: `knesset-asr/knesset-committees-panel` (plan v1), `-panel-hq` (plan v3's clips,
-  complete; run 4's are being added by `box/data_v4.sh`).
+- The panel audio: `knesset-asr/knesset-committees-panel` (plan v1); `-panel-hq` (plans v2 and v4,
+  all clips, plus `panel_packs/`, one FLAC tar per speaker).
 - Run 4's results will go to `knesset-asr/knesset-committees-v4-results` (private).
