@@ -1,5 +1,7 @@
 # Stage 3 — Speaker identity for the Knesset committees corpus (revised)
 
+> A dated record, not edited afterwards. Where the project stands, and which of its claims are withdrawn: `docs/STATUS.md`.
+
 Goal, unchanged: give every speaker occurrence in `ivrit-ai/knesset-committees` a stable
 `person_id` in the KnessetCorpus / VoxKnesset id space, and through it verified
 demographics, so the committees audio can carry the same per-speaker analysis

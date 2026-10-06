@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Plan v3 on a GPU pod, stage by stage.  docs/pod_runbook_v3.md is the order, the stop rules
+# Plan v3 on a GPU pod, stage by stage.  docs/archive/pod_runbook_v3.md is the order, the stop rules
 # and what to report; docs/training_plan_v3.md is why.  Every stage is idempotent: a scored
 # cell, a finished adapter, a tuning run and a cached base transcription are all skipped on a
 # rerun, so after a crash or a preemption run the same stage again.
@@ -184,6 +184,6 @@ case "${1:-}" in
     setup|data|backup|sanity|tune|base|final|seeds|summary) run "$1" ;;
     all)
         run sanity; run tune; run base; run final; run seeds; run summary
-        say "all: done -- docs/pod_runbook_v3.md § What to report" ;;
+        say "all: done -- docs/archive/pod_runbook_v3.md § What to report" ;;
     *) awk 'NR > 1 && !/^#/ { exit } NR > 1' "$0"; exit 1 ;;     # the header comment is the usage
 esac

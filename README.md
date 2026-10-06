@@ -59,9 +59,9 @@ docs/                          STATUS.md where it all stands, the one document k
                                The build records: committees_handoff.md, speaker_index_plan.md,
                                chunk_corpus_build.html, inference.md, error_map.md.
                                adaptation_plan.md: the design. The training plans
-                               (training_plan_v3.md, training_plan_v4.md), pod_runbook_v3.md
-                               and the runs (training_run2.md, training_run3.md,
-                               training_run4.md). docs/archive/ is history, not instructions
+                               (training_plan_v3.md, training_plan_v4.md) and the runs
+                               (training_run2.md, training_run3.md, training_run4.md).
+                               docs/archive/ is history, not instructions
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
@@ -70,8 +70,8 @@ Each folder is self-contained and imports its siblings flat, so run things by pa
 (`python src/inference/run.py`) or put the folder on `sys.path`. Anything shared lives in
 `src/common.py`, reached by putting `src/` on the path.
 
-**Read [`docs/committees_handoff.md`](docs/committees_handoff.md) first.** It is the
-orientation document: what the corpus is, how to read it, what is known to be wrong with it.
+**Working with the corpus itself:** read [`docs/committees_handoff.md`](docs/committees_handoff.md)
+first: what the corpus is, how to read it, what is known to be wrong with it.
 
 ## Data
 
@@ -92,8 +92,8 @@ Gated means an accepted licence on the dataset page and an `HF_TOKEN` in the env
 
 | Dataset | Holds |
 |---|---|
-| [`knesset-asr/knesset-committees-speakers`](https://huggingface.co/datasets/knesset-asr/knesset-committees-speakers) | An **index, not audio**: 5,158,763 rows naming a `(session, start, end)` span, each carrying a verified Knesset `PersonID` and its demographics. 3,345 h of identified MK speech, 268 speakers, Knessets 20–25 |
-| [`knesset-asr/knesset-committees-chunks`](https://huggingface.co/datasets/knesset-asr/knesset-committees-chunks) | The corpus itself: ~1.2 M chunks of ≤30 s, 330 speakers, 410 parquet shards, FLAC inline. Exact totals in `docs/committees_handoff.md` |
+| [`knesset-asr/knesset-committees-speakers`](https://huggingface.co/datasets/knesset-asr/knesset-committees-speakers) | An **index, not audio**: 5,163,124 rows naming a `(session, start, end)` span, each carrying a verified Knesset `PersonID` and its demographics. 3,345 h of identified MK speech, 268 sitting MKs (330 PersonIDs with the former MKs heard as guests, `label = former_mk`), Knessets 20–25 |
+| [`knesset-asr/knesset-committees-chunks`](https://huggingface.co/datasets/knesset-asr/knesset-committees-chunks) | The corpus itself: 1,204,617 chunks of ≤30 s, 3,840.6 h, 330 speakers, 10,905 sessions, 410 parquet shards, FLAC inline |
 | [`knesset-asr/knesset-committees-inference`](https://huggingface.co/datasets/knesset-asr/knesset-committees-inference) | Both models' transcriptions of the Stage-1 subset -- 65,990 chunks, 230 h, 267 speakers, 1 h per MK -- beside the protocol reference. `inference.parquet` (one row per chunk, `hypothesis_A`/`hypothesis_B`/`hypothesis_A_auto`), `inference_long.parquet` (per chunk and arm, with timing and errors), `coverage.parquet` (every corpus chunk: what ran on which arm). Validated end to end; corpus WER A 0.417, B 0.324 |
 
 All `knesset-asr` datasets are public and ungated since 2026-10-02, except the run-3 results

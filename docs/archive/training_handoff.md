@@ -1,8 +1,8 @@
 # Handoff: training the per-speaker adapters on a GPU box
 
-> **Historical (run 1 and run 2, 2026-09-20). Do not follow it for a new run.** The current plan
-> is `docs/training_plan_v3.md` and the pod session is `docs/pod_runbook_v3.md`; they take
-> precedence wherever this file differs. Since it was written: the audio gate has run (run 2:
+> **Historical (run 1 and run 2, 2026-09-20). Do not follow it for a new run.** The later plans
+> are `docs/training_plan_v3.md` and `docs/training_plan_v4.md`, and they take precedence wherever
+> this file differs. Since it was written: the audio gate has run (run 2:
 > 5.4 % of the panel's chunks carry another voice), training has run three times
 > (`docs/training_run2.md`; run 3 in `docs/training_run3.md`), the panel is 12 speakers on the
 > quality ≥ 0.95 data of plan v3, and the project datasets are public except
