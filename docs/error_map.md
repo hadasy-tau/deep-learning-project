@@ -1,6 +1,6 @@
 # The per-speaker error map — committees corpus
 
-> **Note (2026-10-03):** § The same map, protocol-aware is withdrawn as evidence (`docs/personalization_research.md` § 1.5); the standard count is the result.
+> **Note (2026-10-03):** § The same map, protocol-aware is withdrawn as evidence (`docs/STATUS.md` § Withdrawn); the standard count is the result.
 
 Stage 1's analysis, re-done on the corpus the project moved to. Written from the
 run of 2026-09-15; every number is measured. The code is
@@ -166,11 +166,10 @@ top insertions and deletions are function and discourse words (אני, לא, ז�
 splits into the tokens `1` and `000` under the frozen normaliser, which is where `000→אלף` in
 the substitution list comes from.
 
-**B's insertions are real speech, not hallucination.** 73 % of the words B inserts also appear
+**B's insertions are often shared with A.** 73 % of the words B inserts also appear
 in A's hypothesis of the same chunk (236,530 inserted words). Two independent models hearing
-the same absent word was read as the protocol not writing it down. *(Checked 2026-10-03 on 23
-human-corrected committee clips: about half of such shared insertions were really spoken, 19 of
-36, so the reading holds for about half, not all; `docs/personalization_research.md` § 1.5.)* Looping decodes (a 3-gram repeated
+the same absent word was read as the protocol not writing it down. *(2026-10-03: that reading is
+withdrawn, `docs/STATUS.md` § Withdrawn. The 73 % is a count, not evidence that the words were spoken.)* Looping decodes (a 3-gram repeated
 three or more times) are 0.8 % of chunks for A and 1.1 % for B; runaway decodes 0.5 % and
 0.7 %; empty hypotheses 0.2 % and 0.
 
@@ -200,7 +199,7 @@ honest one.
 
 ## The same map, protocol-aware
 
-> **Withdrawn as evidence (2026-10-03).** This count forgives an insertion arm A also produced, on the reading that two models agreeing means the protocol dropped a spoken word. On human-corrected committee clips about half of such shared words were not spoken (`docs/personalization_research.md` § 1.5). The section and its `committees_*_forgiven.*` tables are kept as a record; cite the standard map.
+> **Withdrawn as evidence (2026-10-03).** This count forgives an insertion arm A also produced, on the reading that two models agreeing means the protocol dropped a spoken word, an assumption too strong to rest a result on (`docs/STATUS.md` § Withdrawn). The section and its `committees_*_forgiven.*` tables are kept as a record; cite the standard map.
 
 § Beyond Stage 1 showed that B's insertions are mostly the protocol's omissions. This section
 re-runs the whole map under one alternative count, **forgiven-shared WER**: an inserted word
@@ -238,10 +237,8 @@ measure is a diagnostic beside the standard one, not a replacement.
 
 ## What this version leaves out
 
-- **The protocol question is not settled.** A human verbatim transcription of 30–60 minutes,
-  stratified by speaker and chunk length, scored against both models, would say how much of the
-  residual error is the protocol and how much the model, and would calibrate the forgiven-shared
-  count. Deferred, deliberately.
+- **The protocol question is not settled.** How much of the residual error is the protocol and
+  how much the model is not measured here.
 - Only one filter. Chunks whose reference is *short* for the audio survive it: after the filter,
   chunks under 50 words per minute (1.3 % of chunks, 3 h) score a WER of 2.0 under both arms —
   speech the protocol condensed, every word an insertion. A small share of the words; left in.

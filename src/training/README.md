@@ -11,7 +11,7 @@
 | `panel_plan.parquet` | plan v1, used by run 2: 8,113 chunks, 28.8 h, 11 speakers, 111 shards; per speaker ≥ 45 min test (the newest sessions), ~15 min dev, ≥ 80 min train, session-disjoint by date, train ordered latest-first so budgets nest |
 | `train.py` | one cell → one adapter (`train_cell`), `overfit_check` |
 | `run_panel.py` | cells → adapters → scored results (`outputs/results/*.json`, `outputs/results.csv`); WER per cell; `--control-folds K` for the cross-speaker control (D3) |
-| `targets.py` | semi-verbatim training targets: the protocol text with the words both base models produced put back (`--build-targets`). Rests on the withdrawn two-model-agreement assumption (docs/personalization_research.md § 1.5) |
+| `targets.py` | semi-verbatim training targets: the protocol text with the words both base models produced put back (`--build-targets`). Rests on the withdrawn two-model-agreement assumption (docs/STATUS.md § Withdrawn) |
 | `word_quality.py` | per-word alignment scores for the candidate train/dev clips (from the raw ivrit.ai sessions) and the word rule `word_ok`; writes `word_quality.parquet` |
 | `panel_plan_v2.parquet` | the high-quality plan: test, dev and train all at quality ≥ 0.95 passing the word rule; 12 speakers: the panel, plus 556 (30601 deferred); 30843 with a 30-minute test (`materialize.py plan-v2`) |
 | `panel_test07.parquet` | the second test set: plan v2's test sessions, every chunk at quality ≥ 0.7, no word rule; v2's test is its `hq` subset (`materialize.py plan-test07`, scored with `run_panel.py --test07-plan`) |
@@ -61,7 +61,7 @@ cached once. Kill it and rerun it freely.
 - `improvement_from_insertions` and `style_not_speaker` (> 0.5): a gain made mostly of fewer
   insertions is flagged, not counted as personalization (`docs/adaptation_plan.md` § Verification).
 - Older result files (runs 2–3) also carry `*_f` columns, the forgiven-shared count; it is
-  withdrawn (`docs/personalization_research.md` § 1.5) and the summary drops them.
+  withdrawn (`docs/STATUS.md` § Withdrawn) and the summary drops them.
 
 ## Not yet
 

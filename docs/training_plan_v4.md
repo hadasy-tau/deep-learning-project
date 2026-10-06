@@ -30,9 +30,8 @@ control at every point.
 - **The long branch** (23558, 23641): if the curve keeps rising through 720 and 1,440 minutes,
   there is a case for going further.
 - **Known limits:**
-  - Everything is scored against the protocol, which differs from the speech by about 18 % of its
-    words, so the protocol may hide an improvement. Every hypothesis is saved, so the run can be
-    re-scored on a human verbatim test (STATUS § Next 1).
+  - Everything is scored against the protocol, which is edited rather than verbatim, so the
+    protocol may hide an improvement.
   - The long trains reach back to 2023. They stay inside 2023–2025, never 2018–2020.
 
 ## Speakers and budgets

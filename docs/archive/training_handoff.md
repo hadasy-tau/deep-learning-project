@@ -52,9 +52,8 @@ The reference text is a *cleaned stenographic protocol*, not a verbatim transcri
 "I, I mean, you know" and the stenographer writes the tidy version. Both models transcribe what
 was actually said, so every extra word counts against them. We measured this: **73 % of the words
 model B adds also appear in model A's transcription of the same chunk** — read at the time as
-proof that they were spoken and the protocol dropped them. *(Checked 2026-10-03 on 23
-human-corrected committee clips: only about half were, 19 of 36; `docs/personalization_research.md`
-§ 1.5.)* Over half of B's errors are insertions.
+proof that they were spoken and the protocol dropped them. *(2026-10-03: that reading is
+withdrawn, `docs/STATUS.md` § Withdrawn.)* Over half of B's errors are insertions.
 
 So an adapter can lower WER simply by learning to omit filler, which is learning the
 stenographer's habits, not the speaker's voice. `run_panel.py --summary` computes
@@ -87,9 +86,8 @@ causes it. Mitigation: transcribe each speaker's test chunks with arm A once (ca
 base-B transcription), then compute forgiven-shared WER (`src/evaluation/error_analysis.py::
 forgiven_counts`, see `docs/error_map.md` § The same map, protocol-aware) for base and tuned
 beside standard WER, and put both in `results.csv`. A gain that survives when shared insertions
-are forgiven is more likely the voice. *(2026-10-03: withdrawn. On human-corrected committee clips
-two models agreeing against the protocol meant the protocol was wrong only about half the time;
-the forgiven count is removed from the code. `docs/personalization_research.md` § 1.5.)*
+are forgiven is more likely the voice. *(2026-10-03: withdrawn. Two models agreeing against the protocol is too weak a sign that
+the protocol is wrong, and the forgiven count is removed from the code. `docs/STATUS.md` § Withdrawn.)*
 
 **3. Add the cross-speaker control (design decision D3) to this run.** Without it, "the adapter
 helped speaker X" cannot be told from "80 minutes of any committee audio teaches the model

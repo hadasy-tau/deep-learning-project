@@ -113,7 +113,7 @@ benefit changes by a few points); the candidate list holds (35 of 40). דוד ב
 the standard count shows. Decision: the panel stands. ביטן stays, with his role relabelled from "simply
 hard" to "hard, and already well served — how much room is left"; the audio gate, not this count, is what
 would remove him, and חיים כץ is his alternate if it does. *(2026-10-03: the protocol-aware count this
-paragraph reads is withdrawn as evidence, `docs/personalization_research.md` § 1.5; the panel decision did not depend on it.)*
+paragraph reads is withdrawn as evidence, `docs/STATUS.md` § Withdrawn; the panel decision did not depend on it.)*
 
 ## Decisions
 

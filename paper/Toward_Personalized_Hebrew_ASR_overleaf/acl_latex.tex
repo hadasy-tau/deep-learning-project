@@ -450,9 +450,8 @@ An adapter converges in about two passes over its data. The recipe is insensitiv
 rank, augmentation and, at 80 minutes, the learning rate, but Whisper's dropout
 prevents learning.
 
-Further directions are adaptation on similar rather than random speakers, training
-objectives that separate the voice from the committee setting, and evaluation against
-verbatim human transcripts.
+Further directions are adaptation on similar rather than random speakers, and training
+objectives that separate the voice from the committee setting.
 
 
 % ============================================================
@@ -475,8 +474,6 @@ closely matches the audio (quality $\geq 0.95$, Appendix~\ref{app:data}). That s
 however, comes from a Whisper-family aligner, so a test set filtered the same way would
 favour speech that Whisper models already transcribe well; we therefore score every
 model both on the high-quality segments and on all segments at quality $\geq 0.7$.
-Whether the personal margin is larger against what was actually said requires a human
-verbatim reference.
 
 % TODO (decide later): "The reference is the protocol" (Hadas) and "Reference
 % transcripts" (Dolev) cover the same limitation. Both are kept for now. Keep one,
@@ -486,7 +483,7 @@ protocols, not verbatim transcripts: stenographers condense, rephrase and omit
 speech, so part of every measured error is a mismatch between protocol and audio
 rather than a recognition mistake. We limit this with alignment-quality filters set
 in consultation with the ivrit.ai team (Section~\ref{sec:preprocessing},
-Appendix~\ref{app:data}), but no verbatim, human-transcribed test set was available.
+Appendix~\ref{app:data}), but no verbatim reference was available.
 Absolute WERs therefore partly reflect the protocol's editing, and our comparisons
 are most reliable between models scored against the same references.
 
@@ -809,14 +806,10 @@ fewer than three speakers are omitted.
     \label{fig:groups}
 \end{figure*}
 
-\paragraph{Protocol omissions.}
-Over half of arm~B's errors are insertions (Table~\ref{tab:errormix}), and 73\% of
-its inserted words also appear in arm~A's transcript of the same segment. Agreement
-between the two models does not show that a word was spoken: on a sample of
-human-corrected clips, only about half of such words (19 of 36) were. Part of
-arm~B's insertion errors therefore reflects speech the stenographic protocol left
-out, and part reflects genuine recognition errors. All WERs in this paper are
-computed against the protocol as is.
+\paragraph{Error composition.}
+Over half of arm~B's errors are insertions (Table~\ref{tab:errormix}): words in the
+transcript that the protocol does not contain. All WERs in this paper are computed
+against the protocol as is.
 
 \begin{table}[h]
 \centering
