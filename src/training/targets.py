@@ -2,9 +2,8 @@
 
 **Rests on a withdrawn assumption.**  A word goes back when *both* base models produced it,
 on the reading that two models agreeing against the protocol means the protocol dropped a
-spoken word.  On human-corrected committee clips only about half of such shared insertions
-were real speech (19 of 36; docs/personalization_research.md § 1.5), so these targets put
-back roughly as many unspoken words as spoken ones.  Kept so the second and third runs'
+spoken word (docs/STATUS.md § Withdrawn), so these targets may put back unspoken words as
+well as spoken ones.  Kept so the second and third runs'
 `verbatim` cells stay reproducible; do not read their results as evidence about what the
 speaker said.  The forgiven-shared count that used to live here is removed.
 

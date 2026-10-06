@@ -189,7 +189,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     protocol), so variants of one recipe never collide.
     select: 'loss', the checkpoint with the lowest dev loss.  Selection on dev
     forgiven-shared WER ('forgiven', the second run's runs A and B) is removed with
-    that count (docs/personalization_research.md § 1.5).
+    that count (docs/STATUS.md § Withdrawn).
 
     Step mode (docs/training_plan_v3.md), off unless max_steps is given:
     max_steps: the same number of optimiser steps for every budget (epochs is then

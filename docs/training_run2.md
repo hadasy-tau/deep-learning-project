@@ -1,6 +1,6 @@
 # The second training run: log and decisions
 
-> **Note (2026-10-03): the forgiven-shared count is withdrawn.** Every "forgiven" or "protocol-aware" number below assumed that a word two models produce and the protocol lacks was spoken; on human-corrected committee clips only about half were (`docs/personalization_research.md` § 1.5). They are kept as a record of what was measured, not as evidence. The standard (protocol) counts stand.
+> **Note (2026-10-03): the forgiven-shared count is withdrawn.** Every "forgiven" or "protocol-aware" number below assumed that a word two models produce and the protocol lacks was spoken, an assumption too strong to rest a result on (`docs/STATUS.md` § Withdrawn). They are kept as a record of what was measured, not as evidence. The standard (protocol) counts stand.
 
 Written on the GPU box on 2026-09-20, as the run went. `docs/archive/training_handoff.md` is the
 plan and the rules for reading results; this file is what was decided on the box, why, and
@@ -431,7 +431,7 @@ decodes, 15 against 10.
 
 ## Conclusion (2026-09-20, 23:40 UTC; 242 result rows, 88 control evaluations, ~13 GPU hours)
 
-> Conclusion 2 ("learns the stenographer"), the semi-verbatim clauses of 3 and 4, and the write-up sentence below rested on the forgiven count or on targets built from the same two-model agreement; they are withdrawn as evidence (`docs/personalization_research.md` § 1.5). Conclusion 1, the rest of 3 and 4 (who gains against the protocol; rate, site, budget), 5 and 6 stand.
+> Conclusion 2 ("learns the stenographer"), the semi-verbatim clauses of 3 and 4, and the write-up sentence below rested on the forgiven count or on targets built from the same two-model agreement; they are withdrawn as evidence (`docs/STATUS.md` § Withdrawn). Conclusion 1, the rest of 3 and 4 (who gains against the protocol; rate, site, budget), 5 and 6 stand.
 
 1. **Adapting to one speaker helps by about 17 % of WER at 80 minutes, and about 15 of
    those 17 points are bought equally well by anyone's committee audio.** The D3 control,

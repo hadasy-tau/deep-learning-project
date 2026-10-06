@@ -15,8 +15,8 @@ improvement that is insertions > 0.5) is flagged `style_not_speaker`.
 
 The forgiven-shared count (an inserted word the other arm also produced is not
 charged; `*_f` columns, --forgiven, --select forgiven) is removed: it assumed that two
-models agreeing against the protocol means the protocol is wrong, and on human-corrected
-committee clips that did not hold (docs/personalization_research.md § 1.5).  The second
+models agreeing against the protocol means the protocol is wrong, an assumption too strong
+to rest a result on (docs/STATUS.md § Withdrawn).  The second
 and third runs' result files still carry `*_f` columns; the summary drops them.
 
   the cross-speaker control (D3)   --control-folds K trains K adapters, each on a

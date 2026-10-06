@@ -15,8 +15,7 @@ small tables: `src/training/outputs/results_v3.csv`, `tuning_v3.csv` and `recipe
 > **Revised 2026-10-03: the forgiven-shared count is withdrawn.** The run also scored every cell
 > under a count that did not charge an inserted word arm A also produced (`*_f` columns in the
 > result files). It rests on the assumption that two models agreeing against the protocol means
-> the protocol is wrong; on human-corrected committee clips that held only about half the time
-> (`docs/personalization_research.md` § 1.5). Every forgiven number is removed from this report, and the conclusions that
+> the protocol is wrong, an assumption too strong to rest a result on (`docs/STATUS.md` § Withdrawn). Every forgiven number is removed from this report, and the conclusions that
 > leaned on it (the "stenographer" reading, the semi-verbatim recipe) are restated below. The
 > semi-verbatim targets rest on the same assumption.
 
@@ -25,7 +24,7 @@ every budget and seed, a personal adapter buys **2–3 points of relative WER ov
 on anyone else's committee audio**, stably across three seeds, significantly for about a quarter of
 the speaker-seed pairs and never significantly negative. Everything else in the 12–15 % gain is
 domain. How much of any of it is the speaker's speech rather than agreement with the protocol,
-which itself differs from what was said by ~18 % of its words, only a human verbatim test can say.
+which is edited rather than verbatim, the protocol cannot say.
 
 ## What changed from the second run
 
@@ -166,9 +165,7 @@ Significant in at least two seeds on the ≥ 0.7 test: 556, 23558, 30701, 30752,
   in 33 of 36 control evaluations. Insertions fall from 49 % to 34 % of the errors while deletions
   double, 10 % → 21 %. The adapters write fewer words the protocol lacks and drop more words it
   has. Whether the words they stopped writing were spoken (the adapter learned the protocol's
-  omissions) or not (it stopped hallucinating) cannot be read off the protocol: on 23
-  human-corrected committee clips about half of the insertions were real speech
-  ({N}).
+  omissions) or not (it stopped hallucinating) cannot be read off the protocol.
 - **Loops.** Base B produces 132 runaway transcriptions over the twelve ≥ 0.7 test sets (9 on the
   clean one); the 80-minute adapters produce 46 (3). The loop guard re-decoded 90 chunks across
   the run (base 2, final 59, seeds 12 batches) and every re-decode compressed less than the
@@ -195,7 +192,7 @@ Significant in at least two seeds on the ≥ 0.7 test: 556, 23558, 30701, 30752,
    cells: insertions fall, deletions double. That is consistent with learning the protocol's
    omissions, but the protocol cannot show it, and the forgiven count that was meant to is
    withdrawn. The filter changed the *base* (half the error of run 2's test); whether it changed
-   what the adapter learns needs a human reference.
+   what the adapter learns is not known.
 4. **For whom.** The effect concentrates where the second run found it: the hardest speakers
    (23558 reproducibly, +9–10 % on the ≥ 0.7 test in every seed; 30701; 556) and 30813, where
    the clean-test "personalization" is the control hurting her and the ≥ 0.7 test shows a real
@@ -220,9 +217,8 @@ Significant in at least two seeds on the ≥ 0.7 test: 556, 23558, 30701, 30752,
 ## Extra: semi-verbatim targets at 80 minutes
 
 Added during the run as the remedy for conclusion 3. **It rests on the withdrawn assumption**:
-a word goes back when both base models produced it, and only about half of such words were spoken
-on the human-corrected clips (`docs/personalization_research.md` § 1.5), so these targets add roughly as many unspoken words as
-spoken ones. The second run's run D, the protocol text with the words both base models produced put back
+a word goes back when both base models produced it, an assumption too strong to rest a result on (`docs/STATUS.md` § Withdrawn), so these targets may add
+unspoken words as well as spoken ones. The second run's run D, the protocol text with the words both base models produced put back
 (`targets.py`), trained with the same recipe, seed 0, with its own two-fold control. Both arms
 transcribed every train and dev chunk once (12 minutes on 4 GPUs); the targets cover all 4,814
 train/dev chunks, change 53 % of them and put back **6.5 words per 100** (10.7 on the second run's
@@ -254,10 +250,7 @@ train/dev chunks, change 53 % of them and put back **6.5 words per 100** (10.7 o
 
 ## What to do next
 
-- **Build a human verbatim test** before the next training run (`docs/personalization_research.md`
-  § 4, P0): every number above is measured against the protocol, which is ~18 % off the speech.
 - **Do not adopt the semi-verbatim target** on this evidence: its case rested on the forgiven count.
-  Re-score both recipes on the human test first; the hypotheses are saved.
 - **The sharing axis** (similar-speaker groups against random ones, `archive/training_next.md`) is the
   natural next experiment: the control already shows that a random group buys 10 points; the
   question is whether a *similar* group closes the remaining 2–3.

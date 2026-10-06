@@ -92,10 +92,8 @@ brackets:
   - The adapter does gain from data, but so does any adapter trained on the same minutes of other
     committee speech. The gain is domain, not voice.
 - **Not ruled out:**
-  - **Everything here is scored against the edited protocol** (~18 % off the speech). If the
-    personal effect lives in words the protocol does not record, this metric cannot see it. Every
-    hypothesis is saved, so the whole run can be re-scored on a human verbatim test without a GPU
-    (STATUS § Next 1).
+  - **Everything here is scored against the edited protocol.** If the personal effect lives in
+    words the protocol does not record, this metric cannot see it.
   - A different objective (KL to the base model, a personal LM) is a separate question.
 - **For whom:** 23558 keeps the largest personal effect at every budget, but it is largest at
   small budgets (+9.9 % at 5 min, +9.7 % at 80). 23635 has none at any budget.
