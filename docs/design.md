@@ -73,9 +73,9 @@ The subgroup rules that separate gain (speaking rate, religion, nationality, age
 ones that separate difficulty (religious orientation, gender), and none explains more than a tenth
 of the between-speaker variance.
 
-**6 · Fine-tune the chosen speakers.** For each selected speaker, more of their audio goes
-through *the same inference code as stage 3* — only the selection filter changes, from "one
-hour of every speaker" to "everything left of this one speaker". Their chunks are then split
+**6 · Fine-tune the chosen speakers.** For each selected speaker, more of their audio is
+pulled from the corpus shards to WAV files (`src/training/materialize.py`), from run 3 on only
+clips whose protocol matches the audio closely (quality ≥ 0.95 and a word-level rule). Their chunks are then split
 by session and by date: the latest sessions become the personal test set, the next ones dev,
 and the rest are training audio. Splitting on whole sessions means no session ever appears
 on both sides, and the test set sits temporally after training. Training produces one adapter
@@ -112,11 +112,10 @@ before the model.
 | [`adaptation_plan.md`](adaptation_plan.md) | stages 6–7: the design the training and evaluation code implement (D1–D7), the panel rules, what is written and what is not |
 | [`training_plan_v3.md`](training_plan_v3.md) | the plan of run 3: 12 speakers, quality ≥ 0.95 data, tuning on validation by rule, the control at every budget, two test sets |
 | [`training_plan_v4.md`](training_plan_v4.md) | the plan of run 4: the personal-data curve beyond 80 minutes, with the decision rule fixed in advance |
-| [`pod_runbook_v3.md`](pod_runbook_v3.md) | **read first on the GPU pod.** The plan-v3 session stage by stage (`src/training/box/pod_v3.sh`), stop rules, what to report |
 | [`training_run2.md`](training_run2.md) | the second training run (2026-09-20): log, decisions, results |
 | [`training_run3.md`](training_run3.md) | the third training run (2026-10-02, plan v3): log, results, conclusions |
 | [`training_run4.md`](training_run4.md) | the fourth training run (2026-10-04, plan v4): more personal data does not raise personalization |
-| [`archive/`](archive/) | superseded documents: `training_handoff.md` (the run-1/2 setup), `training_next.md` (the options after run 2) and `personalization_research.md` (the options after run 3). History, not instructions |
+| [`archive/`](archive/) | superseded documents: `training_handoff.md` (the run-1/2 setup), `training_next.md` (the options after run 2), `personalization_research.md` (the options after run 3) and `pod_runbook_v3.md` (run 3's pod session). History, not instructions |
 | [`../paper/README.md`](../paper/README.md) | the paper: its decisions, its words, and where every number comes from |
 | [`STATUS.md`](STATUS.md) | **where the project stands now**: results so far, next steps, withdrawn claims. The one document kept current |
 | [`design.html`](design.html) | a display copy of this page, with a diagram; `design.md` is the source and the HTML is not kept in sync — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |
