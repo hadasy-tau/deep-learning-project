@@ -49,18 +49,19 @@ src/
   evaluation/outputs/          committees_*.csv -- that error map (speaker_performance.csv is
                                the VoxKnesset one Stage 1 produced, kept as the reference point)
 
-notebooks/                     explore_committees.ipynb, committees_error_map.ipynb (the Stage 1
-                               analysis on the committees)
-docs/                          design.md + design.html are the one-page overview: the
-                               whole flow, end to end. Then the build records:
-                               committees_handoff.md, speaker_index_plan.md,
-                               chunk_corpus_build.html, inference.md, error_map.md,
-                               adaptation_plan.md for the design; training_plan_v3.md
-                               the current plan and pod_runbook_v3.md the GPU session --
-                               read that one first on the pod; training_run2.md and
-                               training_run3.md the runs; personalization_research.md
-                               what to try next; STATUS.md where it all stands;
-                               docs/archive/ is history, not instructions
+notebooks/                     explore_committees.ipynb, committees_error_map(_v2).ipynb (the
+                               Stage 1 analysis on the committees), training_run3_figures.ipynb
+                               and training_run4_figures.ipynb (the paper's Stage 2 figures)
+paper/                         the paper: LaTeX source, figures, the compiled PDF.
+                               README.md there is the guide for editing it
+docs/                          STATUS.md where it all stands, the one document kept current.
+                               design.md + design.html: the one-page overview, end to end.
+                               The build records: committees_handoff.md, speaker_index_plan.md,
+                               chunk_corpus_build.html, inference.md, error_map.md.
+                               adaptation_plan.md: the design. The training plans
+                               (training_plan_v3.md, training_plan_v4.md), pod_runbook_v3.md
+                               and the runs (training_run2.md, training_run3.md,
+                               training_run4.md). docs/archive/ is history, not instructions
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
