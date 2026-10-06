@@ -6,6 +6,10 @@ the decisions are numbered D1–D7 because the code cites them by those names. I
 the Stage 2 plan written against VoxKnesset (`stage2/plan.html`, removed with that path) and is
 restated here for the committees corpus, with what the error map (`error_map.md`) changed.
 
+> This is the design as written on 2026-09-16, before any committees run. The runs changed parts
+> of it: the reference configuration, the budgets and the panel's data (`training_plan_v3.md`,
+> `training_plan_v4.md`). Where the project stands is `STATUS.md`.
+
 **The question.** Once a population-level Hebrew fine-tune has taken part of the error, is
 there anything speaker-specific left — and how many minutes of one person's voice does it take
 to get it? Either answer is a contribution: a small personal gain on top of arm B is a real
@@ -53,10 +57,6 @@ text says whether that is acoustics or labels; the audio gate
 before GPU time.
 
 ## The panel (chosen 2026-09-16)
-
-> **Since then:** plan v3 (`docs/training_plan_v3.md` § 1) keeps these eleven, adds the S2
-> alternate 556 (12 speakers), gives 30843 a 30-minute test, and trains and tests on quality ≥ 0.95
-> data (`panel_plan_v2.parquet`); the quality ≥ 0.7 plan below is plan v1, used by run 2.
 
 `src/evaluation/outputs/committees_panel.csv`. Eleven speakers plus four alternates, picked
 from the 142 speakers that pass the entry requirements (≥ 20 chunks, ≥ 3 corpus hours at
@@ -247,7 +247,7 @@ transfer from a four-layer decoder.
 - **Non-verbatim references.** The protocol is not what was said; over half of B's residual
   errors are insertions. There is a floor, and part of any gain is style. The cross-speaker
   control and the S/D/I split exist to bound it.
-- **Labels.** Verified against the protocol, not the voice. The audio gate has not run.
+- **Labels.** Verified against the protocol, not the voice. The audio gate runs on the panel only.
 - **The quality filter is model-derived.** The corpus's `quality` comes from an aligner in the
   Whisper family, so filtering on it can remove exactly the audio the aligner found hard. The
   error map keeps it because below 0.7 the reference demonstrably does not match the audio

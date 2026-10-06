@@ -151,7 +151,7 @@ Nothing is computed only for display. Every number a plot could need is written 
 | seeds 1 and 2 at 80 min: 24 cells + 4 control trainings + 24 control evaluations, both tests | — | about 2.5 h |
 | **total** | | **about 10–11 h, $16–18 at A100 SXM's $1.59/h** |
 
-Those are GPU-hours. The jobs are independent, so `src/training/box/pod_v3.sh` spreads them over every GPU of the pod: on 4× A100 SXM ($1.59/h each on 2026-10-02) the run takes about 3 hours for about $19, the 12 speakers splitting 3 per GPU (`docs/pod_runbook_v3.md` § How many GPUs).
+Those are GPU-hours. The jobs are independent, so `src/training/box/pod_v3.sh` spreads them over every GPU of the pod: on 4× A100 SXM ($1.59/h each on 2026-10-02) the run takes about 3 hours for about $19, the 12 speakers splitting 3 per GPU (`docs/archive/pod_runbook_v3.md` § How many GPUs).
 
 ## Runbook
 
@@ -185,7 +185,7 @@ python src/training/run_panel.py --plan $V2 --max-steps 400 --budgets 5 20 80 --
 ## How to run it
 
 This plan was run on 2026-10-02 (run 3, `docs/training_run3.md`). To run it again, follow
-`docs/pod_runbook_v3.md`, which drives `src/training/box/pod_v3.sh` stage by stage and applies
+`docs/archive/pod_runbook_v3.md`, which drives `src/training/box/pod_v3.sh` stage by stage and applies
 the tuning rule and the base-WER check by rule (`box/v3_decide.py`). The manual walk-through
 that stood here duplicated the runbook and went stale; it was removed on 2026-10-03 (git
 history has it). Where the project stands now is `docs/STATUS.md`.

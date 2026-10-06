@@ -1,4 +1,4 @@
-"""The decisions of plan v3, made by rule rather than by eye (docs/pod_runbook_v3.md).
+"""The decisions of plan v3, made by rule rather than by eye (docs/archive/pod_runbook_v3.md).
 
 pod_v3.sh calls this between stages, so the run never waits on someone reading a table:
 

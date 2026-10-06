@@ -1,5 +1,7 @@
 # Stage 4 — inference over the committees chunk corpus
 
+> A dated record, not edited afterwards. Where the project stands, and which of its claims are withdrawn: `docs/STATUS.md`.
+
 How the two ASR arms are run over `knesset-asr/knesset-committees-chunks`, what each
 piece of `src/inference/` does, what was verified, and what it costs. Written after the
 pipeline was built and verified live (2026-09-11) and extended as the subset run was
@@ -126,7 +128,7 @@ made this take 23 s per shard and stall outright under 8 threads. Range requests
 
 ### `run.py` — the runner
 
-Inherited from `the VoxKnesset arm-A driver that preceded it (since removed)`:
+Inherited from the VoxKnesset arm-A driver that preceded it (since removed):
 
 - one JSONL per `(arm, run)`, appended and flushed per row; a torn last line
   from a crash is skipped on resume
@@ -376,5 +378,5 @@ was what the verification and the first third of the subset ran on. `run_lean.py
 is what finished it (see § Result).
 
 Secrets: `HF_INFERENCE_TOKEN`, `RUNPOD_API_KEY`, `RUNPOD_ENDPOINT_ID`, and
-`HF_WRITE_TOKEN` (mirror only) from the environment, else `the repo-level cache/`
+`HF_WRITE_TOKEN` (mirror only) from the environment, else the repo-level `cache/`
 (mode 600, git-ignored). Nothing here writes a key to any file.

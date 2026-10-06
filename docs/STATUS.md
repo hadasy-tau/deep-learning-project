@@ -26,7 +26,7 @@ editorial decisions and where every number comes from, is [`paper/README.md`](..
 
 - **Personalization is +2–3 points of relative WER at 80 minutes**, stable over three seeds (run 3:
   +2.6 / +3.3 / +1.0 % on the high-quality test), significant for about a quarter of the
-  speaker-seed pairs, never significantly negative. The rest of the 12–15 % an adapter removes
+  speaker-seed pairs, never significantly negative at 80 minutes. The rest of the 12–15 % an adapter removes
   is domain: an adapter on anyone else's committee audio buys it.
 - **For whom:** the hardest speakers (23558 reproducibly, +9–10 % on the ≥ 0.7 test in every seed,
   then 30701 and 556) and 30813. Nothing for the S1 speakers the fine-tune failed (30831, 30685).
@@ -69,6 +69,7 @@ editorial decisions and where every number comes from, is [`paper/README.md`](..
 | The "attributable error" analysis (35 %, adapters add 10–16 %, 54 % of personal fixes are conventions) | `archive/personalization_research.md` § 1.1–1.2 | built on the same arm-A proxy |
 | The semi-verbatim targets as the recipe, and "the adapter learns the stenographer" | runs 2–3 | both rested on the forgiven count |
 | "~140 high-quality minutes per speaker" as a data limit | plan v3 | a cap of the 250 candidate minutes scored, not of the corpus |
+| "No speaker is significantly negative at any budget" | `training_run3.md` § Results | true at 80 minutes only. At 5 and 20 minutes (seed 0) some speakers are significantly negative: 30813 at 5 on the high-quality test, and 30752, 30813, 556 at 5 and 30831, 30843 at 20 on the ≥ 0.7 test |
 | "At 1,440 minutes the best checkpoint came at about 0.84–0.9 of a pass", validation stops improving "within the first pass" | `training_run4.md` § The recipe as run | true of the controls only. The own adapters peak after 0.93–1.11 passes (all runs: 0.83–1.11, stopped at 1.02–1.23). The conclusion stands: about one pass, far below the step cap |
 
 ## Where things are
