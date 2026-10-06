@@ -1,5 +1,7 @@
 # The per-speaker error map — committees corpus
 
+> A dated record, not edited afterwards. Where the project stands, and which of its claims are withdrawn: `docs/STATUS.md`.
+
 > **Note (2026-10-03):** § The same map, protocol-aware is withdrawn as evidence (`docs/STATUS.md` § Withdrawn); the standard count is the result.
 
 Stage 1's analysis, re-done on the corpus the project moved to. Written from the

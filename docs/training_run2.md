@@ -1,5 +1,7 @@
 # The second training run: log and decisions
 
+> A dated record, not edited afterwards. Where the project stands, and which of its claims are withdrawn: `docs/STATUS.md`.
+
 > **Note (2026-10-03): the forgiven-shared count is withdrawn.** Every "forgiven" or "protocol-aware" number below assumed that a word two models produce and the protocol lacks was spoken, an assumption too strong to rest a result on (`docs/STATUS.md` § Withdrawn). They are kept as a record of what was measured, not as evidence. The standard (protocol) counts stand.
 
 Written on the GPU box on 2026-09-20, as the run went. `docs/archive/training_handoff.md` is the

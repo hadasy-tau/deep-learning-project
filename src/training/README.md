@@ -1,22 +1,25 @@
 # `src/training/` — the adaptation code
 
-> This file describes the code. **To run training, follow `docs/pod_runbook_v3.md`**; the plan
-> and its reasons are `docs/training_plan_v3.md`; where the project stands is `docs/STATUS.md`.
-> The design is `docs/adaptation_plan.md`. The panel is `src/evaluation/outputs/committees_panel.csv`
-> plus 556 (`word_quality.PANEL_ADD`).
+> This file describes the code. Where the project stands is `docs/STATUS.md`, and no more
+> training is planned. The design is `docs/adaptation_plan.md`. The runs and their plans:
+> run 3 (`docs/training_plan_v3.md`, `docs/training_run3.md`, driven by `box/pod_v3.sh`) and
+> run 4 (`docs/training_plan_v4.md`, `docs/training_run4.md`, driven by `box/pod_v4.sh`).
+> The panel is `src/evaluation/outputs/committees_panel.csv` plus 556 (`word_quality.PANEL_ADD`).
+> Run 4 adds 23641 and 23635, outside the panel.
 
 | file | holds |
 |---|---|
-| `materialize.py` | `plan`, `plan-v2`, `plan-test07` (laptop): which chunks, which split — writes the plan tables. `extract` (any fast link): shards → WAVs under `outputs/panel_audio/`. `verify`, `upload`, `download` |
+| `materialize.py` | `plan`, `plan-v2`, `plan-test07`, `plan-v4` (laptop): which chunks, which split — writes the plan tables. `extract` (any fast link): shards → WAVs under `outputs/panel_audio/`. `verify`, `upload`, `download` |
 | `panel_plan.parquet` | plan v1, used by run 2: 8,113 chunks, 28.8 h, 11 speakers, 111 shards; per speaker ≥ 45 min test (the newest sessions), ~15 min dev, ≥ 80 min train, session-disjoint by date, train ordered latest-first so budgets nest |
 | `train.py` | one cell → one adapter (`train_cell`), `overfit_check` |
 | `run_panel.py` | cells → adapters → scored results (`outputs/results/*.json`, `outputs/results.csv`); WER per cell; `--control-folds K` for the cross-speaker control (D3) |
 | `targets.py` | semi-verbatim training targets: the protocol text with the words both base models produced put back (`--build-targets`). Rests on the withdrawn two-model-agreement assumption (docs/STATUS.md § Withdrawn) |
 | `word_quality.py` | per-word alignment scores for the candidate train/dev clips (from the raw ivrit.ai sessions) and the word rule `word_ok`; writes `word_quality.parquet` |
 | `panel_plan_v2.parquet` | the high-quality plan: test, dev and train all at quality ≥ 0.95 passing the word rule; 12 speakers: the panel, plus 556 (30601 deferred); 30843 with a 30-minute test (`materialize.py plan-v2`) |
-| `panel_test07.parquet` | the second test set: plan v2's test sessions, every chunk at quality ≥ 0.7, no word rule; v2's test is its `hq` subset (`materialize.py plan-test07`, scored with `run_panel.py --test07-plan`) |
+| `panel_test07.parquet` | the second test set: plan v2's test sessions, every chunk at quality ≥ 0.7, no word rule. v2's test is its `hq` subset (`materialize.py plan-test07`, scored with `run_panel.py --test07-plan`) |
+| `panel_plan_v4.parquet`, `panel_test07_v4.parquet` | run 4: plan v2's test and dev unchanged, 23641 and 23635 added, and train extended (about 1,440 minutes for 23558 and 23641, up to 800 for the rest of the panel, which the large controls draw from). `materialize.py plan-v4` |
 | `backup.py` | copies `outputs/results/` and `runs/` (adapters only, no trainer checkpoints) to a private HF dataset on a loop |
-| `box/` | `pod_v3.sh` (the plan-v3 pod session, stage by stage, on every GPU), `v3_decide.py` (the tuning rule and the base-WER check), `env.sh` (caches on the container disk, thread cap), and run 2's detached chains (`followups.sh`, `next_runs.sh`, `run_d.sh`, historical) |
+| `box/` | run 3: `pod_v3.sh` (the pod session, stage by stage, on every GPU), `v3_decide.py` (the tuning rule and the base-WER check). Run 4: `data_v4.sh` (cut the audio before the pod), `packs_v4.py` (the audio as one FLAC tar per speaker), `gate_v4.py` (the audio gate on 23641 and 23635), `pod_v4.sh` (boot, run, finish), `jobs_v4.py` (one job queue over every GPU), `v4_decide.py` (the lr check and the base-WER check). `env.sh` (caches on the container disk, thread cap). Run 2's detached chains (`followups.sh`, `next_runs.sh`, `run_d.sh`) are historical |
 | `requirements.txt` | the stack; pin torch to the box's CUDA build |
 
 ## The machine
@@ -63,11 +66,11 @@ cached once. Kill it and rerun it freely.
 - Older result files (runs 2–3) also carry `*_f` columns, the forgiven-shared count; it is
   withdrawn (`docs/STATUS.md` § Withdrawn) and the summary drops them.
 
-## Not yet
+## Supported by the code, never run
 
 - Long-form scoring on whole personal-test recordings (D7's secondary protocol): the chunks
   are on disk, the recordings are not.
 - The sharing axis (similar-speaker groups against random ones) and the method axis (full
   fine-tuning, DoRA, IA3): `run_panel.py` takes `--methods`, but no run has used anything but
-  LoRA. The site (`--sites encoder`, `decoder_mlp`) and rank (8, 16) axes were varied in runs 2
-  and 3; the cross-speaker control (`--control-folds`) has run in every run since run 2.
+  LoRA. The site (`--sites encoder`, `decoder_mlp`) and rank (8, 16, and 32 in run 4) axes were
+  varied, and the cross-speaker control (`--control-folds`) has run in every run since run 2.

@@ -31,7 +31,7 @@ this stage exists — see the top-level README.
 
 ## Secrets
 
-Read from the environment, else `the repo-level cache/` (mode 600, git-ignored). Never
+Read from the environment, else the repo-level `cache/` (mode 600, git-ignored). Never
 written to any output.
 
 ```

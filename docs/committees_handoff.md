@@ -4,7 +4,7 @@ Read this before touching anything. It is written for a fresh Claude session wit
 
 ## The goal
 
-**Where this stands (2026-09-16).** The inference below has run and been validated (`inference.md` § Result), and the per-speaker and per-subgroup evaluation exists (`error_map.md`). What is open is adaptation: `adaptation_plan.md` is its design, and the first step there is the integration gap named further down. The rest of this document is still the orientation it was written as.
+This document was written to set up the inference and the error map. Both are done (`inference.md`, `error_map.md`), and where the project stands is `docs/STATUS.md`. What it still serves for is the corpus: where it is, how to read it, and what is known to be wrong with it.
 
 Run Whisper inference with **both** models on the committees corpus, then do **per-speaker and per-subgroup evaluation** the way Stage 1 did for VoxKnesset:
 
@@ -52,8 +52,8 @@ One caveat that remains: the *speakers* overlap with the plenum training data. R
 
 ## The corpus
 
-- **1,202,046 chunks, 410 shards** (`data/chunks-00000.parquet` … `data/chunks-00409.parquet`), 274.5 GB
-- **330 speakers, 10,905 sessions, ~4,111 h of audio.** Every chunk is ≤30 s and holds **exactly one speaker**.
+- **1,204,617 chunks, 410 shards** (`data/chunks-00000.parquet` … `data/chunks-00409.parquet`), about 275 GB
+- **330 speakers, 10,905 sessions, 3,840.6 h of audio** (measured 2026-10-06 on the published corpus, `coverage.parquet` in `-inference`. The build record's 1,202,046 chunks and ~4,111 h are its own counts during the build, the hours a projection). Every chunk is ≤30 s and holds **exactly one speaker**.
 - Each chunk tiles a speaker's turn back to back and never crosses a speaker change (ivrit.ai's slicer with one extra rule).
 
 **Columns** (`SCHEMA` in `src/preprocessing/chunk_corpus/chunks.py`):
@@ -112,7 +112,7 @@ Mismatches, handled in `error_map.py` rather than by editing the corpus:
 
 ## Open problems to keep in mind, not fix
 
-- **Speaker labels are verified against the protocol, not the voice.** The ECAPA speaker-embedding check (`src/preprocessing/speaker_index/validate_audio.py`, Step 4.2 of `docs/speaker_index_plan.md`) needs a GPU; it has run once, on the adaptation panel only (run 2, 2026-09-20; `docs/training_run2.md` § The audio gate): 5.4 % of the panel's chunks sit closer to another speaker's voice, concentrated in 30843's dev session. It has not been run over the corpus. Committee cross-talk is heavy; the protocol records who held the floor, not who was audible. If per-speaker WER looks anomalous for one speaker, suspect labels before suspecting the model.
+- **Speaker labels are verified against the protocol, not the voice.** The ECAPA speaker-embedding check (`src/preprocessing/speaker_index/validate_audio.py`, Step 4.2 of `docs/speaker_index_plan.md`) needs a GPU; it has run on the adaptation panel (run 2, 2026-09-20, `docs/training_run2.md` § The audio gate: 5.4 % of the panel's chunks sit closer to another speaker's voice, concentrated in 30843's dev session) and on run 4's two new speakers (`docs/training_run4.md`). It has not been run over the corpus. Committee cross-talk is heavy; the protocol records who held the floor, not who was audible. If per-speaker WER looks anomalous for one speaker, suspect labels before suspecting the model.
 - **The ear check was spot-checked, not swept.** A time-origin offset between audio and alignment would give fluent but wrong-text chunks for a whole session. It would show up as that session's WER near 1.0 under **both** models.
 
 ## Conventions in this repo
@@ -123,7 +123,7 @@ Mismatches, handled in `error_map.py` rather than by editing the corpus:
 - Pin HuggingFace revisions for anything that runs long. The speaker index changed mid-session once and withdrew 9 speakers.
 - Read tokens with `huggingface_hub.get_token()`. Never print or embed them.
 - Streaming or long jobs: resumable per unit, per-unit errors recorded and not fatal, **retries with jittered backoff on both download and upload** (a HuggingFace 503 once killed a 29-hour job).
-- The user decides commits, pushes and PRs. Ask before doing any of them. `gh` isn't installed.
+- The user decides commits, pushes and PRs. Ask before doing any of them.
 
 ## What not to do
 

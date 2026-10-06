@@ -1,5 +1,8 @@
 # Pod runbook: plan v3 on a RunPod GPU
 
+> Archived 2026-10-06. Run 3 ran by it (`docs/training_run3.md`). Run 4 ran by
+> `src/training/box/pod_v4.sh` (`docs/training_plan_v4.md`), and no more training is planned.
+
 For whoever runs the training, a person or a fresh Claude session on the pod. It is the
 *how*. The *why* is `docs/training_plan_v3.md` § 1–5; read those first if you have not.
 `docs/training_run2.md` is what the last run found, and why every rule below exists.

@@ -1,8 +1,10 @@
 # The third training run (plan v3): log, results and conclusions
 
+> A dated record, not edited afterwards. Where the project stands is `docs/STATUS.md`. Corrected 2026-10-06: "no speaker is significantly negative at any budget" holds at 80 minutes only (`docs/STATUS.md` § Withdrawn).
+
 Run on 2026-10-02 on one RunPod pod with 4× A100 SXM 80 GB (US-MD-1, $6.36/h), driven by
 `src/training/box/pod_v3.sh` from `main` at `74f4f17`. `docs/training_plan_v3.md` is the plan and
-its reasons; `docs/pod_runbook_v3.md` is how the pod was run; `docs/training_run2.md` is the
+its reasons; `docs/archive/pod_runbook_v3.md` is how the pod was run; `docs/training_run2.md` is the
 previous run, which every comparison below refers to. Everything the run produced is in the
 HuggingFace dataset `knesset-asr/knesset-committees-v3-results` (private): `results.csv` (144
 rows: 72 cells, 72 control evaluations), `results/` (528 files: one JSON and one hypotheses file
