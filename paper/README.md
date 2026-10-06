@@ -12,6 +12,7 @@ decisions about what the paper says, the words it uses, and where each number co
 | `Toward_Personalized_Hebrew_ASR_overleaf/custom.bib`, `figures/` | references and figures |
 | `Toward_Personalized_Hebrew_ASR.pdf` | the compiled paper |
 | `Toward_Personalized_Hebrew_ASR_overleaf.zip` | the same folder zipped, for uploading to Overleaf |
+| `Limitations_changes_for_review.pdf` | the 2026-10-07 Limitations rewrite marked against the version before it, for review |
 
 The PDF and the zip are built from the folder. After a change to the folder, rebuild both in the
 same commit:
@@ -101,8 +102,6 @@ The notebooks write to `docs/figures/<notebook>/`.
 
 ## Open in the paper
 
-- The Limitations rewrite (the two protocol paragraphs merged, shorter wording) is a separate PR,
-  for Hadas's review. Until it is merged, Limitations is as it was on 2026-10-06.
 - The Related Work paragraph on Weninger et al. (typical speakers, no other-speaker control) is
   flagged: keep or drop.
 - The $200 cost in Limitations has no source (see above).

@@ -488,52 +488,44 @@ objectives that separate the voice from the committee setting.
 
 \section*{Limitations}
 
-\paragraph{Prior exposure.} Arm~B was fine-tuned on Knesset plenary speech, which
-includes many of our speakers. Our evaluation uses committee recordings, a different setting and register, but the model may still be partly familiar with these voices.
+\paragraph{Prior exposure.} Arm~B was fine-tuned on Knesset plenary speech, which includes many of our
+speakers. Our evaluation uses committee recordings, a different setting and
+register, but the model may still be partly familiar with these voices.
 
-\paragraph{Shared recording conditions.} Train and test sets are meeting-disjoint,
-but not committee-disjoint: about 75--82\% of the test speech comes from committees the same speaker also appears in during training, and so likely from the same rooms and microphones. Part of an adapter's gain may therefore reflect familiar recording conditions rather than the voice alone.
+\paragraph{Shared recording conditions.} Train and test sets are session-disjoint, but not committee-disjoint: about
+75--82\% of the test speech comes from committees the same speaker also appears
+in during training, and so likely from the same rooms and microphones. Part of
+an adapter's gain may therefore reflect familiar recording conditions rather
+than the voice alone.
 
-\paragraph{The reference is the protocol.} Every WER is measured against the
-stenographic protocol, which is not a verbatim transcript. Our gains are gains in
-agreement with the protocol, and may partly reflect learning what the stenographer
-omits. We limit this by training and validating only on segments whose protocol
-closely matches the audio (quality $\geq 0.95$, Appendix~\ref{app:data}). That score,
-however, comes from a Whisper-family aligner, so a test set filtered the same way would
-favour speech that Whisper models already transcribe well; we therefore score every
-model both on the high-quality segments and on all segments at quality $\geq 0.7$.
+\paragraph{The reference is the protocol.} Every WER is measured against the stenographic protocol, which is not a verbatim
+transcript: stenographers condense, rephrase and omit speech, so part of every
+measured error is a mismatch between protocol and audio rather than a
+recognition mistake. Our gains are gains in agreement with the protocol, and may
+partly reflect learning what the stenographer omits. We limit this by training
+and validating only on segments whose protocol closely matches the audio
+(quality $\geq 0.95$, a threshold set with the ivrit.ai team,
+Appendix~\ref{app:data}). That score, however, comes from a Whisper-family
+aligner, so a test set filtered the same way would favour speech that Whisper
+models already transcribe well, and we therefore score every model both on the
+high-quality segments and on all segments at quality $\geq 0.7$. No verbatim
+reference was available, so our comparisons are most reliable between models
+scored against the same references.
 
-% TODO (decide later): "The reference is the protocol" (Hadas) and "Reference
-% transcripts" (Dolev) cover the same limitation. Both are kept for now. Keep one,
-% or fold the ivrit.ai consultation point into the other.
-\paragraph{Reference transcripts.} Our references are the Knesset's stenographic
-protocols, not verbatim transcripts: stenographers condense, rephrase and omit
-speech, so part of every measured error is a mismatch between protocol and audio
-rather than a recognition mistake. We limit this with alignment-quality filters set
-in consultation with the ivrit.ai team (Section~\ref{sec:preprocessing},
-Appendix~\ref{app:data}), but no verbatim reference was available.
-Absolute WERs therefore partly reflect the protocol's editing, and our comparisons
-are most reliable between models scored against the same references.
+\paragraph{Limited compute.} All experiments ran on paid cloud services (RunPod GPUs and Hugging Face
+inference), for about \$200 in total, which limited the models, configurations
+and speakers we could explore.
 
-\paragraph{Limited compute.} Training and inference ran on paid cloud services
-(RunPod GPUs and Hugging Face inference), at a total cost of about \$200 across all
-our experiments. Within this budget we focused on the experiments central to our
-question, and a larger budget would allow more models, configurations and speakers
-to be explored.
+\paragraph{Tuning on validation loss.} The rank, dropout, augmentation and learning rate were chosen on the validation
+loss of four speakers. The rejected settings, including rank 16, were never
+scored on the test sets.
 
-\paragraph{Tuning on validation loss.} The rank, dropout, augmentation and learning
-rate were chosen on the validation loss of four speakers. The rejected settings,
-including rank 16, were never scored on the test sets.
+\paragraph{Few speakers beyond 80 minutes.} The longer budgets cover four speakers, two of them up to 24 hours, and the
+rank-32 check uses one seed, so the finding that the personal margin does not
+grow with more speaker data may not hold for every speaker.
 
-\paragraph{Few speakers beyond 80 minutes.} The longer budgets cover four speakers,
-two of them up to 24 hours, and the rank-32 check uses one seed, so the finding that
-the personal margin does not grow with more speaker data holds for these speakers,
-and may not hold for every speaker.
-
-\paragraph{A random control group.} The control pools speakers at random, so it does
-not test whether \emph{similar} speakers could replace a speaker's own audio; we leave
-that comparison to future work.
-
+\paragraph{A random control group.} The control pools speakers at random, so it does not test whether \emph{similar}
+speakers could replace a speaker's own audio.
 
 % ============================================================
 % ACKNOWLEDGMENTS
