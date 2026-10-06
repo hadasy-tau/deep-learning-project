@@ -110,11 +110,13 @@ before the model.
 | [`inference.md`](inference.md) | stage 3: provider contracts, the three bottlenecks, measured cost |
 | [`error_map.md`](error_map.md) | stages 4–5: the per-speaker error map, subgroup rules, who to adapt; what the errors are, and the map again under a protocol-aware count (withdrawn as evidence, 2026-10-03) |
 | [`adaptation_plan.md`](adaptation_plan.md) | stages 6–7: the design the training and evaluation code implement (D1–D7), the panel rules, what is written and what is not |
-| [`training_plan_v3.md`](training_plan_v3.md) | the current training plan: 12 speakers, quality ≥ 0.95 data, tuning on validation by rule, the control at every budget, two test sets |
+| [`training_plan_v3.md`](training_plan_v3.md) | the plan of run 3: 12 speakers, quality ≥ 0.95 data, tuning on validation by rule, the control at every budget, two test sets |
+| [`training_plan_v4.md`](training_plan_v4.md) | the plan of run 4: the personal-data curve beyond 80 minutes, with the decision rule fixed in advance |
 | [`pod_runbook_v3.md`](pod_runbook_v3.md) | **read first on the GPU pod.** The plan-v3 session stage by stage (`src/training/box/pod_v3.sh`), stop rules, what to report |
 | [`training_run2.md`](training_run2.md) | the second training run (2026-09-20): log, decisions, results |
 | [`training_run3.md`](training_run3.md) | the third training run (2026-10-02, plan v3): log, results, conclusions |
-| [`personalization_research.md`](personalization_research.md) | after run 3: what the remaining errors are, what the literature says, and the ranked next steps |
-| [`archive/`](archive/) | superseded documents (`training_handoff.md`, the run-1/2 setup; `training_next.md`, the options after run 2). History, not instructions |
+| [`training_run4.md`](training_run4.md) | the fourth training run (2026-10-04, plan v4): more personal data does not raise personalization |
+| [`archive/`](archive/) | superseded documents: `training_handoff.md` (the run-1/2 setup), `training_next.md` (the options after run 2) and `personalization_research.md` (the options after run 3). History, not instructions |
+| [`../paper/README.md`](../paper/README.md) | the paper: its decisions, its words, and where every number comes from |
 | [`STATUS.md`](STATUS.md) | **where the project stands now**: results so far, next steps, withdrawn claims. The one document kept current |
 | [`design.html`](design.html) | a display copy of this page, with a diagram; `design.md` is the source and the HTML is not kept in sync — published at https://claude.ai/code/artifact/9460e029-e28f-439c-9ecb-ebf0bde37d2d |
