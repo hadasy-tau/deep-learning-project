@@ -330,7 +330,8 @@ significantly) and for all 12 on the full test (all significantly). The other
 two seeds agree: over all 36 speaker--seed pairs, it beats arm~B in 35 on the
 clean test and in all 36 on the full test, and averaged over the three seeds,
 the clean-test gains range from +3\% to +28\% (median +11.4\%,
-Figure~\ref{fig:bestmodel}).
+Figure~\ref{fig:bestmodel}). Figures~\ref{fig:wermedian} and~\ref{fig:werspeaker}
+(Appendix~\ref{app:additional}) show the absolute WERs behind these gains.
 
 \begin{figure}[t]
     \centering
@@ -411,10 +412,8 @@ returns: on the full test, from +29.4\% at 80 minutes to +34.3\% at 24 hours for
 fast (for 23558, from +19.7\% to +30.2\%), so the added gain comes mostly from
 committee speech in general, and personalization does not grow. It shrinks as a
 share of the gain, for 23558 from a third to an eighth, but it does not vanish:
-at 24 hours it is +4.1\% for 23558 and +2.3\% for 23641. Longer training does
-not change this: validation loss stops improving after about one pass over the
-data, and a larger adapter (rank 32) does not help
-(Appendix~\ref{app:training}). Two more speakers, trained on up to 360 minutes,
+at 24 hours it is +4.1\% for 23558 and +2.3\% for 23641. A larger adapter (rank 32) does
+not make personalization grow either (Appendix~\ref{app:training}). Two more speakers, trained on up to 360 minutes,
 show the same pattern (Figure~\ref{fig:curve6h}).
 
 \begin{figure}[t]
@@ -585,14 +584,49 @@ reference text to within 20\%, so that the checked probabilities cover the whole
 text.
 
 \paragraph{Two test sets.}
-The aligner is itself a Whisper-family model, so a 0.95 threshold favours
-segments that Whisper models already transcribe well. The score is not specific
-to arm~B, though: per segment, it predicts arm~A's WER about as well as arm~B's
-(Spearman $\rho=-0.62$ and $-0.63$ over the 65{,}990 segments). It mostly
-measures what is hard for any model. Applied to the test set, the threshold
-introduces a selection bias toward easy speech, so we score every model on two
-test sets drawn from the same held-out sessions: the filtered segments, and all
-segments with confidence of at least 0.7.
+The aligner is itself a Whisper-family model, so a 0.95 threshold may keep the
+segments that Whisper models already transcribe well. Per segment, the score
+predicts arm~A's WER about as well as arm~B's (Spearman $\rho=-0.62$ and $-0.63$
+over the 65{,}990 segments), so it does not favour the Hebrew fine-tune over the
+general model, and filtering on it does not tilt the comparison between them.
+It does mean that the filtered test set leans toward speech that every model we compare finds
+easy. We therefore score every model on two test sets drawn from the same
+held-out sessions: the filtered segments, and all segments with confidence of at
+least 0.7.
+
+% ------------------------------------------------------------
+\section{Implementation Details}
+\label{app:implementation}
+
+\paragraph{Training.}
+Adapters are trained with PyTorch, Hugging Face \texttt{transformers}
+(\texttt{Seq2SeqTrainer}) and \texttt{peft}, on the frozen base model in
+bfloat16. Training segments are fed latest session first, so the 5-, 20- and
+80-minute budgets are nested prefixes of one ordering. Each control's pool takes
+one segment from each of its six speakers in turn until the budget is reached,
+and never from a session in which a speaker it is scored on is tested or
+validated.
+
+\paragraph{Scoring.}
+Reference and hypothesis are normalized (niqqud and punctuation removed) and
+aligned word by word, and substitutions, deletions and insertions are counted
+per segment. WER is pooled over a speaker's test set: the sum of word errors
+divided by the sum of reference words. Confidence intervals and p-values come from
+a paired bootstrap over test segments (Appendix~\ref{app:significance}).
+
+\paragraph{Decoding.}
+ Whisper occasionally falls into a repetition loop, emitting
+the same phrase many times, and every repetition counts as an insertion error.
+Repetitive text compresses far better than ordinary speech, so we detect loops by
+a transcript's zlib compression ratio, its size before compression divided by its
+size after. Ordinary Hebrew transcripts score around 2.4--2.6, and we treat a
+ratio above 3.0 as a loop. Such a segment is decoded again with no sequence of six
+tokens allowed to repeat, and the new transcript replaces the original if it
+compresses less, that is, if it is less repetitive. The same procedure is applied
+to every model.
+
+Decoding is greedy, meaning that at each step Whisper picks the single most likely next token.
+
 
 % ------------------------------------------------------------
 \section{Training Details}
@@ -621,14 +655,14 @@ drop, averaged over the four speakers, by at least 0.01, and raised it for at
 least three of the four.
 
 \paragraph{Tuning results} (Figures~\ref{fig:tuningscores} and~\ref{fig:tuningcurves}).
-Only the learning rate at 5 minutes and Whisper's dropout matter. At both
-budgets a higher rate reaches its minimum validation loss earlier, but at 5
-minutes the higher rates reach a worse minimum, so we use the lowest rate,
-$10^{-4}$, while at 80 minutes all three reach nearly the same minimum and we
-keep the default, $3\times10^{-4}$. Rank 16 matches rank 8 at 80 minutes and is
-slightly worse at 5. Augmentation improves the relative drop by less than the
-0.01 threshold at both budgets. Raising Whisper's own dropout to 0.1 removes
-most of the adapter's improvement for every speaker.
+At both budgets, a higher learning rate reaches its minimum validation
+loss sooner. At 5 minutes the higher rates also reach a worse minimum, so we use
+the lowest, $10^{-4}$. At 80 minutes all three reach nearly the same minimum, so
+we keep the default, $3\times10^{-4}$. Raising Whisper's dropout to 0.1 removes
+most of the adapter's improvement for every speaker, so we keep it at 0. The
+other settings make little difference: rank 16 matches rank 8 at 80 minutes and
+is slightly worse at 5, and augmentation raises the relative drop by less than
+the 0.01 threshold at both budgets.
 
 
 
@@ -661,37 +695,22 @@ Seeds & 0 at every budget, 1 and 2 at 80 minutes \\
 \end{table}
 
 \paragraph{Beyond 80 minutes.}
-Four speakers are trained beyond 80 minutes: 23558 and 23641 up to 1{,}440 minutes,
-and 30752 and 23635 up to 360. 23558 and 30752 are from the 12. 23641 and 23635 add
-profiles the 12 lack: a Haredi speaker with one of the highest WERs, whom the Hebrew
-fine-tune helped little, and an Ethiopian-born woman. Their data follow the same rules
-(Appendix~\ref{app:data}), with the newest sessions held out for testing. The budgets
-are 5, 20, 80, 160 and 360 minutes, and 720 and 1{,}440 for the first two, each a
-separate adapter on a nested subset. For 23558 and 30752 the 5, 20 and 80-minute
-adapters are those of the main experiment. Seeds 0--2 are run at 80 minutes and at
-each speaker's largest budget, and seed 0 elsewhere. Every budget has its own control.
-23641 and 23635 are not in the two folds, so they are scored against the control of
-23558's fold, whose pool excludes their sessions.
+Four speakers are trained beyond 80 minutes: 23558 and 23641 on up to 1{,}440
+minutes, and 30752 and 23635 on up to 360. 23558 and 30752 are two of the 12
+selected speakers of the main experiment. 23641 and 23635 add profiles those 12
+lack: a Haredi speaker with one of the highest WERs, whom the Hebrew fine-tune
+helped little, and an Ethiopian-born woman. Every budget is trained as in the
+main experiment, on a larger subset of the speaker's data, with its own control.
 
-The recipe of Table~\ref{tab:hyperparams} is kept, with three changes. The step cap
-grows with the data, to 1{,}200 steps at 160 and 360 minutes and 3{,}000 at 720 and
-1{,}440, and no run reaches it. The learning rate was checked again at 360 minutes by
-the same rule, and $10^{-3}$ was worse than $3\times10^{-4}$ for all four speakers
-(mean drop 0.381 against 0.391), so $3\times10^{-4}$ is kept. Finally, the patience of
-four validations (80 steps) is about half a pass over 360 minutes of data but a tenth
-of a pass over 1{,}440, so at 720 and 1{,}440 minutes training may not stop before one
-full pass. At 1{,}440 minutes the best checkpoint comes after 0.83--1.11 passes, and
-training stops at 1.02--1.23 passes: validation loss stops improving after about one
-pass.
+The recipe of Table~\ref{tab:hyperparams} is kept, except that the step cap grows
+with the data, to 1{,}200 steps at 160 and 360 minutes and 3{,}000 at 720 and
+1{,}440, and no run reaches it.
 
 \paragraph{Adapter capacity.}
-If a rank-8 adapter could not hold both the committee setting and the voice, more data
-could crowd out the personal part. We therefore repeat the 1{,}440-minute own adapters
-of 23558 and 23641 and their control at rank 32 (15.7M trainable parameters,
-$\alpha=64$), seed 0. Personalization moves in both directions
-(Table~\ref{tab:capacity}), by up to 5 points, of the order of the seed-to-seed
-variation, and no rank-32 adapter comes near 23558's +9.7\% at 80 minutes. The own
-adapter itself gains no more at rank 32.
+To check whether a rank-8 adapter is too small to hold the voice, we repeat the
+1{,}440-minute own adapters of 23558 and 23641 and their control at rank 32. The
+larger adapter does not make personalization grow: it rises in some cases and
+falls in others (Table~\ref{tab:capacity}).
 
 \begin{table}[h]
 \centering\small
@@ -727,31 +746,6 @@ adapter.}
     lines are the four speakers, the thick line is their mean, and dots are the best checkpoints.}
     \label{fig:tuningcurves}
 \end{figure*}
-
-
-% ------------------------------------------------------------
-\section{Implementation Details}
-\label{app:implementation}
-
-\paragraph{Training.}
-Adapters are trained with PyTorch, Hugging Face \texttt{transformers}
-(\texttt{Seq2SeqTrainer}) and \texttt{peft}, on the frozen base model in
-bfloat16. Training segments are fed latest session first, so the 5-, 20- and
-80-minute budgets are nested prefixes of one ordering. Each control's pool takes
-one segment from each of its six speakers in turn until the budget is reached,
-and never from a session in which a speaker it is scored on is tested or
-validated.
-
-\paragraph{Scoring.}
-Reference and hypothesis are normalized (niqqud and punctuation removed) and
-aligned word by word, and substitutions, deletions and insertions are counted
-per segment. WER is pooled over a speaker's test set: the sum of word errors
-divided by the sum of reference words. Decoding is greedy, and every
-transcription passes a loop guard: a hypothesis whose zlib compression ratio
-exceeds 3.0 is decoded again with no 6-token sequence repeated, and replaced if
-the new one compresses less, identically for the base model, own adapters and
-controls. Confidence intervals and p-values come from a paired bootstrap over
-test segments (Appendix~\ref{app:significance}).
 
 
 % ------------------------------------------------------------
@@ -902,13 +896,6 @@ would be used in practice.
     \label{fig:lcspeakers}
 \end{figure*}
 
-\textbf{Up to 360 minutes.} Figure~\ref{fig:curve6h} shows the two speakers
-trained on up to 360 minutes. As for the speakers trained on 24 hours, the own
-adapter keeps improving (on the full test, from +23.3\% to +26.9\% for 30752 and
-from +15.0\% to +19.5\% for 23635), the control improves as fast, and
-personalization at 360 minutes is no higher than at 80 (30752 from +4.7\% to
-+1.7\%, 23635 from +0.4\% to $-0.1\%$).
-
 \begin{figure}[h]
     \centering
     \includegraphics[width=\columnwidth]{figures/stage2_data_curve_6h.png}
@@ -917,22 +904,39 @@ personalization at 360 minutes is no higher than at 80 (30752 from +4.7\% to
     \label{fig:curve6h}
 \end{figure}
 
-\paragraph{Decision rule.}
-Before the longer runs we fixed a rule on the full test, comparing each
-speaker's personalization at the largest budget with that at 80 minutes.
-Personalization would count as growing with data if the difference were at least
-+2 points with its interval above zero for at least two of the four speakers,
-and as not growing if every interval contained zero with an upper end below +2.
-Neither holds: three intervals meet the second condition, but 23558's lies
-entirely below zero ($-5.6$, $[-7.7,-3.6]$). The rule is therefore undecided by
-its wording, while the result points against growth.
+
+
+
+% ------------------------------------------------------------
+\section{Bootstrap for the Speaker-Level Error Map}
+\label{app:boot-errormap}
+
+Each speaker is measured on a one-hour sample of their speech, and another hour
+would give somewhat different results. To know how far to trust each speaker's
+WER$_A$, WER$_B$ and gain ($\text{WER}_A-\text{WER}_B$), we use a bootstrap.
+
+\paragraph{Resampling.}
+For each speaker, we build 1{,}000 resampled sets, each by drawing the speaker's
+segments at random with replacement until it is the same size as the original
+sample. Both arms are scored on the same resampled set. Each set gives a pooled
+WER$_A$ and WER$_B$ (the sum of word errors over the drawn segments divided by the sum of reference
+words) and their difference, the absolute gain $\text{WER}_A-\text{WER}_B$.
+
+\paragraph{Intervals.}
+The 95\% interval of WER$_A$, WER$_B$ and the gain is the 2.5th to 97.5th percentile of
+the 1{,}000 values. No p-value is computed: a speaker's improvement under arm~B is
+called beyond sampling noise when the interval of their gain lies entirely above zero,
+as it does for all 261 speakers with at least 20 segments.
 
 
 % ------------------------------------------------------------
 \section{Significance Testing}
 \label{app:significance}
 
-Every comparison in Section~\ref{sec:adaptation} is paired: two models transcribe the
+Similar to the error map (Appendix~\ref{app:boot-errormap}), to know how far to trust
+each adapter's gain over arm~B and each speaker's personalization, we use a
+bootstrap as well. It differs only in using 2{,}000 resampled sets instead of
+1{,}000, and in giving p-values as well as intervals. Every comparison in Section~\ref{sec:adaptation} is paired: two models transcribe the
 same test segments of one speaker, so we ask whether one makes fewer errors than the
 other on those segments.
 
@@ -944,54 +948,20 @@ the same segments. Both are pooled differences, the sum of each model's word err
 over the segments divided by the sum of reference words.
 
 \paragraph{Resampling.}
-We draw as many segments as the speaker's test set holds, with replacement, and
-recompute the pooled difference on the draw. This is repeated 2{,}000 times. The
-same draw is applied to both models, so a hard segment counts for both or for
-neither, and the variation between segments largely cancels. We resample whole
-segments rather than words because errors within a segment are not independent:
-a misheard name or a runaway transcription produces several at once.
+For each speaker, we build 2{,}000 resampled test sets, each by drawing the
+speaker's test segments at random with replacement until it is the same size as
+the original, and recompute the pooled difference on each.
 
 \paragraph{Interval and p-value.}
 The 95\% interval is the 2.5th to 97.5th percentile of the 2{,}000 differences,
 in absolute WER, and dividing by WER$_B$ gives it in the relative units of
-Section~\ref{sec:adaptation}. The two-sided p-value is twice the smaller of the
-shares of draws at or below zero and at or above zero, so it resolves p-values
-down to 0.001, and smaller ones are reported as $p<0.001$.
-
-\paragraph{Multiple comparisons.}
-Each speaker--seed pair is tested on its own, without correction. If own
-adapters and controls did not differ, about two of 36 pairs would fall below
-$p=0.05$ by chance, and about one of them with a positive sign. We observe 8
-(clean test) and 16 (full test) significantly positive pairs and none
-significantly negative. Per-speaker claims rest on agreement across all three
-seeds rather than on a single p-value.
-
-
-% ------------------------------------------------------------
-\section{Bootstrap for the Speaker-Level Error Map}
-\label{app:boot-errormap}
-
-The per-speaker intervals of Section~\ref{sec:errormap}, and the bars in
-Figure~\ref{fig:gain}, come from a simpler bootstrap than
-Appendix~\ref{app:significance}'s, run once per speaker on arm~A's and arm~B's
-transcriptions of that speaker's one-hour sample.
-
-\paragraph{Resampling.}
-The speaker's segments are drawn with replacement, as many as the sample holds, 1{,}000
-times. The same draw is used for both arms. Each draw gives a pooled WER$_A$ and
-WER$_B$ (the sum of word errors over the drawn segments divided by the sum of reference
-words) and their difference, the absolute gain $\text{WER}_A-\text{WER}_B$.
-
-\paragraph{Intervals.}
-The 95\% interval of WER$_A$, WER$_B$ and the gain is the 2.5th to 97.5th percentile of
-the 1{,}000 values. No p-value is computed: a speaker's improvement under arm~B is
-called beyond sampling noise when the interval of their gain lies entirely above zero,
-as it does for all 261 speakers with at least 20 segments.
-
-\paragraph{Difference from Appendix~\ref{app:significance}.}
-The resampling is the same (whole segments, paired across the two models), but it uses
-1{,}000 draws instead of 2{,}000, compares the two base models instead of adapters, and
-reports intervals only.
+Section~\ref{sec:adaptation}. The p-value tests the null hypothesis that the two
+models are equally accurate on the speaker's speech, against the alternative that
+one is more accurate than the other. Either model could turn out better, since an
+own adapter could also do worse than its control, so the test is two-sided: the
+p-value is twice the share of the 2{,}000 differences that fall on the far side
+of zero (at or below zero for a positive difference, at or above zero for a
+negative one).
 
 
 % ------------------------------------------------------------
