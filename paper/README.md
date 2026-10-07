@@ -83,7 +83,6 @@ The docs and the code use different words from the paper. In the paper, use the 
 | Beyond 80 minutes, capacity | `docs/training_run4.md`, `notebooks/training_run4_figures.ipynb`, `src/training/outputs/curve_v4.csv`, `capacity_v4.csv`, `results_v4.csv` |
 | Limitations: 75–82 % of test speech from committees seen in training | recomputed 2026-10-07: 74.7 % (clean test) and 81.8 % (full test) of the test duration, from `panel_plan_v2.parquet` and `panel_test07.parquet` joined to `committee_name` in `knesset-asr/knesset-committees-speakers` |
 | Limitations: about $200 in total | not recorded in the repo. The documented costs add up to about $90 (inference ~$24, run 2 ~13 GPU-h, run 3 ~$19, run 4 ~$16) |
-| Related Work, Weninger et al. 2019 (gains grow to 20 h, no other-speaker control) | `docs/archive/personalization_research.md` § 2, citation checked against the ISCA archive |
 
 ## Figures
 
@@ -101,7 +100,5 @@ The notebooks write to `docs/figures/<notebook>/`.
 
 ## Open in the paper
 
-- The Related Work paragraph on Weninger et al. (typical speakers, no other-speaker control) is
-  flagged: keep or drop.
 - The $200 cost in Limitations has no source (see above).
 - Page limit: after the 2026-10-07 pass the body (through the Conclusion) fits in 5 pages.
