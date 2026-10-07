@@ -76,9 +76,11 @@ The docs and the code use different words from the paper. In the paper, use the 
 | Speaker-level error map (267 speakers, 58,180 segments, WER 0.387 / 0.292, SD, CV, ρ, groups) | `docs/error_map.md`, `notebooks/committees_error_map_v2.ipynb`, `src/evaluation/outputs/committees_*.csv` |
 | Reliability (0.78, 0.75), recording conditions by year | `notebooks/committees_error_map_v2.ipynb` |
 | Appendix A, quality filters (7,810 of 65,990 removed) | `docs/error_map.md`, `docs/training_plan_v3.md` § 1 |
+| Appendix A, quality predicts both arms' errors (Spearman −0.62 for A, −0.63 for B) | recomputed 2026-10-07 with `error_map.load_chunks` and `count_errors` over the 65,990 segments |
+| Appendix B, the loop guard (compression ratio 3.0, 6-token sequences) | `src/evaluation/evaluate.py` (`LOOP_CR`, `LOOP_NGRAM`) |
 | Adaptation results, 5 / 20 / 80 minutes, seeds, bands | `docs/training_run3.md`, `notebooks/training_run3_figures.ipynb`, `src/training/outputs/results_v3.csv` |
 | Tuning (64 runs, the rule, the chosen recipe) | `src/training/outputs/tuning_v3.csv`, `recipe_v3.json`, `docs/training_plan_v3.md` § 2 |
-| Beyond 80 minutes, the decision rule, capacity | `docs/training_run4.md`, `notebooks/training_run4_figures.ipynb`, `src/training/outputs/curve_v4.csv`, `capacity_v4.csv`, `results_v4.csv` |
+| Beyond 80 minutes, capacity | `docs/training_run4.md`, `notebooks/training_run4_figures.ipynb`, `src/training/outputs/curve_v4.csv`, `capacity_v4.csv`, `results_v4.csv` |
 | Limitations: 75–82 % of test speech from committees seen in training | recomputed 2026-10-07: 74.7 % (clean test) and 81.8 % (full test) of the test duration, from `panel_plan_v2.parquet` and `panel_test07.parquet` joined to `committee_name` in `knesset-asr/knesset-committees-speakers` |
 | Limitations: about $200 in total | not recorded in the repo. The documented costs add up to about $90 (inference ~$24, run 2 ~13 GPU-h, run 3 ~$19, run 4 ~$16) |
 | Related Work, Weninger et al. 2019 (gains grow to 20 h, no other-speaker control) | `docs/archive/personalization_research.md` § 2, citation checked against the ISCA archive |
@@ -99,9 +101,6 @@ The notebooks write to `docs/figures/<notebook>/`.
 
 ## Open in the paper
 
-- The appendix edits of the 2026-10-07 pass are a separate PR, for Hadas's review, with a PDF
-  that marks them (`Appendix_changes_for_review.pdf`). Until it is merged, the appendices are as
-  they were before the pass.
 - The Related Work paragraph on Weninger et al. (typical speakers, no other-speaker control) is
   flagged: keep or drop.
 - The $200 cost in Limitations has no source (see above).

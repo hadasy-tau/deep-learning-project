@@ -12,9 +12,8 @@ its top pointing here, and list it under § Withdrawn.
 The experiments are done (runs 2–4). The work now is the paper, in `paper/`. Its guide, with the
 editorial decisions and where every number comes from, is [`paper/README.md`](../paper/README.md).
 
-- **2026-10-07:** a paragraph-by-paragraph edit of the whole paper. Everything except the
-  appendices is merged. The appendix edits are a separate PR, for Hadas's review, with a PDF that
-  marks them (`paper/Appendix_changes_for_review.pdf`).
+- **2026-10-07:** a paragraph-by-paragraph edit of the whole paper, and Hadas's review of the
+  appendix edits, made in Overleaf, on top of them.
 
 ## The pipeline
 
