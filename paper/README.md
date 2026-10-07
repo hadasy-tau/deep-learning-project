@@ -12,7 +12,6 @@ decisions about what the paper says, the words it uses, and where each number co
 | `Toward_Personalized_Hebrew_ASR_overleaf/custom.bib`, `figures/` | references and figures |
 | `Toward_Personalized_Hebrew_ASR.pdf` | the compiled paper |
 | `Toward_Personalized_Hebrew_ASR_overleaf.zip` | the same folder zipped, for uploading to Overleaf |
-| `Appendix_changes_for_review.pdf` | the 2026-10-07 appendix edits marked against the version before them, for review |
 
 The PDF and the zip are built from the folder. After a change to the folder, rebuild both in the
 same commit:
