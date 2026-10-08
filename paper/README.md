@@ -42,8 +42,14 @@ Figures go in as RGB, not RGBA, so Overleaf compiles in time.
   multiple citations written out with "and" (`\citet{a}, \citet{b} and \citet{c}`), no bullet
   lists. Leave a co-author's wording alone unless asked.
 - **Wording settled in the 2026-10-07 pass:** what adaptation buys is "shared across speakers"
-  (not "the committee setting"), training takes "a few minutes on a standard GPU", the code link
-  is the last sentence of the abstract, not a footnote.
+  (not "the committee setting"), training takes "a few minutes on a standard GPU", the code and
+  data links are the last sentence of the abstract, not a footnote.
+- **Two research questions (2026-10-08):** does a Hebrew ASR model serve all its speakers
+  equally, and how can it be adapted to a single speaker. The control is how the second is
+  measured, not a question of its own, and the paper does not frame the work around a small data
+  or compute budget. The abstract carries the numbers, and the introduction states the questions and
+  the contributions without repeating them. Findings are stated without negative framing ("adds
+  2–3 %", not "only"). LoRA training is not called a "recipe".
 
 ## Words: the repo and the paper
 

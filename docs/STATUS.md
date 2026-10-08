@@ -1,6 +1,6 @@
 # Where the project stands
 
-**Updated 2026-10-06.** This is the one document that changes as the project moves. Every other
+**Updated 2026-10-08.** This is the one document that changes as the project moves. Every other
 document is either a stable reference (the README, `design.md`, `committees_handoff.md`,
 `adaptation_plan.md`, `paper/README.md`, the folder READMEs) or a dated record that is not edited
 afterwards (the build records, `error_map.md`, `inference.md`, the training plans and run logs).
@@ -14,6 +14,7 @@ editorial decisions and where every number comes from, is [`paper/README.md`](..
 
 - **2026-10-07:** a paragraph-by-paragraph edit of the whole paper, and Hadas's review of the
   appendix edits, made in Overleaf, on top of them.
+- **2026-10-08:** the abstract and the introduction rewritten around the paper's two questions.
 
 ## The pipeline
 

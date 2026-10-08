@@ -50,22 +50,21 @@
 \begin{abstract}
 Automatic speech recognition (ASR) systems are built for general-purpose use
 and evaluated by error rates averaged across many speakers, which says little
-about how well they serve any one person. Yet in many deployments it is a single
-speaker's accuracy that matters. We ask how to personalize a Hebrew ASR model to
-one speaker under a small data and compute budget.
-On Knesset committee recordings, we first measure, for each of 267
-speakers, the error of a general Whisper model and of its Hebrew fine-tune.
-The fine-tune lowers every speaker's error but leaves speakers as unequal as
-before, and group membership explains little of who is served well. We then
-adapt the Hebrew model to 12 speakers with LoRA, and compare each speaker's own
-adapter with a control adapter trained on the same amount of speech from other
-speakers. With 80 minutes of a speaker's speech, the own adapter lowers the
-word error rate by a median 12\%, but the control already lowers it by 10\%, so
-the personal gain is only 2--3\%. With up to 24 hours of a speaker's speech,
-the own adapter keeps improving, but the control improves as fast, and the
-personal gain does not grow. Most of what adaptation buys is shared across
-speakers, so a claim of personalization needs a control of this kind. Our code is available at
-\url{https://github.com/hadasy-tau/deep-learning-project}.
+about how well they serve any one person, yet in many deployments it is a single
+speaker's accuracy that matters. We ask two questions: does a Hebrew ASR model
+serve all its speakers equally, and how can it be adapted to a single speaker?
+On 267 speakers in Knesset committee recordings, a Hebrew fine-tune of Whisper
+lowers every speaker's error. The gain varies between speakers, and somewhat
+between groups such as fast and slow speakers, but speakers largely keep their
+order. We then adapt the Hebrew model to 12 speakers with LoRA. With 80 minutes
+of a speaker's speech, the adapter lowers the word error rate by a median 12\%,
+and an adapter trained on the same amount of other speakers' speech lowers it by
+10\%, so the speaker's own speech adds 2--3\%. We also train four speakers on up
+to 24 hours of their speech. Their adapters keep improving, up to a 34\% lower
+word error rate than the Hebrew model, and a personal margin of up to 4\%
+remains. Most of what adaptation buys is shared across speakers. Our code is
+available at \url{https://github.com/hadasy-tau/deep-learning-project} and our
+data at \url{https://huggingface.co/knesset-asr}.
 \end{abstract}
 
 
@@ -76,29 +75,31 @@ speakers, so a claim of personalization needs a control of this kind. Our code i
 \section{Introduction}
 
 Modern ASR models such as Whisper \citep{radford2023whisper} are evaluated by
-error rates averaged over many speakers, an average that can hide the speakers a
-model serves poorly. Yet many deployments serve one particular person, such as a
-Knesset member transcribed every day or the single user of a voice assistant.
-What matters to them is how well the model recognizes their own voice, which
-calls for personalization: adapting a general model to one speaker with a small
-amount of their own speech.
+error rates averaged over many speakers, which can hide the speakers a
+model serves poorly. Yet many deployments serve one person, such as a
+Knesset member transcribed every day or the single user of a voice assistant, and
+what matters to them is how well the model recognizes their own voice. This calls
+for personalization: adapting a general model to one speaker with their own speech.
 
-We study personalization for Hebrew and ask three questions: does a Hebrew
-fine-tune serve all speakers equally, what does a speaker's own speech add over
-the same amount of other speakers' speech, and does that personal gain grow with
-more of the speaker's data? We answer them on Knesset committee recordings,
-which the Hebrew model was not trained on, and compare each speaker's own LoRA
-adapter with a control trained on the same amount of other speakers'
-speech. Our contributions
-are threefold. First, a speaker-level error map, the first for Hebrew ASR, shows
-that the Hebrew fine-tune helps every speaker but leaves them as unequal as
-before. Second, a controlled comparison shows that at 80 minutes a speaker's own
-audio adds only 2--3\% over the control. Third, a data curve to 24 hours of one
-speaker's speech shows that this personal margin does not grow. Before scoring
-on the test sets, we tuned the learning rate, LoRA rank, Whisper's dropout and
-augmentation in 64 runs on validation data, and at 24 hours we also tried a four
-times larger adapter. Training is cheap: an adapter on 80 minutes of speech
+We study personalization for Hebrew and ask two questions: does a Hebrew ASR
+model serve all its speakers equally, and how can it be adapted to a single
+speaker? We answer them on Knesset committee recordings, which the Hebrew model
+was not trained on and which hold thousands of hours of speech from hundreds of
+identified speakers. Our contributions are threefold. First, a speaker-level
+error map of a general Whisper model and its Hebrew fine-tune over 267 speakers,
+the first for Hebrew. Second, adaptation of the Hebrew model to individual speakers
+with LoRA, on 5 minutes up to 24 hours of a speaker's speech, with the training
+settings tuned in 64 runs on validation data. The adapters lower the speakers'
+error, and to tell how much of this gain comes from the speaker's own speech, we
+compare each adapter with one trained on the same amount of other speakers'
+speech. Third, we find that most of what adaptation buys is shared across
+speakers: adapters keep improving with more data, and the speaker's own speech
+adds a margin on top of what other speakers' speech gives that does not grow
+with more data. In practice, one adapter trained on speakers from the same
+setting can serve many speakers, without training a separate model for each.
+Training is cheap: an adapter on 80 minutes of speech
 trains in a few minutes on a standard GPU.
+
 
 
 % ============================================================
