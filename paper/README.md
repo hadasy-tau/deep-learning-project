@@ -35,7 +35,7 @@ Figures go in as RGB, not RGBA, so Overleaf compiles in time.
   "73 % of insertions are shared" as evidence (`docs/STATUS.md` § Withdrawn).
 - **No human transcription.** The paper does not mention a human-corrected check or a human test
   set, as a finding or as future work.
-- **Personalization is always own minus the budget-matched control**, on the same segments, with
+- **The personal margin is always own minus the budget-matched control**, on the same segments, with
   its own paired bootstrap. A gain without the control is mostly domain.
 - **Per-speaker claims only where all three seeds agree.**
 - **Style:** no semicolons in new prose or captions (join with "and" or split the sentence),
@@ -50,6 +50,20 @@ Figures go in as RGB, not RGBA, so Overleaf compiles in time.
   or compute budget. The abstract carries the numbers, and the introduction states the questions and
   the contributions without repeating them. Findings are stated without negative framing ("adds
   2–3 %", not "only"). LoRA training is not called a "recipe".
+- **Settled in the 2026-10-09 pass:**
+  - **"Personal margin"** is the metric (own minus control), and "personalization" is the task and
+    the experiment. The figures say "personal margin" too.
+  - **"Training takes a few minutes on a standard GPU"** appears once, in the introduction.
+  - **Two test sets:** the reason (a clean reference, and no dependence on a filter set by a
+    Whisper-family aligner) is given in Section 3.6, where they are defined.
+  - **Significance:** defined once in Section 3.6 (paired bootstrap, p < 0.05).
+  - **Speaker names:** in parentheses at the first mention of 23558 (David Bitan) and 23641
+    (Yaakov Asher) in each section.
+  - **Hyperparameter choice** is described in the body (Section 3.6), with the table and the
+    tuning figures in the appendix.
+  - **Side margins** are 1.8 cm, not ACL's 2.5 cm (`\geometry` after `\usepackage{acl}`), since the
+    course does not require strict ACL format.
+  - **The Conclusion** is one paragraph of conclusions, without repeating the numbers.
 
 ## Words: the repo and the paper
 
@@ -65,7 +79,7 @@ The docs and the code use different words from the paper. In the paper, use the 
 | `quality` | alignment quality score |
 | own adapter, control (`ctrl*`) | own adapter, control |
 | `delta_rel` | relative gain over arm B |
-| `personalization_rel` | personalization |
+| `personalization_rel` | personal margin ("personalization" is kept for the task and the experiment) |
 | Stage 1 (error map, pipeline steps 1–5) | first experiment, speaker-level analysis |
 | Stage 2 (adaptation, steps 6–7) | second experiment, personalization |
 | profiles S1, S2, S3, S4, C | helped least, hard under both, typical, low WER, served well by the fine-tune ("control" is kept for the control adapter only) |
@@ -81,15 +95,14 @@ The docs and the code use different words from the paper. In the paper, use the 
 | Speaker-level performance (65,990 segments, 230 h, 267 speakers, language forced to Hebrew) | `docs/inference.md`, `docs/design.md` § 3 |
 | Speaker-level error map (267 speakers, 58,180 segments, WER 0.387 / 0.292, SD, CV, ρ, groups) | `docs/error_map.md`, `notebooks/committees_error_map_v2.ipynb`, `src/evaluation/outputs/committees_*.csv` |
 | Reliability (0.78, 0.75), recording conditions by year | `notebooks/committees_error_map_v2.ipynb` |
-| Appendix A, quality filters (7,810 of 65,990 removed) | `docs/error_map.md`, `docs/training_plan_v3.md` § 1 |
-| Appendix A, quality predicts both arms' errors (Spearman −0.62 for A, −0.63 for B) | recomputed 2026-10-07 with `error_map.load_chunks` and `count_errors` over the 65,990 segments |
-| Appendix B, the loop guard (compression ratio 3.0, 6-token sequences) | `src/evaluation/evaluate.py` (`LOOP_CR`, `LOOP_NGRAM`) |
+| Appendix B, quality filters (7,810 of 65,990 removed) | `docs/error_map.md`, `docs/training_plan_v3.md` § 1 |
+| Appendix B, quality predicts both arms' errors (Spearman −0.62 for A, −0.63 for B) | recomputed 2026-10-07 with `error_map.load_chunks` and `count_errors` over the 65,990 segments |
+| Appendix C, the loop guard (compression ratio 3.0, 6-token sequences) | `src/evaluation/evaluate.py` (`LOOP_CR`, `LOOP_NGRAM`) |
 | Adaptation results, 5 / 20 / 80 minutes, seeds, bands | `docs/training_run3.md`, `notebooks/training_run3_figures.ipynb`, `src/training/outputs/results_v3.csv` |
-| Tuning (64 runs, the rule, the chosen recipe) | `src/training/outputs/tuning_v3.csv`, `recipe_v3.json`, `docs/training_plan_v3.md` § 2 |
+| Section 3.6 and Appendix D, tuning (64 runs, the rule, the chosen settings) | `src/training/outputs/tuning_v3.csv`, `recipe_v3.json`, `docs/training_plan_v3.md` § 2 |
 | Beyond 80 minutes, capacity | `docs/training_run4.md`, `notebooks/training_run4_figures.ipynb`, `src/training/outputs/curve_v4.csv`, `capacity_v4.csv`, `results_v4.csv` |
 | Limitations: 75–82 % of test speech from committees seen in training | recomputed 2026-10-07: 74.7 % (clean test) and 81.8 % (full test) of the test duration, from `panel_plan_v2.parquet` and `panel_test07.parquet` joined to `committee_name` in `knesset-asr/knesset-committees-speakers` |
-| Limitations: about $200 in total | not recorded in the repo. The documented costs add up to about $90 (inference ~$24, run 2 ~13 GPU-h, run 3 ~$19, run 4 ~$16) |
-| Related Work, Weninger et al. 2019 (gains grow to 20 h, no other-speaker control) | `docs/archive/personalization_research.md` § 2, citation checked against the ISCA archive |
+| Related Work, Weninger et al. 2019 (gains grow to 20 h, measured against the unadapted model) | `docs/archive/personalization_research.md` § 2, citation checked against the ISCA archive |
 
 ## Figures
 
@@ -107,7 +120,9 @@ The notebooks write to `docs/figures/<notebook>/`.
 
 ## Open in the paper
 
-- The Related Work paragraph on Weninger et al. (typical speakers, no other-speaker control) is
-  flagged: keep or drop.
-- The $200 cost in Limitations has no source (see above).
-- Page limit: after the 2026-10-07 pass the body (through the Conclusion) fits in 5 pages.
+- The cost is not given in the paper: the $200 figure had no source, and the documented costs
+  add up to about $90 (inference ~$24, run 2 ~13 GPU-h, run 3 ~$19, run 4 ~$16).
+- Page limit: after the 2026-10-09 pass the body (through the Conclusion) ends on page 5, with
+  room to spare.
+- The appendices were trimmed in the 2026-10-09 pass, and the two bootstrap appendices merged
+  into one. Hadas has not reviewed that pass yet.
