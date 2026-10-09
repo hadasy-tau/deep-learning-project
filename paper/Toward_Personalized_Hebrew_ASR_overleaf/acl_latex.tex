@@ -8,6 +8,8 @@
 % For the final/camera-ready version, use:
 % \usepackage{acl}
 \usepackage{acl}
+% Narrower side margins than ACL's 2.5 cm (the course does not require strict ACL format)
+\geometry{left=1.8cm,right=1.8cm}
 
 \usepackage{times}
 \usepackage{latexsym}
@@ -20,7 +22,6 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{subcaption}
-
 
 
 \title{Toward Personalized Hebrew ASR: Adapting a General Model to a Single Speaker}
@@ -101,41 +102,26 @@ Training is cheap: an adapter on 80 minutes of speech
 trains in a few minutes on a standard GPU.
 
 
-
 % ============================================================
 % RELATED WORK
 % ============================================================
 
 \section{Related Work}
 
-\paragraph{Averages hide who is served.}
+\paragraph{Hebrew ASR.}
 Whisper \citep{radford2023whisper} is much weaker on languages with little
-training data, Hebrew among them. ivrit.ai closed this gap by fine-tuning it on
+training data, Hebrew among them. ivrit.ai narrowed this gap by fine-tuning it on
 Hebrew, mostly Knesset plenary speech \citep{marmor2025hebrewasr}, the starting
 point for our work. Both models are evaluated by error rates averaged over large
-test sets, never per speaker or subgroup.
+test sets, never per speaker or group.
 
 \paragraph{Gaps within a language.}
 Within a single language, too, ASR serves some people worse than others. Error
-rates differ by race \citep{koenecke2020racial}, and \citet{tatman2017gender},
-\citet{feng2021quantifying} and \citet{liu2022fairness} find gaps by gender,
-dialect, age and accent. These studies compare groups, and we know of no such
-analysis for Hebrew. We provide one, for each speaker and for subgroups that
-share gender, age, origin or speaking rate.
-
-\paragraph{Adapting a model to one speaker.}
-Adapting a recognizer to its user is an old idea in speech recognition
-\citep{gales1998mllr}. With modern models, fine-tuning on a small amount of a
-person's own speech can greatly reduce their errors, but this has mostly been
-studied for atypical speech, such as speech impairments \citep{green2021disordered}
-and strong accents \citep{shor2019personalizing}. Training a full model for
-every speaker is expensive, so methods such as LoRA \citep{hu2022lora} train only
-a small number of added parameters, and have also been used with Whisper
-\citep{liu2024s2lora}. For typical speakers, \citet{weninger2019listen}
-report gains that keep growing up to 20 hours of a speaker's speech, but measure
-them against the unadapted model only, so they also include what any in-domain
-speech would buy. We separate the two with a control trained on the same amount
-of other speakers' speech.
+rates differ by race \citep{koenecke2020racial}, and by gender, age and accent \citep{feng2021quantifying}. These studies compare groups, and we know of no such
+analysis for Hebrew. We provide one, for each speaker and for groups such as gender, age,
+origin and speaking rate. Adapting to a single typical speaker, \citet{weninger2019listen} find gains
+that keep growing up to 20 hours of the speaker's speech, measured against the
+unadapted model.
 
 
 % ============================================================
@@ -146,16 +132,14 @@ of other speakers' speech.
 
 % ------------------------------------------------------------
 \subsection{Overview}
+\label{sec:overview}
 
 Our study has two experiments. In the first, a general Whisper model and its
 Hebrew fine-tune (Section~\ref{sec:models}) transcribe the same speech, and we
-measure the error of each speaker and subgroup under both, and so the gain the
-fine-tune brings. In the second, we select 12 speakers from this map: speakers
+compare the error of each speaker and group under the two models. In the second, we select 12 speakers from this map: speakers
 the fine-tune helped least, speakers hard under both models, typical speakers, a
-low-WER speaker, and two speakers the fine-tune served well. To avoid selecting
-on measurement noise, we rank speakers on their earlier sessions only and hold
-out their newest sessions for testing. We then fine-tune the Hebrew model on
-each speaker's own speech and compare it with a control adapter trained on the
+speaker with a low word error rate (WER), and two speakers the fine-tune served well. We then adapt the Hebrew model to each speaker's own speech
+with LoRA, on 5 to 80 minutes and, for four speakers, up to 24 hours. We compare each adapter with a control trained on the
 same amount of speech from other speakers, which separates learning the voice
 from learning committee speech in general.
 
@@ -166,24 +150,27 @@ from learning committee speech in general.
 
 We use \texttt{ivrit-ai/knesset-committees}, recordings of Israeli parliamentary
 committee sessions with their human-written protocols, force-aligned to the
-audio. Each protocol segment carries the speaker's name and an
-alignment-confidence score. Because the protocols are stenographic rather than
-verbatim, a low score may reflect a mismatch between the text and the audio. The
+audio by a Whisper-family model so that every protocol word has a time span. Each protocol segment carries the speaker's name and an
+alignment quality score, the median probability the
+aligner gives its words (Appendix~\ref{app:data}). The protocols are stenographic rather than
+verbatim, so a low score may reflect a mismatch between the text and the audio,
+and the protocol text is the reference for every WER we report (see
+Limitations). The
 corpus spans November 2018 to January 2026 with 13{,}177 sessions and 15{,}466
-recorded hours, of which 7{,}886 are aligned speech with confidence above 0.7.
+recorded hours, of which 7{,}886 are aligned speech with quality of at least 0.7.
 
 
 % ------------------------------------------------------------
 \subsection{Models}
 \label{sec:models}
 
-We compare two models with the same architecture. Arm~\textbf{A} is
+We compare two models. Arm~\textbf{A} is
 \texttt{openai/whisper-large-v3} \citep{radford2023whisper}, the general
 multilingual model, and arm~\textbf{B} is \texttt{ivrit-ai/whisper-large-v3}
 \citep{marmor2025hebrewasr}, the same model fine-tuned on roughly 4{,}700 hours
 of Hebrew \emph{plenary} speech, so our committee recordings are new to it,
 though many of the speakers are not (see Limitations). Every adapter in this
-work is trained on top of arm~B. For the speaker-level analysis, arm~B is served
+work is trained and evaluated on the full arm~B. For the speaker-level analysis, arm~B is served
 through ivrit.ai's inference checkpoint (\texttt{whisper-large-v3-turbo-ct2},
 with 4 decoder layers instead of 32).
 
@@ -191,35 +178,40 @@ with 4 decoder layers instead of 32).
 \subsection{Preprocessing}
 \label{sec:preprocessing}
 
-The released corpus needs two steps before use: Whisper takes at most 30 seconds
-of audio while sessions last hours, and a speaker-level analysis needs every
-segment linked to a verified person. We follow the procedure of VoxKnesset
+The released corpus needs two steps before use: a speaker-level analysis needs every
+segment linked to a verified person, and Whisper takes at most 30 seconds of audio
+while sessions last hours. We follow the procedure of VoxKnesset
 \citep{marmor2026voxknesset}, a 2{,}300-hour corpus of Knesset plenary speech
-with verified speakers, but not its audio, which comes from the plenary sessions
+with verified speakers, and apply it to the committee recordings. We do not
+use VoxKnesset's audio, which comes from the plenary sessions
 arm~B was fine-tuned on.
 
-Protocol speaker names are matched exactly to the Knesset's official roster of
-name variants and accepted only within the member's term of service, and
-unresolved names are discarded. Each member's birth year, gender and origin are
-joined through the matched identity. Each identified turn is then cut into
-segments of at most 30 seconds that never cross a speaker change, with the
-aligned protocol text as the reference. The result is 1{,}204{,}617 segments
-(3{,}841 hours) of 330 current and former Knesset members in 10{,}905 sessions.
 
-Each segment carries an alignment quality score between 0 and 1
-(Appendix~\ref{app:data}). Segments below 0.7 are excluded from all analyses,
-and training and validation data are further restricted to segments above 0.95,
-following ivrit.ai's recommendation.
+For the first, we match each protocol speaker name exactly to the Knesset's
+official roster of name variants, within the member's term of service, and
+discard names that do not match, since a wrong identity would be worse than a
+missing one. The matched identity also gives each member's birth year, gender,
+origin, nationality and religion, which we use to group speakers. For the second,
+each identified speaker turn is cut into pieces of at most 30 seconds, which we
+call segments, that never cross a speaker change, with the aligned protocol text
+as the reference. The result is 1{,}204{,}617 segments (3{,}841 hours) from 330
+current and former Knesset members in 10{,}905 sessions.
+
+Segments with alignment quality below 0.7 are excluded from all analyses,
+and training and validation data are further restricted to segments of at least 0.95,
+following ivrit.ai's recommendation, that also pass a word-level check
+(Appendix~\ref{app:data}).
 
 % ------------------------------------------------------------
 \subsection{Speaker-Level Performance}
 
-Both models transcribe the same segments: one hour of speech per speaker, drawn
-round-robin over their sessions so that it spans their tenure, 65{,}990 segments
+Both models transcribe the same segments: up to one hour of speech per speaker, spread across
+many of their sessions, 65{,}990 segments
 (230 hours) from 267 speakers in all. Arm~A runs through Hugging Face Inference
-Providers and arm~B through a RunPod endpoint with ivrit.ai's inference
-checkpoint, and both are told the language is Hebrew. For each speaker and
-subgroup, we report WER and CER under both models, the gain
+Providers and arm~B through a RunPod endpoint, and both are told the language is Hebrew, so that neither is scored
+on language detection. For each speaker and
+group, we report WER and character error rate (CER) under both models, pooled
+over the speaker's segments (Appendix~\ref{app:implementation}), the gain
 $\text{WER}_A-\text{WER}_B$, and the relative gain,
 $(\text{WER}_A-\text{WER}_B)/\text{WER}_A$.
 
@@ -230,37 +222,66 @@ $(\text{WER}_A-\text{WER}_B)/\text{WER}_A$.
 \paragraph{Speakers and data.}
 The sessions of each of the 12 selected speakers are split into training,
 validation and test sets that share no session, with the newest sessions held
-out for testing (Appendix~\ref{app:additional}). Each speaker is trained on 5,
+out for testing (Appendix~\ref{app:additional}). Each speaker is trained on budgets of 5,
 20 and 80 minutes of their own speech, nested and filled from their most recent
-training sessions first, and four speakers later on up to 1{,}440 minutes
+training sessions first. Four speakers, two of them from outside the 12, are
+also trained on up to 360 minutes (6 hours), and two of those on up to
+1{,}440 minutes (24 hours)
 (Appendix~\ref{app:training}). Every model is scored on two test sets from the
-same held-out sessions (Appendix~\ref{app:data}): the high-quality segments
-(\emph{clean test}, median 47 minutes per speaker) and all segments at quality
-$\geq 0.7$ (\emph{full test}, median 90 minutes).
+same held-out sessions (Appendix~\ref{app:data}): segments at quality $\geq 0.95$
+(\emph{clean test}, about 45 minutes per speaker) and all segments at quality
+$\geq 0.7$ (\emph{full test}, a median of 90 minutes, depending on how much of the
+speaker's speech aligns well). The clean test keeps segments whose protocol
+matches the audio, so its reference is closest to what was said, and the full
+test checks that our results do not depend on a filter set by a Whisper-family
+aligner (Appendix~\ref{app:data}). For each speaker, every model is scored on the
+same segments of a test set.
 
 \paragraph{Adapter and training.}
-We train LoRA adapters \citep{hu2022lora} of rank 8 on the query and value
-projections of every attention layer of arm~B (3.9M trainable parameters), with
-the learning rate and the other settings chosen on validation data
-(Appendix~\ref{app:training}), for at most 400 steps with early stopping:
-validation loss is measured every 20 steps on other sessions of the speaker,
-used for neither training nor testing, and training stops after four checks
-without improvement, restoring the best checkpoint. The training labels are the
+For each
+speaker and budget, we train a LoRA adapter \citep{hu2022lora} on arm~B: added
+low-rank weights of rank 8 on the query and value projections of every attention
+layer (3.9M trainable parameters), while the model's own weights stay frozen.  Training runs for at most 400 steps,
+more beyond 80 minutes, with early stopping. Validation loss is measured every 20
+steps on the speaker's validation sessions, and training stops after four checks
+without improvement, restoring the best checkpoint. At 80 minutes,
+validation loss bottoms out after about two passes over the data, and every run
+stops well before the step cap (Figure~\ref{fig:lcspeakers},
+Appendix~\ref{app:additional}). The training labels are the
 protocol text.
 
+\paragraph{Choosing the training settings.}
+We tune on validation data only, in 64 runs, with four speakers, one of each
+kind (helped least, hard under both models, typical and low WER), at 5 and 80
+minutes, and 20 minutes uses the 80-minute choice. A run is scored by how much
+it lowers validation loss relative to arm~B, $(L_B - L_\text{best})/L_B$, where $L_B$
+is arm~B's validation loss and $L_\text{best}$ is the adapter's lowest validation
+loss during training (the checkpoint early stopping restores). Tuning proceeds in three stages,
+each starting from the previous choice: the learning rate ($10^{-4}$,
+$3\times10^{-4}$, $10^{-3}$), then the LoRA rank (8, 16) with Whisper's dropout
+(0, 0.1), then augmentation (SpecAugment, alone or with $\pm10\%$ tempo changes,
+but no pitch or speed perturbation, which would change the voice).
+A change replaces the default (learning rate $3\times10^{-4}$, rank 8, no dropout,
+no augmentation) only if it raises the score by at least 0.01 on average and for
+three of the four speakers. Raising Whisper's dropout removes most of the
+adapter's improvement, while neither rank 16 nor augmentation improves the score
+by the required margin (Table~\ref{tab:hyperparams},
+Figures~\ref{fig:tuningscores} and~\ref{fig:tuningcurves}, Appendix~\ref{app:training}).
+
 \paragraph{Control.}
-An adapter trained on a speaker's audio learns both the speaker and the
-committee setting: rooms, microphones, vocabulary and the protocol's style. To
-separate the two, the 12 speakers are split at random into two folds of six. For
-each fold and budget, a \emph{control} adapter is trained with the same recipe
-on the same number of minutes from the six speakers of the \emph{other} fold.
-Each speaker is scored on the same test segments under their own adapter and
-under the control, which never heard them. We report the relative gain over
+To separate what an adapter learns about the speaker from what it learns about
+the committee setting, such as rooms, microphones and vocabulary, the 12 speakers are split at random into two folds of six. For
+each fold and budget, a \emph{control} adapter is trained with the same settings
+on the same number of minutes from the six speakers of the \emph{other} fold,
+so it never heard the speakers it is scored on.
+ We report the relative gain over
 arm~B, $(\text{WER}_B-\text{WER}_\text{adapted})/\text{WER}_B$, and the
-\textbf{personalization},
+\textbf{personal margin},
 $(\text{WER}_\text{control}-\text{WER}_\text{own})/\text{WER}_B$, which equals
-the own gain minus the control gain. Its 95\% interval and p-value come from a
-paired bootstrap over test segments (Appendix~\ref{app:significance}). All
+the own gain minus the control gain. Every comparison between two models, including the
+personal margin, gets a 95\% interval and a p-value from a paired bootstrap over
+test segments (Appendix~\ref{app:significance}), and we call a difference
+significant when $p<0.05$. All
 budgets use seed 0, and at 80 minutes seeds 1 and 2 repeat the own adapters and
 the controls, with the folds redrawn, to separate speaker-level effects from
 seed variance.
@@ -279,19 +300,19 @@ seed variance.
     \centering
     \includegraphics[width=\columnwidth]{figures/error_map_hist.png}
     \caption{Per-speaker WER under arm~A (general) and arm~B (Hebrew fine-tune),
-    all 267 speakers. Arm~B shifts the whole distribution down without narrowing it
-    in proportion.}
+    all 267 speakers. Arm~B shifts the whole distribution down, and its spread shrinks only in proportion to the lower average.}
     \label{fig:hist}
 \end{figure}
 
 After the quality filter, the analysis covers 267 speakers and 217 hours
-(58{,}180 segments), with a corpus WER of 0.387 for arm~A and 0.292 for arm~B.
+(58{,}180 segments), with an overall WER, pooled over all segments, of 0.387 for arm~A and 0.292 for arm~B.
 Statistics below are over the 261 speakers with at least 20 segments, and
 per-speaker 95\% confidence intervals come from bootstrapping each speaker's segments
 (Appendix~\ref{app:boot-errormap}).
 
-\paragraph{The fine-tune helps every speaker but leaves them as unequal.}
-All 261 speakers have a lower WER under arm~B, and for every one of them the
+\paragraph{The fine-tune helps every speaker, and speakers keep their order.}
+All 261 speakers have a lower WER under arm~B, by a median 24\% of arm~A's error
+(11\% to 58\%), and for every one of them the
 improvement is beyond sampling noise: the 95\% bootstrap interval of their gain
 lies entirely above zero (Figure~\ref{fig:gain}, Appendix~\ref{app:additional}).
 Yet the spread of per-speaker WER shrinks (standard deviation 0.099 to 0.069)
@@ -310,7 +331,7 @@ Arab, Muslim, Druze and Bedouin speakers also gain more than Jewish speakers
 (29--30\% vs.\ 24\%). But group sizes are highly imbalanced (229 Jewish speakers
 against 5 Bedouin), and the variation within each group far exceeds the
 differences between group medians. A speaker's group thus says little about how
-well the model serves them, which motivates adapting to individual speakers.
+much the fine-tune helps them, which motivates adapting to individual speakers.
 
 \begin{figure}[t]
     \centering
@@ -331,18 +352,14 @@ significantly) and for all 12 on the full test (all significantly). The other
 two seeds agree: over all 36 speaker--seed pairs, it beats arm~B in 35 on the
 clean test and in all 36 on the full test, and averaged over the three seeds,
 the clean-test gains range from +3\% to +28\% (median +11.4\%,
-Figure~\ref{fig:bestmodel}). Figures~\ref{fig:wermedian} and~\ref{fig:werspeaker}
-(Appendix~\ref{app:additional}) show the absolute WERs behind these gains.
+Figure~\ref{fig:bestmodel}). Figure~\ref{fig:wermedian} (Appendix~\ref{app:additional}) shows the absolute WERs behind these gains.
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/stage2_budget_own_control_personalization.png}
-    \caption{Relative WER change over arm~B at 5, 20 and 80 minutes of training audio (seed 0, 12
-    speakers), on the clean test (left) and the full test (right). Blue is the
-    speaker's own adapter, orange the control, trained on the same minutes from
-    other speakers, and green the personalization (own $-$ control). Each dot is one
-    speaker, and bars and numbers are medians. The median personalization is the
-    median of per-speaker differences, not the difference of the two medians.}
+    \caption{Relative WER change over arm~B at 5, 20 and 80 minutes of training audio (seed 0,
+    12 speakers). Each dot is one speaker, and bars and numbers are medians. The median
+    personal margin is the median of per-speaker differences.}
     \label{fig:budget}
 \end{figure}
 
@@ -350,45 +367,25 @@ Figure~\ref{fig:bestmodel}). Figures~\ref{fig:wermedian} and~\ref{fig:werspeaker
 \begin{figure*}[t]
     \centering
     \includegraphics[width=0.9\textwidth]{figures/stage2_best_model_per_speaker.png}
-    \caption{Relative WER change over arm~B (\%) for each speaker under each adapter. Blue is
-    better, red is worse, and the box marks the speaker's lowest WER. The 80-minute
-    columns are averaged over three seeds. Rows are sorted by the own 80-minute gain
-    on the full test.}
+    \caption{Relative WER change over arm~B (\%) for each speaker under each adapter,
+    with the speaker's lowest WER boxed. The 80-minute columns average three seeds.}
     \label{fig:bestmodel}
 \end{figure*}
 
 \paragraph{Personal versus shared adaptation.}
-At 80 minutes, the median personalization over the 36 speaker--seed pairs is
-+2.4\% on the clean test and +2.2\% on the full test. With seed 0, the control,
-which never heard the speaker, already gains +10.1\% and +14.3\%
-(Figure~\ref{fig:budget}), against the own adapter's +12.0\% and +15.3\%: most
-of the adaptation gain is general, and the speaker's own audio adds 2--3\% on
-top of it.
 
-Five speakers are significant in all three seeds on the full test
-(Figure~\ref{fig:perspeaker}), led by 23558 at +9\% to +10\%, while six never
-are, in any seed or test. Profile does not predict the effect: speakers the
-fine-tune helped least and speakers hard under both models fall on both sides. A
-speaker's personalization varies across seeds with a median standard deviation
-of 2.4\% on the clean test, as large as the effect, so we make per-speaker
-claims only where all seeds agree. Nor does the margin grow on cleaner audio: by
-alignment-quality band of the full test, own adapter and control gain alike on
-the two hardest bands (about +20\%), and the median personalization is +0.5\%,
-+4.0\%, +2.5\% and +2.3\% from the hardest band to the cleanest.
+At 80 minutes, the control, which never heard the speaker, lowers arm~B's WER
+by a median 10.1\% on the clean test and 14.3\% on the full test
+(Figure~\ref{fig:budget}), against the own adapter's 12.0\% and 15.3\%, and the
+median personal margin is +2.6\% and +2.3\%: most of the adaptation gain is
+shared across speakers, and the speaker's own audio adds 2--3\% on top of it.
 
-% Full width: 12 speakers x 3 seeds with intervals, on two test sets.
-\begin{figure*}[t]
-    \centering
-    \includegraphics[width=0.85\textwidth]{figures/stage2_personalization_per_speaker_seeds.png}
-    \caption{Personalization (own $-$ control, relative WER reduction in \%) per speaker and seed
-    at 80 minutes, on the clean test (left) and the full test (right), with 95\%
-    paired-bootstrap intervals. Filled markers show an own adapter significantly
-    better than the control (paired bootstrap, $p<0.05$), hollow markers one that is
-    not. Speakers are sorted by their mean on the full test. Profiles: S1, helped
-    least by the fine-tune, S2, hard under both models, S3, typical, S4, low WER,
-    and C, served well by the fine-tune.}
-    \label{fig:perspeaker}
-\end{figure*}
+
+The margin differs between speakers, and it is not larger for the speakers the
+fine-tune helped least: it is largest for 23558 (David Bitan), at +9\% to +10\% on the full test
+in every seed, and absent for two of the three speakers the fine-tune helped least
+(Figure~\ref{fig:perspeaker}, Appendix~\ref{app:additional}).
+
 
 \paragraph{How much speaker data is needed.}
 The own adapter's median relative gain over arm~B grows from +4.3\% to +7.5\% to
@@ -397,57 +394,35 @@ The own adapter's median relative gain over arm~B grows from +4.3\% to +7.5\% to
 adapter is the best model for any speaker (Figure~\ref{fig:bestmodel}). The
 control rises almost as fast, to +0.3\%, +7.8\% and +10.1\% on the clean test
 and +6.7\%, +10.9\% and +14.3\% on the full test, so what extra audio buys is
-mostly not specific to the speaker, and the personal margin stays between +1.6\%
+mostly shared across speakers, and the personal margin stays between +1.6\%
 and +3.1\% on the clean test at every budget. At 5 minutes both adapters are
 unreliable: they are worse than arm~B for some speakers, and the personal margin
 has opposite signs on the two test sets.
 
 \paragraph{Beyond 80 minutes.}
-To test whether personalization is limited by the amount of speaker data, we
-train 23558, the speaker with the largest personal effect, and 23641, a speaker
-outside the 12 with one of the highest WERs, on up to 1{,}440 minutes (24 hours)
-of their own speech, each budget with its own control (Figure~\ref{fig:curve},
-Appendix~\ref{app:training}). The own adapter keeps improving, with diminishing
-returns: on the full test, from +29.4\% at 80 minutes to +34.3\% at 24 hours for
-23558, and from +17.4\% to +23.4\% for 23641. The control improves at least as
-fast (for 23558, from +19.7\% to +30.2\%), so the added gain comes mostly from
-committee speech in general, and personalization does not grow. It shrinks as a
-share of the gain, for 23558 from a third to an eighth, but it does not vanish:
-at 24 hours it is +4.1\% for 23558 and +2.3\% for 23641. A larger adapter (rank 32) does
-not make personalization grow either (Appendix~\ref{app:training}). Two more speakers, trained on up to 360 minutes,
-show the same pattern (Figure~\ref{fig:curve6h}).
+
+To test whether the personal margin is limited by the amount of speaker data,
+we train four speakers on up to 360 minutes (6 hours) of their own speech, and
+two of them, 23558 (David Bitan), the speaker with the largest personal effect,
+and 23641 (Yaakov Asher), a speaker outside the 12 with one of the highest WERs,
+on up to 1{,}440 minutes (24 hours), each budget with its own control
+(Figures~\ref{fig:curve} and~\ref{fig:curve6h}, Appendix~\ref{app:training}).
+The own adapters keep improving with diminishing returns, up to a 34\% lower WER
+than arm~B. The control improves as fast, so the added gain is shared across
+speakers, and the personal margin does not grow. It shrinks as a share of the
+gain but does not vanish, and at 24 hours it is 2--4\%. Raising the LoRA
+rank from 8 to 32 does not change this conclusion (Appendix~\ref{app:training}).
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/stage2_data_curve_24h.png}
     \caption{Relative WER reduction over arm~B for the two speakers trained on up to
-    1{,}440 minutes, on the full test (top) and the clean test (bottom). Blue: the
-    speaker's own adapter. Orange: the control, trained on the same minutes from other
-    speakers. Green: personalization (own $-$ control). Filled markers are means of
-    seeds 0--2 (small dots: the single seeds), hollow markers seed 0. The dotted line
-    marks 80 minutes, the largest budget of the main experiment. Above each panel: the
-    change in personalization from 80 to 1{,}440 minutes, with its 95\%
-    paired-bootstrap interval. At 5 minutes both adapters are unreliable
-    (Section~\ref{sec:adaptation}).}
+    1{,}440 minutes. Filled markers average three seeds, hollow markers are seed 0, and
+    the dotted line marks 80 minutes. Above each panel: the change in the personal
+    margin from 80 to 1{,}440 minutes, with its 95\% paired-bootstrap interval.}
     \label{fig:curve}
 \end{figure}
 
-\paragraph{Learning curves.}
-Validation loss reaches its minimum at step 60--100, about two passes over the
-data and 38--54\% below the validation loss of arm~B without an adapter, and
-then rises as the adapter overfits (Figure~\ref{fig:lc}). Every run stops early,
-by step 180 of 400, and the three seeds trace nearly identical curves
-(Figure~\ref{fig:lcspeakers}, Appendix~\ref{app:additional}). An adapter trains
-in a few minutes on a standard GPU.
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\columnwidth]{figures/stage2_winning_learning_curves_compact.png}
-    \caption{Validation loss relative to arm~B while training the 80-minute own adapters (12
-    speakers $\times$ 3 seeds). Thin lines are single runs, the thick line is the
-    median, and dots are the checkpoints early stopping restored.}
-    \label{fig:lc}
-\end{figure}
 
 % ============================================================
 % CONCLUSION
@@ -455,31 +430,17 @@ in a few minutes on a standard GPU.
 
 \section{Conclusion}
 
-The Hebrew fine-tune lowers every speaker's error but leaves them as unequal as
-before, which motivates adapting to individual speakers.
-
-\paragraph{Most of the adaptation gain is general.}
-An 80-minute LoRA adapter on a speaker's own committee speech lowers arm~B's WER by a
-median 12\% on the clean test and 15\% on the full test, and the same amount of other
-speakers' audio already lowers it by 10\% and 14\%. Training on the speaker's own
-audio adds a further 2--3\% over this shared baseline, positive in all three seeds.
-
-\paragraph{More audio gives more gain, but mostly not personal gain.}
-From 5 to 80 minutes the own adapter's gain roughly triples, and the control's grows
-almost as fast. Up to 24 hours of a speaker's own speech, the own adapter keeps
-improving, and a control trained on as much audio from other speakers improves as
-fast: the added gain does not require the speaker's own speech, and the personal
-margin does not grow with it.
-
-\paragraph{Adaptation is cheap.}
-An adapter converges in about two passes over its data and trains in a few
-minutes on a standard GPU. The recipe is insensitive to
-rank, augmentation and, at 80 minutes, the learning rate, but Whisper's dropout
-prevents learning.
-
-Since most of what adaptation buys is shared across speakers, a claim of
-personalization needs a control trained on other speakers' speech. Further directions are adaptation on similar rather than random speakers, and training
-objectives that separate the voice from the committee setting.
+Personalizing Hebrew ASR works, and it needs less than it seems. A general
+Hebrew fine-tune leaves the gaps between speakers in place, but a small LoRA
+adapter cuts a speaker's errors substantially, by up to 34\%. Most of
+that gain does not require the speaker's own voice: speech from other speakers
+in the same setting delivers it, and the speaker's own recordings add a smaller
+margin on top. A practical system can therefore start from one adapter per
+setting and refine it per speaker, and it should keep collecting speech from
+that setting, since more data keeps improving a speaker's model even when the
+personal margin does not grow. Future work could adapt on similar rather than
+random speakers, and design training objectives that separate the voice from the
+setting.
 
 
 % ============================================================
@@ -492,11 +453,11 @@ objectives that separate the voice from the committee setting.
 speakers. Our evaluation uses committee recordings, a different setting and
 register, but the model may still be partly familiar with these voices.
 
-\paragraph{Shared recording conditions.} Train and test sets are session-disjoint, but not committee-disjoint: about
-75--82\% of the test speech comes from committees the same speaker also appears
-in during training, and so likely from the same rooms and microphones. Part of
-an adapter's gain may therefore reflect familiar recording conditions rather
-than the voice alone.
+\paragraph{Shared recording conditions.} 
+Train and test sets are session-disjoint but not
+committee-disjoint: 75--82\% of the test speech comes from committees the speaker
+also appears in during training. Part of the personal margin may therefore
+reflect familiar rooms and microphones rather than the voice.
 
 \paragraph{The reference is the protocol.} Every WER is measured against the stenographic protocol, which is not a verbatim
 transcript: stenographers condense, rephrase and omit speech, so part of every
@@ -505,39 +466,14 @@ recognition mistake. Our gains are gains in agreement with the protocol, and may
 partly reflect learning what the stenographer omits. We limit this by training
 and validating only on segments whose protocol closely matches the audio
 (quality $\geq 0.95$, a threshold set with the ivrit.ai team,
-Appendix~\ref{app:data}). That score, however, comes from a Whisper-family
-aligner, so a test set filtered the same way would favour speech that Whisper
-models already transcribe well, and we therefore score every model both on the
-high-quality segments and on all segments at quality $\geq 0.7$. No verbatim
+Appendix~\ref{app:data}), and by scoring every model on two test sets
+(Section~\ref{sec:personalization}). No verbatim
 reference was available, so our comparisons are most reliable between models
 scored against the same references.
 
 \paragraph{Limited compute.} All experiments ran on paid cloud services (RunPod GPUs and Hugging Face
-inference), for about \$200 in total, which limited the models, configurations
+inference), which limited the models, configurations
 and speakers we could explore.
-
-\paragraph{Tuning on validation loss.} The rank, dropout, augmentation and learning rate were chosen on the validation
-loss of four speakers. The rejected settings, including rank 16, were never
-scored on the test sets.
-
-\paragraph{Few speakers beyond 80 minutes.} The longer budgets cover four speakers, two of them up to 24 hours, and the
-rank-32 check uses one seed, so the finding that the personal margin does not
-grow with more speaker data may not hold for every speaker.
-
-\paragraph{A random control group.} The control pools speakers at random, so it does not test whether \emph{similar}
-speakers could replace a speaker's own audio.
-
-% ============================================================
-% ACKNOWLEDGMENTS
-% ============================================================
-
-\section*{Acknowledgments}
-
-We thank the ivrit.ai team (\href{https://www.ivrit.ai}{ivrit.ai}, with models and
-datasets at \url{https://huggingface.co/ivrit-ai}, and \citealp{marmor2025hebrewasr})
-for their support throughout this project. Their openness in sharing ideas,
-practical advice and lessons from their own work on Hebrew speech data helped shape
-our direction, and their open models and datasets made this study possible.
 
 
 % ============================================================
@@ -549,6 +485,18 @@ our direction, and their open models and datasets made this study possible.
 
 
 % ============================================================
+% ACKNOWLEDGMENTS
+% ============================================================
+
+\section*{Acknowledgments}
+
+We thank the ivrit.ai team (\url{https://www.ivrit.ai})
+for their support throughout this project. Their ideas,
+practical advice and lessons from their own work on Hebrew speech helped shape
+our direction, and their open models and datasets made this study possible.
+
+
+% ============================================================
 % APPENDICES
 % ============================================================
 
@@ -556,14 +504,32 @@ our direction, and their open models and datasets made this study possible.
 
 
 % ------------------------------------------------------------
+\section{Division of Work}
+\label{app:division}
+
+Both authors shaped the project from the start. We developed the idea together over
+several brainstorming meetings, refining a general direction into the final research
+question. We then sharpened it in discussions with the ivrit.ai team, who pointed us
+to directions and problems they had encountered and considered worth studying.
+
+We set the guidelines of each stage together and divided the detailed work between
+us. For the speaker-level analysis (Stage 1), we jointly defined the speaker
+groupings and the analyses to run, and Hadas Yonat, a data engineer, carried out most
+of the in-depth analysis. For personalization (Stage 2), we jointly designed the main
+principles of the training architecture, and Dolev Abudi led the training itself.
+Throughout, we worked in parallel and in close coordination: in regular joint working
+sessions, in person and over Zoom, we shared our progress and findings and made the
+project's decisions together. We enjoyed working together, and this teamwork was an
+important and meaningful part of the project for both of us.
+
+
+% ------------------------------------------------------------
 \section{Data Preparation Details}
 \label{app:data}
 
 \paragraph{Alignment quality score.}
-The corpus aligns each protocol to its recording with a Whisper-family forced
-aligner, which assigns every protocol word a time span and a probability: how
-likely the model finds that word at that point in the audio. A protocol
-segment's quality score is the median probability of its words. Our segments of
+A word's probability is how likely the aligner finds that word at that point in
+the audio. Our segments of
 up to 30 seconds can join several protocol segments, so their score is the
 duration-weighted median over those parts. A low score means the text and the
 audio disagree, potentially because the stenographer condensed or omitted
@@ -572,28 +538,25 @@ speech, or because of cross-talk. ivrit.ai treat 0.65 as fit for training and
 
 \paragraph{Quality filter for the analysis.}
 The 0.7 threshold removes 7{,}810 of 65{,}990 segments (11.8\%, 12.8 hours).
-Removing them lowers the corpus WER from 0.417 to 0.387 (A) and from 0.324 to
+Removing them lowers the overall WER from 0.417 to 0.387 (A) and from 0.324 to
 0.292 (B), and leaves the difference between the arms almost unchanged.
 
 \paragraph{Quality filter for training.}
 Because the score is a median, a segment can pass it while a few of its words
 are misaligned. Training and validation segments therefore use the word
-probabilities directly and must pass four conditions: confidence at least 0.95,
+probabilities directly and must pass four conditions: quality at least 0.95,
 at most 10\% of words with probability below 0.5, no run of three or more such
 words, and the aligned words inside the segment's time span must account for its
 reference text to within 20\%, so that the checked probabilities cover the whole
 text.
 
 \paragraph{Two test sets.}
-The aligner is itself a Whisper-family model, so a 0.95 threshold may keep the
-segments that Whisper models already transcribe well. Per segment, the score
+Per segment, the score
 predicts arm~A's WER about as well as arm~B's (Spearman $\rho=-0.62$ and $-0.63$
 over the 65{,}990 segments), so it does not favour the Hebrew fine-tune over the
 general model, and filtering on it does not tilt the comparison between them.
 It does mean that the filtered test set leans toward speech that every model we compare finds
-easy. We therefore score every model on two test sets drawn from the same
-held-out sessions: the filtered segments, and all segments with confidence of at
-least 0.7.
+easy, which is why we also score the full test (Section~\ref{sec:personalization}).
 
 % ------------------------------------------------------------
 \section{Implementation Details}
@@ -602,8 +565,7 @@ least 0.7.
 \paragraph{Training.}
 Adapters are trained with PyTorch, Hugging Face \texttt{transformers}
 (\texttt{Seq2SeqTrainer}) and \texttt{peft}, on the frozen base model in
-bfloat16. Training segments are fed latest session first, so the 5-, 20- and
-80-minute budgets are nested prefixes of one ordering. Each control's pool takes
+bfloat16. Each control's pool takes
 one segment from each of its six speakers in turn until the budget is reached,
 and never from a session in which a speaker it is scored on is tested or
 validated.
@@ -616,7 +578,7 @@ divided by the sum of reference words. Confidence intervals and p-values come fr
 a paired bootstrap over test segments (Appendix~\ref{app:significance}).
 
 \paragraph{Decoding.}
- Whisper occasionally falls into a repetition loop, emitting
+Whisper occasionally falls into a repetition loop, emitting
 the same phrase many times, and every repetition counts as an insertion error.
 Repetitive text compresses far better than ordinary speech, so we detect loops by
 a transcript's zlib compression ratio, its size before compression divided by its
@@ -633,38 +595,8 @@ Decoding is greedy, meaning that at each step Whisper picks the single most like
 \section{Training Details}
 \label{app:training}
 
-We ran 64 tuning runs and evaluated each one on validation loss alone, and none
-of them touched the test sets. Table~\ref{tab:hyperparams} shows the chosen
-settings, which are shared by every own and control adapter.
-
-\paragraph{Tuning procedure.}
-We chose four speakers for the tuning process, one per profile (30685 from S1,
-23558 from S2, 30718 from S3 and 30859 from S4). They were trained at the two
-ends of the budget range, 5 and 80 minutes, and 20 minutes takes the 80-minute
-choice. Each run is scored by how much it lowers validation loss relative to
-arm~B without an adapter: $(L_B - L_\text{best})/L_B$, where $L_B$ is arm~B's
-validation loss and $L_\text{best}$ is the adapter's lowest validation loss
-during training (the checkpoint early stopping restores). Tuning ran in three
-stages, each starting from the previous stage's choice: the learning rate
-($10^{-4}$, $3\times10^{-4}$, $10^{-3}$), then LoRA rank $\{8, 16\}$ $\times$
-Whisper's dropout $\{0, 0.1\}$, then augmentation (SpecAugment, alone or with
-$\pm10\%$ tempo changes, but no pitch or speed perturbation, which would change
-the voice). We started from a simple default setting (learning rate
-$3\times10^{-4}$, rank 8, no dropout, no augmentation) and kept it unless a
-change helped clearly: a new setting replaced it only if it raised the relative
-drop, averaged over the four speakers, by at least 0.01, and raised it for at
-least three of the four.
-
-\paragraph{Tuning results} (Figures~\ref{fig:tuningscores} and~\ref{fig:tuningcurves}).
-At both budgets, a higher learning rate reaches its minimum validation
-loss sooner. At 5 minutes the higher rates also reach a worse minimum, so we use
-the lowest, $10^{-4}$. At 80 minutes all three reach nearly the same minimum, so
-we keep the default, $3\times10^{-4}$. Raising Whisper's dropout to 0.1 removes
-most of the adapter's improvement for every speaker, so we keep it at 0. The
-other settings make little difference: rank 16 matches rank 8 at 80 minutes and
-is slightly worse at 5, and augmentation raises the relative drop by less than
-the 0.01 threshold at both budgets.
-
+Table~\ref{tab:hyperparams} shows the chosen
+settings of Section~\ref{sec:personalization}, which are shared by every own and control adapter.
 
 
 \begin{table}[h]
@@ -696,21 +628,20 @@ Seeds & 0 at every budget, 1 and 2 at 80 minutes \\
 \end{table}
 
 \paragraph{Beyond 80 minutes.}
-Four speakers are trained beyond 80 minutes: 23558 and 23641 on up to 1{,}440
-minutes, and 30752 and 23635 on up to 360. 23558 and 30752 are two of the 12
-selected speakers of the main experiment. 23641 and 23635 add profiles those 12
+23558 and 30752 are two of the 12
+selected speakers of the main experiment. 23641 (Yaakov Asher) and 23635 add profiles those 12
 lack: a Haredi speaker with one of the highest WERs, whom the Hebrew fine-tune
 helped little, and an Ethiopian-born woman. Every budget is trained as in the
 main experiment, on a larger subset of the speaker's data, with its own control.
 
-The recipe of Table~\ref{tab:hyperparams} is kept, except that the step cap grows
+The settings of Table~\ref{tab:hyperparams} are kept, except that the step cap grows
 with the data, to 1{,}200 steps at 160 and 360 minutes and 3{,}000 at 720 and
 1{,}440, and no run reaches it.
 
 \paragraph{Adapter capacity.}
 To check whether a rank-8 adapter is too small to hold the voice, we repeat the
 1{,}440-minute own adapters of 23558 and 23641 and their control at rank 32. The
-larger adapter does not make personalization grow: it rises in some cases and
+larger adapter does not make the personal margin grow: it rises in some cases and
 falls in others (Table~\ref{tab:capacity}).
 
 \begin{table}[h]
@@ -725,7 +656,7 @@ Speaker & Test & Rank 8 & Rank 32 \\
 23641 & clean & +1.7 & +6.7 \\
 \bottomrule
 \end{tabular}
-\caption{Personalization (\%) at 1{,}440 minutes, seed 0, with a rank-8 and a rank-32
+\caption{Personal margin (\%) at 1{,}440 minutes, seed 0, with a rank-8 and a rank-32
 adapter.}
 \label{tab:capacity}
 \end{table}
@@ -743,7 +674,7 @@ adapter.}
     \centering
     \includegraphics[width=\textwidth]{figures/stage2_tuning_curves.png}
     \caption{Validation loss relative to arm~B during tuning, varying one setting at a
-    time around the chosen recipe, at 5 minutes (top) and 80 minutes (bottom). Thin
+    time around the chosen setting, at 5 minutes (top) and 80 minutes (bottom). Thin
     lines are the four speakers, the thick line is their mean, and dots are the best checkpoints.}
     \label{fig:tuningcurves}
 \end{figure*}
@@ -827,29 +758,6 @@ fewer than three speakers are omitted.
     \label{fig:groups}
 \end{figure*}
 
-\paragraph{Error composition.}
-Over half of arm~B's errors are insertions (Table~\ref{tab:errormix}): words in the
-transcript that the protocol does not contain. All WERs in this paper are computed
-against the protocol as is.
-
-\begin{table}[h]
-\centering
-\small
-\begin{tabular}{lccccc}
-\toprule
-& & & \multicolumn{3}{c}{share of word errors} \\
-\cmidrule(lr){4-6}
-Model & WER & CER & Sub. & Del. & Ins. \\
-\midrule
-A (general) & 0.387 & 0.241 & 49\% & 13\% & 38\% \\
-B (Hebrew fine-tune) & 0.292 & 0.203 & 36\% & 11\% & 53\% \\
-\bottomrule
-\end{tabular}
-\caption{Corpus error rates after the quality filter (267 speakers, 58{,}180 segments)
-and the composition of each model's word errors: substitutions, deletions and
-insertions.}
-\label{tab:errormix}
-\end{table}
 
 \paragraph{Recording conditions.}
 WER also varies with the recording conditions: arm~B scores 0.32--0.37 in
@@ -862,38 +770,38 @@ would be used in practice.
 \begin{figure}[h]
     \centering
     \includegraphics[width=\columnwidth]{figures/conditions_by_year.png}
-    \caption{Corpus WER of both models by the year of the session, after the quality
+    \caption{Overall WER of both models by the year of the session, after the quality
     filter.}
     \label{fig:year}
 \end{figure}
 
 \subsection{Personalization}
 
+% Full width: 12 speakers x 3 seeds with intervals, on two test sets.
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/stage2_personalization_per_speaker_seeds.png}
+    \caption{Personal margin per speaker and seed at 80 minutes, with 95\%
+    paired-bootstrap intervals. Filled markers are significant ($p<0.05$). Profiles:
+    S1, helped least by the fine-tune, S2, hard under both models, S3, typical, S4, low
+    WER, and C, served well by the fine-tune.}
+    \label{fig:perspeaker}
+\end{figure*}
+
 \begin{figure}[h]
     \centering
     \includegraphics[width=\columnwidth]{figures/stage2_wer_vs_minutes_median.png}
     \caption{Median WER over the 12 speakers at 0 (arm~B), 5, 20 and 80 minutes of
-    training audio, for the own adapter (blue) and the control (orange), on the clean
-    test (solid) and the full test (dashed). At 80 minutes, each speaker's WER is
-    averaged over three seeds.}
+    training audio. At 80 minutes, each speaker's WER is averaged over three seeds.}
     \label{fig:wermedian}
 \end{figure}
 
-\begin{figure*}[t]
-    \centering
-    \includegraphics[width=\textwidth]{figures/stage2_wer_vs_minutes_per_speaker.png}
-    \caption{The same per speaker, sorted by arm~B's WER on the clean test, hardest
-    first. Ticks at 80 minutes: the individual seeds.}
-    \label{fig:werspeaker}
-\end{figure*}
 
 \begin{figure*}[t]
     \centering
     \includegraphics[width=\textwidth]{figures/stage2_winning_learning_curves.png}
-    \caption{Learning curves of the 80-minute own adapters, one panel per speaker. Blue is
-    the validation loss every 20 steps (step 0 is arm~B), grey the training loss smoothed
-    over 20 steps, line style the seed, and the dot the checkpoint early stopping
-    restored.}
+    \caption{Training and validation loss of the 80-minute own adapters, one panel per
+    speaker. Step 0 is arm~B.}
     \label{fig:lcspeakers}
 \end{figure*}
 
@@ -906,83 +814,31 @@ would be used in practice.
 \end{figure}
 
 
-
-
 % ------------------------------------------------------------
-\section{Bootstrap for the Speaker-Level Error Map}
-\label{app:boot-errormap}
-
-Each speaker is measured on a one-hour sample of their speech, and another hour
-would give somewhat different results. To know how far to trust each speaker's
-WER$_A$, WER$_B$ and gain ($\text{WER}_A-\text{WER}_B$), we use a bootstrap.
-
-\paragraph{Resampling.}
-For each speaker, we build 1{,}000 resampled sets, each by drawing the speaker's
-segments at random with replacement until it is the same size as the original
-sample. Both arms are scored on the same resampled set. Each set gives a pooled
-WER$_A$ and WER$_B$ (the sum of word errors over the drawn segments divided by the sum of reference
-words) and their difference, the absolute gain $\text{WER}_A-\text{WER}_B$.
-
-\paragraph{Intervals.}
-The 95\% interval of WER$_A$, WER$_B$ and the gain is the 2.5th to 97.5th percentile of
-the 1{,}000 values. No p-value is computed: a speaker's improvement under arm~B is
-called beyond sampling noise when the interval of their gain lies entirely above zero,
-as it does for all 261 speakers with at least 20 segments.
+\section{Bootstrap Intervals and Significance}
+\label{app:boot-errormap}\label{app:significance}
 
 
-% ------------------------------------------------------------
-\section{Significance Testing}
-\label{app:significance}
+Every interval and p-value in this paper comes from bootstrapping a speaker's
+segments. A resampled set draws the speaker's segments at random with replacement
+until it is the size of the original, every model in a comparison is scored on the
+same resampled set, and each set gives pooled WERs (the sum of word errors divided
+by the sum of reference words) and their difference. The 95\% interval is the 2.5th
+to 97.5th percentile of the resampled differences.
 
-Similar to the error map (Appendix~\ref{app:boot-errormap}), to know how far to trust
-each adapter's gain over arm~B and each speaker's personalization, we use a
-bootstrap as well. It differs only in using 2{,}000 resampled sets instead of
-1{,}000, and in giving p-values as well as intervals. Every comparison in Section~\ref{sec:adaptation} is paired: two models transcribe the
-same test segments of one speaker, so we ask whether one makes fewer errors than the
-other on those segments.
+\paragraph{Error map.}
+We draw 1{,}000 sets per speaker, for WER$_A$, WER$_B$ and the gain
+$\text{WER}_A-\text{WER}_B$. No p-value is computed: a speaker's improvement under
+arm~B is beyond sampling noise when the interval of the gain lies entirely above
+zero, as it does for all 261 speakers with at least 20 segments.
 
-\paragraph{What is compared.}
-For the gain of an adapter over arm~B, the difference is
-$\text{WER}_B-\text{WER}_\text{adapted}$. For personalization, it is
-$\text{WER}_\text{control}-\text{WER}_\text{own}$: the own adapter and the control on
-the same segments. Both are pooled differences, the sum of each model's word errors
-over the segments divided by the sum of reference words.
-
-\paragraph{Resampling.}
-For each speaker, we build 2{,}000 resampled test sets, each by drawing the
-speaker's test segments at random with replacement until it is the same size as
-the original, and recompute the pooled difference on each.
-
-\paragraph{Interval and p-value.}
-The 95\% interval is the 2.5th to 97.5th percentile of the 2{,}000 differences,
-in absolute WER, and dividing by WER$_B$ gives it in the relative units of
-Section~\ref{sec:adaptation}. The p-value tests the null hypothesis that the two
-models are equally accurate on the speaker's speech, against the alternative that
-one is more accurate than the other. Either model could turn out better, since an
-own adapter could also do worse than its control, so the test is two-sided: the
-p-value is twice the share of the 2{,}000 differences that fall on the far side
-of zero (at or below zero for a positive difference, at or above zero for a
-negative one).
-
-
-% ------------------------------------------------------------
-\section{Division of Work}
-\label{app:division}
-
-Both authors shaped the project from the start. We developed the idea together over
-several brainstorming meetings, refining a general direction into the final research
-question. We then sharpened it in discussions with the ivrit.ai team, who pointed us
-to directions and problems they had encountered and considered worth studying.
-
-We set the guidelines of each stage together and divided the detailed work between
-us. For the speaker-level analysis (Stage 1), we jointly defined the speaker
-groupings and the analyses to run, and Hadas Yonat, a data engineer, carried out most
-of the in-depth analysis. For personalization (Stage 2), we jointly designed the main
-principles of the training architecture, and Dolev Abudi led the training itself.
-Throughout, we worked in parallel and in close coordination: in regular joint working
-sessions, in person and over Zoom, we shared our progress and findings and made the
-project's decisions together. We enjoyed working together, and this teamwork was an
-important and meaningful part of the project for both of us.
+\paragraph{Adaptation.}
+We draw 2{,}000 sets of each speaker's test segments, for the gain of an adapter
+over arm~B, $\text{WER}_B-\text{WER}_\text{adapted}$, and for the personal margin,
+$\text{WER}_\text{control}-\text{WER}_\text{own}$. Dividing by WER$_B$ gives the
+relative units of Section~\ref{sec:adaptation}. The p-value is two-sided, since an
+own adapter could also do worse than its control: it is twice the share of the
+differences that fall on the far side of zero.
 
 
 \end{document}
