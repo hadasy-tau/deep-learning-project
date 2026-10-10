@@ -60,10 +60,25 @@ Figures go in as RGB, not RGBA, so Overleaf compiles in time.
   - **Speaker names:** in parentheses at the first mention of 23558 (David Bitan) and 23641
     (Yaakov Asher) in each section.
   - **Hyperparameter choice** is described in the body (Section 3.6), with the table and the
-    tuning figures in the appendix.
+    rank-32 check in Appendix C, which holds nothing else (the tuning figures were dropped on
+    2026-10-10).
   - **Side margins** are 1.8 cm, not ACL's 2.5 cm (`\geometry` after `\usepackage{acl}`), since the
     course does not require strict ACL format.
   - **The Conclusion** is one paragraph of conclusions, without repeating the numbers.
+- **Settled in the 2026-10-10 pass:**
+  - **Division of Work** is an unnumbered section after Limitations and before the references,
+    since it counts toward the 5 pages, so the appendices start at A with Data Preparation.
+  - **"Chunk"** is the unit every model is trained and scored on, as in the code, and "protocol
+    segment" is a piece of the aligned protocol. The paper does not say a protocol segment
+    carries a speaker name: in the corpus the names come in separate files, by character range.
+  - **Appendices:** the decoding paragraph (loop guard, greedy decoding), the error-composition
+    table and CER are out, so 3.5 reports WER only. The "WER by year" figure stays as a check on
+    the data, without a claim about the split.
+  - **Repetition:** a fact is stated once in the body. The four speakers beyond 80 minutes (up to
+    6 hours, two of them up to 24) are described in 4.2, and the abstract and 3.1 say so too.
+  - **Layout:** the space between a figure and the text is 13pt, not ACL's 20pt, so the body,
+    Division of Work included, ends on page 5. In the appendices `\topfraction` and its kin are
+    relaxed, and the figures are ordered so the full-width ones share pages.
 
 ## Words: the repo and the paper
 
@@ -74,7 +89,8 @@ The docs and the code use different words from the paper. In the paper, use the 
 | arm A, arm B | arm A (general), arm B (Hebrew fine-tune) |
 | high-quality test, HQ, `hq`, ≥ 0.95 test | clean test |
 | ≥ 0.7 test, `test07.*` | full test |
-| chunk, clip | segment |
+| chunk | chunk (the code's word, adopted 2026-10-10) |
+| segment (a row of the speaker index), ivrit.ai segment | protocol segment |
 | session | session (not "meeting", anywhere in the paper) |
 | `quality` | alignment quality score |
 | own adapter, control (`ctrl*`) | own adapter, control |
@@ -95,11 +111,10 @@ The docs and the code use different words from the paper. In the paper, use the 
 | Speaker-level performance (65,990 segments, 230 h, 267 speakers, language forced to Hebrew) | `docs/inference.md`, `docs/design.md` § 3 |
 | Speaker-level error map (267 speakers, 58,180 segments, WER 0.387 / 0.292, SD, CV, ρ, groups) | `docs/error_map.md`, `notebooks/committees_error_map_v2.ipynb`, `src/evaluation/outputs/committees_*.csv` |
 | Reliability (0.78, 0.75), recording conditions by year | `notebooks/committees_error_map_v2.ipynb` |
-| Appendix B, quality filters (7,810 of 65,990 removed) | `docs/error_map.md`, `docs/training_plan_v3.md` § 1 |
-| Appendix B, quality predicts both arms' errors (Spearman −0.62 for A, −0.63 for B) | recomputed 2026-10-07 with `error_map.load_chunks` and `count_errors` over the 65,990 segments |
-| Appendix C, the loop guard (compression ratio 3.0, 6-token sequences) | `src/evaluation/evaluate.py` (`LOOP_CR`, `LOOP_NGRAM`) |
+| Appendix A, quality filters (7,810 of 65,990 removed) | `docs/error_map.md`, `docs/training_plan_v3.md` § 1 |
+| Appendix A, quality predicts both arms' errors (Spearman −0.62 for A, −0.63 for B) | recomputed 2026-10-07 with `error_map.load_chunks` and `count_errors` over the 65,990 chunks |
 | Adaptation results, 5 / 20 / 80 minutes, seeds, bands | `docs/training_run3.md`, `notebooks/training_run3_figures.ipynb`, `src/training/outputs/results_v3.csv` |
-| Section 3.6 and Appendix D, tuning (64 runs, the rule, the chosen settings) | `src/training/outputs/tuning_v3.csv`, `recipe_v3.json`, `docs/training_plan_v3.md` § 2 |
+| Section 3.6 and Appendix C, tuning (64 runs, the rule, the chosen settings) | `src/training/outputs/tuning_v3.csv`, `recipe_v3.json`, `docs/training_plan_v3.md` § 2 |
 | Beyond 80 minutes, capacity | `docs/training_run4.md`, `notebooks/training_run4_figures.ipynb`, `src/training/outputs/curve_v4.csv`, `capacity_v4.csv`, `results_v4.csv` |
 | Limitations: 75–82 % of test speech from committees seen in training | recomputed 2026-10-07: 74.7 % (clean test) and 81.8 % (full test) of the test duration, from `panel_plan_v2.parquet` and `panel_test07.parquet` joined to `committee_name` in `knesset-asr/knesset-committees-speakers` |
 | Related Work, Weninger et al. 2019 (gains grow to 20 h, measured against the unadapted model) | `docs/archive/personalization_research.md` § 2, citation checked against the ISCA archive |
@@ -122,7 +137,7 @@ The notebooks write to `docs/figures/<notebook>/`.
 
 - The cost is not given in the paper: the $200 figure had no source, and the documented costs
   add up to about $90 (inference ~$24, run 2 ~13 GPU-h, run 3 ~$19, run 4 ~$16).
-- Page limit: after the 2026-10-09 pass the body (through the Conclusion) ends on page 5, with
-  room to spare.
-- The appendices were trimmed in the 2026-10-09 pass, and the two bootstrap appendices merged
-  into one. Hadas has not reviewed that pass yet.
+- Page limit: after the 2026-10-10 pass the body, Division of Work included, ends at the foot of
+  page 5, with no room to spare. Any addition to the body needs a cut elsewhere.
+- The appendices were trimmed in the 2026-10-09 and 2026-10-10 passes (Dolev), and the two
+  bootstrap appendices merged into one. Hadas has not reviewed them yet.

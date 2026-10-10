@@ -1,6 +1,6 @@
 # Where the project stands
 
-**Updated 2026-10-09.** This is the one document that changes as the project moves. Every other
+**Updated 2026-10-10.** This is the one document that changes as the project moves. Every other
 document is either a stable reference (the README, `design.md`, `committees_handoff.md`,
 `adaptation_plan.md`, `paper/README.md`, the folder READMEs) or a dated record that is not edited
 afterwards (the build records, `error_map.md`, `inference.md`, the training plans and run logs).
@@ -18,6 +18,9 @@ editorial decisions and where every number comes from, is [`paper/README.md`](..
 - **2026-10-09:** the rest of the paper edited against them: Related Work to Conclusion,
   Limitations and the appendices. The metric is now called the personal margin, and the figures
   were regenerated to match.
+- **2026-10-10:** the appendices reviewed one by one, "chunk" adopted from the code, repeated
+  facts removed from the body, and Division of Work moved before the references. The body now
+  ends on page 5.
 
 ## The pipeline
 
