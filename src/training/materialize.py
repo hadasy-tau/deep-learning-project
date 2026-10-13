@@ -21,7 +21,8 @@ run on different machines:
   plan-v2   laptop.  The high-quality plan: test, dev and train all from chunks
             at quality >= 0.95 that also pass the word rule (word_quality.py,
             which must run first), the panel plus 556 (12 speakers).  Writes
-            panel_plan_v2.parquet.  extract/verify/upload take --plan to use it.
+            panel_plan_v2.parquet, the plan extract, verify and upload read unless
+            --plan names another.
   plan-test07  laptop.  The second test set: plan
             v2's own test sessions, every chunk at quality >= 0.7 and no word
             rule, so the high-quality test is a subset of it and the two differ
@@ -46,9 +47,10 @@ session ids and dates diverge per speaker;
 `session_id` keeps the number.  `start`/`end` are offsets INSIDE the chunk's own
 WAV (0 and its duration), which is what read_wav slices by.
 
-    python src/training/materialize.py plan
+    python src/training/materialize.py plan-v2
     python src/training/materialize.py extract [--max-shards N] [--prefetch 2]
-    python src/training/materialize.py verify
+    python src/training/materialize.py verify [--no-audio]
+    python src/training/materialize.py verify --plan src/training/panel_plan_v4.parquet
 """
 import argparse, io, os, re, shutil, sys, time
 from concurrent.futures import ThreadPoolExecutor
@@ -274,7 +276,7 @@ def _write_wav(path, flac_bytes):
     sf.write(path, data, SR, subtype='PCM_16')
     return len(data) / SR
 
-def extract(plan_path=PLAN, audio_dir=AUDIO, max_shards=None, prefetch=2, shards=None):
+def extract(plan_path=PLAN_V2, audio_dir=AUDIO, max_shards=None, prefetch=2, shards=None):
     from run_lean import shard_rows
     P = pd.read_parquet(plan_path)
     P['path'] = P.filename.map(lambda f: os.path.join(audio_dir, f))
@@ -308,7 +310,7 @@ def extract(plan_path=PLAN, audio_dir=AUDIO, max_shards=None, prefetch=2, shards
     return written
 
 # ---- verify -------------------------------------------------------------------
-def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=True, sample=200):
+def verify(plan_path=PLAN_V2, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=True, sample=200):
     P = pd.read_parquet(plan_path); ok = True
     def chk(cond, msg):
         nonlocal ok; ok &= bool(cond); print(f'  [{"OK " if cond else "FAIL"}] {msg}')
@@ -366,7 +368,7 @@ def verify(plan_path=PLAN, audio_dir=AUDIO, budget_min=BUDGET_MIN, check_audio=T
     return ok
 
 # ---- move the folder ----------------------------------------------------------
-def upload(repo, audio_dir=AUDIO, plan_path=PLAN):
+def upload(repo, audio_dir=AUDIO, plan_path=PLAN_V2):
     from huggingface_hub import HfApi
     api = HfApi(); api.create_repo(repo, repo_type='dataset', private=True, exist_ok=True)
     P = pd.read_parquet(plan_path)
@@ -406,13 +408,13 @@ if __name__ == '__main__':
     e = sub.add_parser('extract'); e.add_argument('--max-shards', type=int); e.add_argument('--prefetch', type=int, default=2); e.add_argument('--shards', nargs='+')
     v = sub.add_parser('verify'); v.add_argument('--no-audio', action='store_true')
     for c in ('upload', 'download'): sub.add_parser(c).add_argument('--repo', required=True)
-    for c in sub.choices.values(): c.add_argument('--plan', default=PLAN, help='the plan table (panel_plan_v2.parquet for the filtered plan)')
+    for c in sub.choices.values(): c.add_argument('--plan', default=PLAN_V2, help='the plan table (default panel_plan_v2.parquet, run 3\'s; panel_plan_v4.parquet for run 4)')
     a = ap.parse_args()
     if a.cmd == 'plan': print(plan_summary(plan()).to_string())
     elif a.cmd == 'plan-v2': print(plan_summary(plan_v2()).to_string())
     elif a.cmd == 'plan-v4': print(plan_summary(plan_v4()).to_string())
     elif a.cmd == 'plan-test07':
-        base = a.plan if a.plan != PLAN else PLAN_V2           # --plan names the base plan here
+        base = a.plan                                          # --plan names the base plan here
         plan_test07(out=TEST07_OF[os.path.abspath(base)] if os.path.abspath(base) in TEST07_OF else PLAN_TEST07, plan_v2_path=base)
     elif a.cmd == 'extract': extract(plan_path=a.plan, max_shards=a.max_shards, prefetch=a.prefetch, shards=a.shards)
     elif a.cmd == 'verify': sys.exit(0 if verify(plan_path=a.plan, check_audio=not a.no_audio) else 1)

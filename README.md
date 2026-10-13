@@ -208,7 +208,10 @@ Python 3.12 and 3.14.
    curves from it.
 
 4. Optional, the tables in git. These rewrite `src/evaluation/outputs/` and
-   `src/training/panel_*.parquet`, and come out the same as what git holds:
+   `src/training/panel_*.parquet`. The tables under `src/evaluation/outputs/` come out byte
+   for byte as git holds them. The four plans come out with the same rows and values, but git
+   may still list them as modified, because each file records the version of the library that
+   wrote it:
 
    ```bash
    python src/evaluation/error_map.py --run                 # committees_speaker_performance.csv, _subgroups, _summary.json, ...
@@ -317,9 +320,16 @@ bash src/training/box/pod_v4.sh all    # run 4: beyond 80 minutes (boot, run, fi
 A run writes `src/training/outputs/results.csv` (and `tuning.csv`). The copies in git are named
 after the run: `results_v3.csv`, `tuning_v3.csv`, `results_v4.csv`.
 
-**Paper**. After a change to the folder, rebuild the PDF and the Overleaf zip in the same commit:
+**Paper**. After a change to the folder, rebuild the PDF and the Overleaf zip in the same commit.
+From the repository root (the build folder, `paper/build/`, is git-ignored):
 
 ```bash
-cd paper/Toward_Personalized_Hebrew_ASR_overleaf && latexmk -pdf -outdir=/tmp/paper acl_latex.tex && cp /tmp/paper/acl_latex.pdf ../Toward_Personalized_Hebrew_ASR.pdf
-cd paper/Toward_Personalized_Hebrew_ASR_overleaf && rm -f ../Toward_Personalized_Hebrew_ASR_overleaf.zip && zip -q -r -X ../Toward_Personalized_Hebrew_ASR_overleaf.zip . -x '.DS_Store'
+(cd paper/Toward_Personalized_Hebrew_ASR_overleaf && latexmk -pdf -outdir=../build acl_latex.tex) && cp paper/build/acl_latex.pdf paper/Toward_Personalized_Hebrew_ASR.pdf
+(cd paper/Toward_Personalized_Hebrew_ASR_overleaf && rm -f ../Toward_Personalized_Hebrew_ASR_overleaf.zip && zip -q -r -X ../Toward_Personalized_Hebrew_ASR_overleaf.zip . -x '.DS_Store')
 ```
+
+## Licence
+
+The code is under the MIT licence (`LICENSE`). The data keeps its sources' licences: the audio
+and the protocol text come from `ivrit-ai/knesset-committees` under the ivrit.ai licence, and
+the speaker attribution and demographics from the Knesset Corpus under CC BY-SA 4.0.
