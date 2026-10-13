@@ -38,7 +38,7 @@ src/
                                ivrit.ai's own worker image. Resumable, cost-bounded
 
   training/                    materialize.py: the panel's audio from the corpus shards to WAVs
-                               (panel_plan.parquet says which chunks, which split);
+                               (panel_plan_v2/_v4.parquet say which chunks, which split);
                                train.py: one cell -> one adapter (speaker, arm, site, method,
                                budget, rank, lr, seed); run_panel.py: cells -> scored results.
                                box/: the GPU sessions, pod_v3.sh (run 3) and pod_v4.sh (run 4)

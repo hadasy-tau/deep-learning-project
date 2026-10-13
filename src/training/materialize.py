@@ -11,8 +11,8 @@ run on different machines:
             they cover personal-test + dev + the 80-minute budget; split them
             session-disjoint by DATE (test = newest, then dev, rest train); order
             train latest-session-first so nested budgets are prefixes.  Writes
-            src/training/panel_plan.parquet -- one row per chunk, small, committed,
-            so the choice is reviewable and the extraction is deterministic.
+            src/training/panel_plan.parquet -- one row per chunk (run 2's plan, not
+            committed; runs 3 and 4 use plan-v2 and plan-v4 below).
   extract   any machine with a fast link.  Downloads each shard the plan needs,
             pulls only the plan's chunks (DuckDB, 1.75 GB peak), decodes FLAC ->
             WAV under outputs/panel_audio/<speaker_id>/<chunk_id>.wav, deletes the
