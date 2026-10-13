@@ -1,6 +1,6 @@
 """Stage 2 training: one cell -> one adapter.
 
-A cell is (speaker, arm, site, method, budget, rank, lr, seed) -- D4's axes.
+A cell is (speaker, arm, site, method, budget, rank, lr, seed) -- the experiment's axes.
 Idempotent: a cell whose out_dir already holds an adapter is skipped.
 
 Written against transformers 5.x, which differs from the plan's gotchas in one
@@ -29,7 +29,7 @@ from common import read_wav, budget_order
 
 ARMS = {'A': 'openai/whisper-large-v3', 'B': 'ivrit-ai/whisper-large-v3'}
 
-# D4's site axis. PEFT accepts a regex string for target_modules, which is the
+# The site axis. PEFT accepts a regex string for target_modules, which is the
 # only way to isolate decoder self-attn from decoder cross-attn -- keeping them
 # separate is what makes "acoustic or lexical?" answerable.
 SITES = {
@@ -43,7 +43,7 @@ SITES = {
     'decoder_mlp':  r'.*model\.decoder.*\.(fc1|fc2)',
 }
 
-# D4's reference lr of 1e-3 is an ADAPTER learning rate. Applied to full
+# The reference lr of 1e-3 is an ADAPTER learning rate. Applied to full
 # fine-tuning it is ~100x too high, and the failure is silent: the run completes
 # and reports a wrecked model rather than raising. ivrit-ai trained this very
 # checkpoint at 1e-5, so that is the full-FT default here. Passing lr explicitly
@@ -180,7 +180,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     records the rate actually used.
 
     train_rows / dev_rows: pass the chunks explicitly instead of filtering
-    `chunks` by speaker -- the cross-speaker control (D3) trains on a pool
+    `chunks` by speaker -- the cross-speaker control trains on a pool
     drawn from several speakers, under a string `speaker` label.
     grad_ckpt: None = only where it is needed (full fine-tuning, or a card
     under 40 GB). Checkpointing recomputes every activation in the backward

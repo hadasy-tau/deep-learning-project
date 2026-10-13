@@ -1,8 +1,8 @@
-"""Stage 3 publish: push the index (never audio) to a private HuggingFace dataset.
+"""Stage 3 publish: push the index (never audio) to a HuggingFace dataset, created private.
 
-Decisions: index only; knesset-asr/knesset-committees-speakers;
-private until Step 4 passes; licence CC-BY-SA 4.0 inherited from the Knesset
-Corpus; credits ivrit.ai and the Knesset Corpus.
+Decisions: index only; knesset-asr/knesset-committees-speakers; the ivrit.ai
+licence for the protocol text it carries, CC-BY-SA 4.0 for the attribution and
+demographics from the Knesset Corpus; credits ivrit.ai and the Knesset Corpus.
 
 The write token is read from HF_TOKEN, else the repo-level cache/hf_write_token (mode
 600, git-ignored).  It is never written into any published file.  Run with

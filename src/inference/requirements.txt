@@ -1,6 +1,4 @@
 # Stage 4 inference over the committees chunk corpus.
-# Replaces stage1/inference_openai_whisper_large_v3/requirements.txt, which was
-# the VoxKnesset arm-A driver's and went with it.
 huggingface_hub>=0.30
 requests>=2.31
 pandas>=2.0
