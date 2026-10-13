@@ -35,3 +35,6 @@ __pycache__/
 
 # executed copies of notebooks kept for viewing; git carries the source-only notebook
 notebooks/*.executed.ipynb
+
+# the paper's LaTeX build folder (README, Running: Paper)
+/paper/build/
