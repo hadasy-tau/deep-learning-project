@@ -19,14 +19,13 @@ first, until RAW_TARGET_MIN minutes -- enough for test (45 min) + dev (15) + the
 panel_plan_v2 is drawn from them: the project works only with high-quality data.
 
 The rule itself (word_ok) lives here so plan and verify share it; its
-threshold MAX_LOW_SHARE was fixed from `report()` before any training
-(docs/training_plan_v3.md).
+threshold MAX_LOW_SHARE was fixed from `report()` before any training.
 
     python src/training/word_quality.py            # build word_quality.parquet, print the report
-    python src/training/word_quality.py --run4     # run 4's longer candidate lists (docs/training_plan_v4.md)
+    python src/training/word_quality.py --run4     # run 4's longer candidate lists
     python src/training/word_quality.py --check    # self-checks only
 
-Run 4 (docs/training_plan_v4.md) scores further back in time: RAW_TARGET_MIN_FOR for its
+Run 4 scores further back in time: RAW_TARGET_MIN_FOR for its
 own speakers (23558 and 23641 up to 1,440 train minutes, 23635 up to 360) and
 RUN4_PANEL_TARGET for the rest of the panel, whose longer train feeds the 1,440-minute
 control.  Candidates stay newest-session-first, so the chunks plan v2 used are a prefix
@@ -47,9 +46,9 @@ MAX_RUN = 3             # a run of this many low words in a row drops the chunk
 MAX_LOW_SHARE = 0.10    # at most this share of low words; fixed from report() (see the module docstring)
 MAX_COUNT_GAP = 0.2     # |aligned words - reference words| / reference words above this: the span is not verifiable
 RAW_TARGET_MIN = 250    # candidate minutes per speaker (>= 0.95), before the word rule (~65% pass it)
-EXCLUDE_SESSIONS = {30843: {2235355}}   # the audio gate: this dev session is mostly another voice (docs/training_run2.md)
+EXCLUDE_SESSIONS = {30843: {2235355}}   # the audio gate: this dev session is mostly another voice
 # Plan v3 first swapped 30843 for 556: 30843 has about 120 high-quality minutes, short of
-# 45 test + 15 dev + 80 train.  Revised 2026-10-02 (docs/training_plan_v3.md § 1): 30843
+# 45 test + 15 dev + 80 train.  Revised 2026-10-02: 30843
 # stays, with a shorter test and dev (materialize.SPLIT_MIN), and 556, the S2 alternate, is
 # added.  30601, a "hard and left behind" speaker from outside the panel (WER_B 0.455, the
 # fine-tune removes 18% of arm A's error), was added and then deferred the same day: the
@@ -57,7 +56,7 @@ EXCLUDE_SESSIONS = {30843: {2235355}}   # the audio gate: this dev session is mo
 # back here and rebuilding plan-v2 and plan-test07 brings him in, after the audio gate
 # (his quality-filter footprint is high).
 PANEL_ADD = [556]
-# Run 4 (docs/training_plan_v4.md): two speakers from outside the panel -- 23641 יעקב אשר
+# Run 4: two speakers from outside the panel -- 23641 יעקב אשר
 # (Haredi, WER_B 0.41, the fine-tune removes 17% of arm A's error) and 23635 פנינה תמנו
 # (Ethiopia-born) -- and longer candidate lists, so train can reach 1,440 minutes for
 # 23558 and 23641 and the rest of the panel can feed a 1,440-minute control.
@@ -214,7 +213,7 @@ def _self_checks():
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); ap.add_argument('--check', action='store_true'); ap.add_argument('--report', action='store_true')
     ap.add_argument('--workers', type=int, default=6)
-    ap.add_argument('--run4', action='store_true', help="run 4's speakers and longer candidate lists (docs/training_plan_v4.md)")
+    ap.add_argument('--run4', action='store_true', help="run 4's speakers and longer candidate lists")
     ap.add_argument('--speakers', nargs='+', type=int, help='score only these speakers')
     a = ap.parse_args()
     _self_checks()

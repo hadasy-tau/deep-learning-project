@@ -9,20 +9,20 @@ cell under outputs/results/.  The base model's transcription of a speaker's
 test set is cached once per (arm, speaker) -- it is the same for every cell.
 `--summary` collects the JSONs into outputs/results.csv.
 
-The acceptance rule from docs/adaptation_plan.md is applied in the summary,
+The acceptance rule is applied in the summary,
 not hidden: a gain that comes mostly from fewer insertions (share of the
 improvement that is insertions > 0.5) is flagged `style_not_speaker`.
 
 The forgiven-shared count (an inserted word the other arm also produced is not
 charged; `*_f` columns, --forgiven, --select forgiven) is removed: it assumed that two
 models agreeing against the protocol means the protocol is wrong, an assumption too strong
-to rest a result on (docs/STATUS.md § Withdrawn).  The second
+to rest a result on.  The second
 and third runs' result files still carry `*_f` columns; the summary drops them.
 
   the cross-speaker control (D3)   --control-folds K trains K adapters, each on a
         budget-matched pool drawn from the panel speakers of the other folds,
         and evaluates every speaker on the adapter that never saw them.  K=2 is
-        one extra training run over the handoff's single adapter and leaves no
+        one extra training run over a single adapter and leaves no
         speaker evaluated on their own audio.  The summary joins it as
         personalization = delta(own adapter) - delta(others' adapter).
 
@@ -31,7 +31,7 @@ and third runs' result files still carry `*_f` columns; the summary drops them.
     python src/training/run_panel.py --speakers 30831 --budgets 1 --seeds 0 --epochs 1 --model openai/whisper-tiny   # smoke
     python src/training/run_panel.py --summary
 
-Step mode and tuning (docs/training_plan_v3.md).  --max-steps switches train.py to a
+Step mode and tuning.  --max-steps switches train.py to a
 fixed number of optimiser steps for every budget, validation every 20 steps and
 early stopping after --patience validations without improvement (4 by default);
 --dropouts and --augments are swept like --lrs and --ranks; --plan
@@ -43,7 +43,7 @@ collects the validation results into outputs/tuning.csv.
         --speakers 30685 23558 30718 30859 --budgets 5 80 --lrs 1e-4 3e-4 1e-3 --seeds 0
     python src/training/run_panel.py --tuning-report
 
-The second test set (docs/training_plan_v3.md § 4).  --test07-plan panel_test07.parquet
+The second test set.  --test07-plan panel_test07.parquet
 also scores every cell and every control evaluation on plan v2's test sessions at
 quality >= 0.7 (materialize.py plan-test07): `test07.*` columns beside the high-quality
 ones, split by quality band (`test07.bands.q070` ... `q095`).  The high-quality test is a
@@ -51,7 +51,7 @@ subset of it, so its hypotheses are reused and only the rest is transcribed.  A 
 scored before the flag was given gets its test07 scores on the next run, from its
 saved adapter.
 
-Run 4 (docs/training_plan_v4.md).  --cell-speakers trains own cells for those speakers
+Run 4.  --cell-speakers trains own cells for those speakers
 only, while the plan keeps every speaker for the control's pool.  The control keeps run
 3's definition -- control_folds over the panel's 12 speakers, at the seed -- and
 --control-extra names speakers outside the panel (23641, 23635): they never enter the
@@ -328,7 +328,7 @@ def run_control(P, audio_dir, epochs, batch, grad_accum, eval_batch, folds=2, bu
                 rank=8, lr=None, seed=0, dev_min=15, targets='protocol', select='loss', step=None, T07=None,
                 extra=(), attach=None, evals_only=None):
     """k adapters, each trained on a pool from the speakers NOT in its fold and
-    evaluated on the fold's speakers.  With k=1 (the handoff's single adapter)
+    evaluated on the fold's speakers.  With k=1 (a single adapter)
     the pool spans all the speakers and each is evaluated on an adapter that saw
     ~budget/11 minutes of them -- stated in the JSON as `saw_own_minutes`.
     extra / attach / evals_only: run 4's speakers outside the panel (fold_plan)."""
@@ -393,8 +393,8 @@ def run_tune(c, P, audio_dir, batch, grad_accum, step, model_override=None):
 
 def tuning_report(out=TUNING, runs=TUNE_RUNS):
     """One row per tuning run: the settings, the untuned and the best validation
-    loss, and rel_drop = the relative drop between them -- the tuning criterion
-    (docs/training_plan_v3.md, step 3).  Prints the mean over speakers per recipe
+    loss, and rel_drop = the relative drop between them -- the tuning criterion.
+    Prints the mean over speakers per recipe
     and budget, with how many speakers each recipe helped."""
     rows = []
     for d in sorted(glob.glob(os.path.join(runs, '*', 'train_meta.json'))):
@@ -507,7 +507,7 @@ def summary(out=os.path.join(HERE, 'outputs', 'results.csv')):
     print(R[cols].round(4).to_string(index=False))
     return R
 
-# ---- run 4: the data curve (docs/training_plan_v4.md) ----------------------------------
+# ---- run 4: the data curve ------------------------------------------------------------
 CURVE = os.path.join(HERE, 'outputs', 'curve_v4.csv')
 CURVE_REF, CURVE_MIN_GAIN, CURVE_MIN_SPEAKERS = 80, 0.02, 2   # the plan's decision rule, fixed before the run
 
@@ -547,7 +547,7 @@ def curve_verdict(C, test='test07', min_gain=CURVE_MIN_GAIN, min_speakers=CURVE_
     return 'undecided'
 
 def capacity(R, out=os.path.join(HERE, 'outputs', 'capacity_v4.csv')):
-    """The capacity check (docs/STATUS.md, run 4): personalization of the r = 32 cells
+    """The capacity check (run 4): personalization of the r = 32 cells
     beside the r = 8 cell of the same speaker, budget and seed.  If r = 32 is clearly higher, the
     adapter's size, not the data, was the limit."""
     big = R[R['rank'] > 8]
@@ -607,12 +607,12 @@ def data_curve(results=os.path.join(HERE, 'outputs', 'results.csv'), out=CURVE, 
     if not len(C): print('no speaker has both the reference and a larger budget yet'); return None
     C.to_csv(out, index=False, float_format='%.5g')
     print(C[['speaker', 'test', 'top_budget', 'pers_ref', 'pers_top', 'delta', 'ci_lo', 'ci_hi', 'p']].round(4).to_string(index=False))
-    print(f'decision (>= 0.7 test, docs/training_plan_v4.md): {curve_verdict(C)}')
+    print(f'decision (>= 0.7 test): {curve_verdict(C)}')
     return C
 
 def _self_check():
     panel = [556, 23558, 30685, 30701, 30718, 30752, 30777, 30813, 30831, 30843, 30859, 30868]
-    # the folds over the panel are run 3's (docs/training_run3.md): an extra speaker never moves them
+    # the folds over the panel are run 3's: an extra speaker never moves them
     for seed in (0, 1, 2):
         plain = control_folds(panel, 2, seed)
         fp = fold_plan(panel + [23641, 23635], 2, seed, extra=[23641, 23635], attach=23558)
@@ -645,9 +645,9 @@ if __name__ == '__main__':
     ap.add_argument('--control-budget', type=int, default=80); ap.add_argument('--control-only', action='store_true')
     ap.add_argument('--transcribe-parts', action='store_true', help='both arms over every speaker\'s train and dev chunks (cached), then exit')
     ap.add_argument('--build-targets', action='store_true', help='write outputs/targets_verbatim.parquet from the cached train/dev transcriptions, then exit')
-    ap.add_argument('--targets', choices=['protocol', 'verbatim'], default='protocol', help='training target text (docs/archive/training_next.md A1)')
-    ap.add_argument('--plan', default=PLAN, help='the data plan; panel_plan_v2.parquet = the high-quality plan (docs/training_plan_v3.md)')
-    ap.add_argument('--max-steps', type=int, help='step mode: this many optimiser steps for every budget (docs/training_plan_v3.md)')
+    ap.add_argument('--targets', choices=['protocol', 'verbatim'], default='protocol', help='training target text')
+    ap.add_argument('--plan', default=PLAN, help='the data plan; panel_plan_v2.parquet = the high-quality plan')
+    ap.add_argument('--max-steps', type=int, help='step mode: this many optimiser steps for every budget')
     ap.add_argument('--eval-steps', type=int, default=20, help='step mode: validate every N steps')
     ap.add_argument('--patience', type=int, default=4, help='step mode: stop after N validations without improvement (fixed, not tuned)')
     ap.add_argument('--min-epochs', type=float, help='step mode: early stopping may not stop before this many passes over the train set (run 4: 720 and 1,440 min)')

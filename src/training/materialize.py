@@ -22,12 +22,12 @@ run on different machines:
             at quality >= 0.95 that also pass the word rule (word_quality.py,
             which must run first), the panel plus 556 (12 speakers).  Writes
             panel_plan_v2.parquet.  extract/verify/upload take --plan to use it.
-  plan-test07  laptop.  The second test set (docs/training_plan_v3.md § 4): plan
+  plan-test07  laptop.  The second test set: plan
             v2's own test sessions, every chunk at quality >= 0.7 and no word
             rule, so the high-quality test is a subset of it and the two differ
             only in the filter.  Writes panel_test07.parquet (test rows only,
             `hq` marks the chunks of v2's test); extract only adds what is new.
-  plan-v4   laptop.  Run 4 (docs/training_plan_v4.md): plan v2's rule over the panel plus
+  plan-v4   laptop.  Run 4: plan v2's rule over the panel plus
             word_quality.RUN4_NEW, with longer train -- TRAIN_FILL minutes per speaker
             (1,440 for 23558 and 23641, 360 for 23635, up to 800 for the rest of the
             panel, whose train feeds the large controls).  Test and dev are plan v2's for
@@ -42,7 +42,7 @@ run on different machines:
 
 The plan's `session` column is a DATE-SORTABLE key, 'YYYY-MM-DD_<session id>',
 because train.py's take_budget orders train by `session` descending and
-docs/committees_handoff.md warns that session ids and dates diverge per speaker;
+session ids and dates diverge per speaker;
 `session_id` keeps the number.  `start`/`end` are offsets INSIDE the chunk's own
 WAV (0 and its duration), which is what read_wav slices by.
 
@@ -72,9 +72,9 @@ DL     = os.path.join(HERE, 'outputs', '_shards')
 
 MIN_QUALITY, DEV_MIN, BUDGET_MIN, TEST_FLOOR_MIN = 0.7, 15, 80, 45
 # plan v2: a speaker with too few high-quality minutes for 45 test + 15 dev + 80 train keeps
-# the 80-minute budget and gives up test and dev minutes (docs/training_plan_v3.md § 1)
+# the 80-minute budget and gives up test and dev minutes
 SPLIT_MIN = {30843: dict(test=30, dev=10)}
-# plan v4 (docs/training_plan_v4.md): train minutes to fill per speaker, and the minimum each
+# plan v4: train minutes to fill per speaker, and the minimum each
 # needs (its top budget).  The rest of the panel fills up to RUN4_PANEL_TRAIN: its train is
 # the pool the 1,440-minute controls are drawn from, and a fold of six can hold three
 # speakers with little high-quality audio (556, 30813, 30843).
@@ -137,7 +137,7 @@ def plan(panel_path=PANEL, index_path=INDEX, out=PLAN, budget_min=BUDGET_MIN, de
     return P
 
 def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_FLOOR_MIN, index_path=INDEX):
-    """The high-quality plan (docs/training_plan_v3.md, step 1): every split is drawn
+    """The high-quality plan: every split is drawn
     from chunks at quality >= 0.95 that also pass the word rule (word_quality.word_ok:
     few clearly misaligned words, no run of them), for the panel with
     word_quality.PANEL_ADD (556).  Per speaker, session-disjoint by date: the
@@ -188,7 +188,7 @@ def _plan_hq(speakers, train_fill, train_need, out, dev_min=DEV_MIN, test_min=TE
     return P
 
 def plan_v4(out=PLAN_V4, index_path=INDEX):
-    """Run 4's plan (docs/training_plan_v4.md): plan v2's rule for the panel plus
+    """Run 4's plan: plan v2's rule for the panel plus
     word_quality.RUN4_NEW, train filled to TRAIN_FILL (RUN4_PANEL_TRAIN for the rest of
     the panel).  The panel's test and dev must be plan v2's and v2's train a prefix of
     v4's, or run 3's cells and controls would not be the same experiment: asserted."""
@@ -215,7 +215,7 @@ def check_v4_extends_v2(P, V2=None):
     return True
 
 def plan_test07(out=PLAN_TEST07, plan_v2_path=PLAN_V2, index_path=INDEX, min_quality=MIN_QUALITY):
-    """The second test set (docs/training_plan_v3.md § 4): the same test sessions as
+    """The second test set: the same test sessions as
     plan v2, with every chunk at quality >= min_quality (0.7, the corpus floor: below
     it the protocol demonstrably does not match the audio) and no word rule.  v2's
     filter keeps the clips a Whisper-family aligner found easy, so for the hardest
@@ -382,8 +382,8 @@ The audio the adaptation stage trains and tests on: {len(P):,} chunks ({P.durati
 as 16 kHz 16-bit mono WAV under `panel_audio/<speaker_id>/<chunk_id>.wav`. `{name}` is the
 table: one row per chunk with the reference text, session and date, and the split (`part`: test = the
 speaker's newest sessions, then dev, the rest train; session-disjoint by date; train ordered latest-first so
-nested budgets are prefixes). Built by `src/training/materialize.py` in hadasy-tau/deep-learning-project;
-why these speakers is `docs/adaptation_plan.md` there. Source audio: ivrit.ai; references: the Knesset protocols.
+nested budgets are prefixes). Built by `src/training/materialize.py` in hadasy-tau/deep-learning-project.
+Source audio: ivrit.ai; references: the Knesset protocols.
 """
     api.upload_file(path_or_fileobj=card.encode('utf-8'), path_in_repo='README.md', repo_id=repo, repo_type='dataset')
     api.upload_file(path_or_fileobj=plan_path, path_in_repo=os.path.basename(plan_path), repo_id=repo, repo_type='dataset')

@@ -1,6 +1,6 @@
 """Stage 3 validate: how often would Path B put the wrong person on a word?
 
-Holdout simulation (docs/speaker_index_plan.md, Step 4.1): on sessions that HAVE a corpus
+Holdout simulation: on sessions that HAVE a corpus
 shard, label every word twice -- Path A (gold + raw name + active_on) and Path B
 (raw name only, with the alias tables) -- and score B against A by duration.
 The number that matters is cross-person: B assigned an id and A says it is

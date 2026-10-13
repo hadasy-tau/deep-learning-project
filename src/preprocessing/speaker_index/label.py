@@ -1,6 +1,6 @@
 """Stage 3 label: decide, word by word, who is speaking -- and record why.
 
-Two paths (docs/speaker_index_plan.md):
+Two paths:
   Path A  the session has a corpus shard.  A word gets a person_id only if the
           gold sentence covering it names that numeric id, the ivrit.ai raw name
           agrees with an accepted spelling of that person, and the person held a

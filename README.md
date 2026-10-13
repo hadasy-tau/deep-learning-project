@@ -41,7 +41,7 @@ src/
                                (panel_plan.parquet says which chunks, which split);
                                train.py: one cell -> one adapter (speaker, arm, site, method,
                                budget, rank, lr, seed); run_panel.py: cells -> scored results.
-                               README.md there is the GPU session, in order
+                               box/: the GPU sessions, pod_v3.sh (run 3) and pod_v4.sh (run 4)
   evaluation/evaluate.py       transcribe, count errors, paired bootstrap
   evaluation/error_map.py      the per-speaker error map over the committees inference:
                                WER/CER and gain per speaker with CIs, subgroup viability and
@@ -52,16 +52,8 @@ src/
 notebooks/                     explore_committees.ipynb, committees_error_map(_v2).ipynb (the
                                Stage 1 analysis on the committees), training_run3_figures.ipynb
                                and training_run4_figures.ipynb (the paper's Stage 2 figures)
-paper/                         the paper: LaTeX source, figures, the compiled PDF.
-                               README.md there is the guide for editing it
-docs/                          STATUS.md where it all stands, the one document kept current.
-                               design.md + design.html: the one-page overview, end to end.
-                               The build records: committees_handoff.md, speaker_index_plan.md,
-                               chunk_corpus_build.html, inference.md, error_map.md.
-                               adaptation_plan.md: the design. The training plans
-                               (training_plan_v3.md, training_plan_v4.md) and the runs
-                               (training_run2.md, training_run3.md, training_run4.md).
-                               docs/archive/ is history, not instructions
+paper/                         the paper: LaTeX source, figures, the compiled PDF and the
+                               same folder zipped for Overleaf
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
                                and speaker_index/publish.py
 ```
@@ -69,9 +61,6 @@ cache/                         git-ignored. Secrets (mode 600) read by inference
 Each folder is self-contained and imports its siblings flat, so run things by path
 (`python src/inference/run.py`) or put the folder on `sys.path`. Anything shared lives in
 `src/common.py`, reached by putting `src/` on the path.
-
-**Working with the corpus itself:** read [`docs/committees_handoff.md`](docs/committees_handoff.md)
-first: what the corpus is, how to read it, what is known to be wrong with it.
 
 ## Data
 
@@ -103,13 +92,9 @@ cut from `ivrit-ai/knesset-committees`, which is gated under the ivrit.ai licenc
 `speaker_id` throughout is the Knesset's official `PersonID` — the same id space as
 KnessetCorpus — so the tables join directly.
 
-## State
+## Self-checks
 
-Where the project stands, what the runs found, what comes next and which earlier claims are
-withdrawn: **[`docs/STATUS.md`](docs/STATUS.md)**, the one document kept current. The rest of
-`docs/` is reference or dated record; `docs/archive/` is history, not instructions.
-
-Self-checks, no GPU and no network beyond the cached data:
+No GPU and no network beyond the cached data:
 
 ```bash
 python src/common.py                                   # Hebrew normalisation, splits

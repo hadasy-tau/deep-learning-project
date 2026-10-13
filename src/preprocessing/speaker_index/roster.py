@@ -1,6 +1,6 @@
 """Stage 3 roster: who was a Knesset member, when, and what we know about them.
 
-Facts that shape this file (measured 6 Sep 2026, see docs/speaker_index_plan.md):
+Facts that shape this file (measured 6 Sep 2026):
   * KnessetCorpus person_id == the Knesset's official PersonID (526 גפני, 528 ליצמן
     in both).  VoxKnesset's speaker_id is the same number.  So the id space is the
     Knesset's, and the Knesset ODATA API is the authority on *who was an MK when*.

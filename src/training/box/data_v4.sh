@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run 4's audio, cut before any GPU is rented (docs/training_plan_v4.md).  Runs on any machine
+# Run 4's audio, cut before any GPU is rented.  Runs on any machine
 # with the repo and an HF login; run 4's was cut on the laptop, which already held plan v2's
 # clips under src/training/outputs/panel_audio/.
 #

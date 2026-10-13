@@ -1,6 +1,6 @@
 """Stage 3 publish: push the index (never audio) to a private HuggingFace dataset.
 
-Decisions (docs/speaker_index_plan.md): index only; knesset-asr/knesset-committees-speakers;
+Decisions: index only; knesset-asr/knesset-committees-speakers;
 private until Step 4 passes; licence CC-BY-SA 4.0 inherited from the Knesset
 Corpus; credits ivrit.ai and the Knesset Corpus.
 

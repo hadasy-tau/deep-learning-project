@@ -1,7 +1,7 @@
 """Stage 3 names: turn a raw protocol speaker string into something comparable,
 and compare it -- exactly -- with the roster.
 
-Facts that shape this file (see docs/speaker_index_plan.md):
+Facts that shape this file:
   * Raw names come from the Knesset editor's speaker picker (ET_speaker bookmarks),
     so MK names are consistently spelled; the noise is role prefixes (היו"ר),
     party suffixes ((הליכוד)), ministry titles (שר הרווחה ... יעקב מרגי) and

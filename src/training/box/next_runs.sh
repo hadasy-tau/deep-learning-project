@@ -1,9 +1,9 @@
 #!/bin/bash
 # A record of the 2026-09-20 session.  --select forgiven no longer exists (the forgiven-shared
-# count is withdrawn, docs/STATUS.md § Withdrawn): runs A and B cannot be rerun as written.
-# docs/archive/training_next.md items 1, 2(A2 alone) and 4: wait for the lr sweep chain ($1) and the
-# train/dev transcription ($2), build the semi-verbatim targets, then three runs, each with
-# its two-fold control, then the summary and a backup.
+# count is withdrawn): runs A and B cannot be rerun as written.
+# It waits for the lr sweep chain ($1) and the train/dev transcription ($2), builds the
+# semi-verbatim targets, then runs three runs, each with its two-fold control, then the
+# summary and a backup.
 cd /workspace/deep-learning-project && source /workspace/env.sh
 export TRANSFORMERS_VERBOSITY=error HF_HUB_DISABLE_PROGRESS_BARS=1
 echo "[$(date)] waiting for pids $1 $2"

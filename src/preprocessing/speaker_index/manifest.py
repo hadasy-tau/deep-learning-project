@@ -1,7 +1,7 @@
 """Stage 3 manifest: which committee sessions exist, what each one has, and
 which labelling path it takes.
 
-Facts that shape this file (measured 6 Sep 2026, see docs/speaker_index_plan.md):
+Facts that shape this file (measured 6 Sep 2026):
   * ivrit-ai/knesset-committees has 13,176 session directories named by the
     Knesset's own CommitteeSessionID.  17% hold only the protocol .doc (no
     audio, no transcripts) and are skipped.

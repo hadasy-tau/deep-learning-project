@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run 4 on a GPU pod (docs/training_plan_v4.md).  All the data work happened before the pod
+# Run 4 on a GPU pod.  All the data work happened before the pod
 # (word scores, plans, gate, and data_v4.sh extracting the audio into panel-hq), so this only
 # boots and runs the queue (jobs_v4.py).
 #

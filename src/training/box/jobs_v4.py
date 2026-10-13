@@ -1,4 +1,4 @@
-"""Run 4's GPU work as one queue (docs/training_plan_v4.md), so no GPU waits on a stage.
+"""Run 4's GPU work as one queue, so no GPU waits on a stage.
 
 Every job is one command -- a base transcription, one own cell, one control fold, the lr
 decision -- with the jobs it needs first.  Workers (one or more per GPU) take the ready job
@@ -21,7 +21,7 @@ What runs (seeds: 3 at 80 and at each speaker's top budget, seed 0 elsewhere):
 Controls: run 3's folds over the panel (run_panel.fold_plan), one job per fold that
 evaluates any of these speakers at a (budget, seed) that has own cells; 23641 and 23635 are
 attached to 23558's fold.  If the plan holds fewer than 1,440 train minutes for 23558 or
-23641, its top budget falls back to 1,200 (docs/training_plan_v4.md § Data).
+23641, its top budget falls back to 1,200.
 """
 import argparse, fcntl, json, os, subprocess, sys, time
 from contextlib import contextmanager
