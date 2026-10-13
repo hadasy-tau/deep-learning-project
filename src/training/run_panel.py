@@ -27,15 +27,16 @@ and third runs' result files still carry `*_f` columns; the summary drops them.
         personalization = delta(own adapter) - delta(others' adapter).
 
     python src/training/run_panel.py --dry-run                                  # list the cells, nothing loaded
-    python src/training/run_panel.py --arm B --budgets 5 20 80 --seeds 0 1 2    # the first experiment (the plan's)
+    python src/training/run_panel.py --arm B --budgets 5 20 80 --seeds 0 1 2    # epoch mode, as run 2 trained
     python src/training/run_panel.py --speakers 30831 --budgets 1 --seeds 0 --epochs 1 --model openai/whisper-tiny   # smoke
     python src/training/run_panel.py --summary
 
 Step mode and tuning.  --max-steps switches train.py to a
 fixed number of optimiser steps for every budget, validation every 20 steps and
 early stopping after --patience validations without improvement (4 by default);
---dropouts and --augments are swept like --lrs and --ranks; --plan
-panel_plan_v2.parquet trains and tests on the high-quality data.  --tune trains and
+--dropouts and --augments are swept like --lrs and --ranks.  The default plan,
+panel_plan_v2.parquet, trains and tests on the high-quality data (run 2's plan,
+panel_plan.parquet, is not in git; --plan names another).  --tune trains and
 validates only -- the test set is never transcribed -- and --tuning-report
 collects the validation results into outputs/tuning.csv.
 
@@ -82,7 +83,8 @@ import numpy as np, pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, '..')); sys.path.insert(0, os.path.join(ROOT, 'src', 'evaluation'))
 
-PLAN, AUDIO = os.path.join(HERE, 'panel_plan.parquet'), os.path.join(HERE, 'outputs', 'panel_audio')
+PLAN, AUDIO = os.path.join(HERE, 'panel_plan_v2.parquet'), os.path.join(HERE, 'outputs', 'panel_audio')
+PLAN_V1 = os.path.join(HERE, 'panel_plan.parquet')       # run 2's plan, not in git: its cells carry no data tag
 RUNS, RESULTS = os.path.join(HERE, 'runs'), os.path.join(HERE, 'outputs', 'results')
 TUNE_RUNS, TUNING = os.path.join(HERE, 'runs_tune'), os.path.join(HERE, 'outputs', 'tuning.csv')
 PLAN_TEST07 = os.path.join(HERE, 'panel_test07.parquet')
@@ -646,7 +648,7 @@ if __name__ == '__main__':
     ap.add_argument('--transcribe-parts', action='store_true', help='both arms over every speaker\'s train and dev chunks (cached), then exit')
     ap.add_argument('--build-targets', action='store_true', help='write outputs/targets_verbatim.parquet from the cached train/dev transcriptions, then exit')
     ap.add_argument('--targets', choices=['protocol', 'verbatim'], default='protocol', help='training target text')
-    ap.add_argument('--plan', default=PLAN, help='the data plan; panel_plan_v2.parquet = the high-quality plan')
+    ap.add_argument('--plan', default=PLAN, help='the data plan (default panel_plan_v2.parquet, the high-quality plan of run 3)')
     ap.add_argument('--max-steps', type=int, help='step mode: this many optimiser steps for every budget')
     ap.add_argument('--eval-steps', type=int, default=20, help='step mode: validate every N steps')
     ap.add_argument('--patience', type=int, default=4, help='step mode: stop after N validations without improvement (fixed, not tuned)')
@@ -676,7 +678,7 @@ if __name__ == '__main__':
     T07 = load_plan(a.test07_plan, speakers=a.speakers) if (a.test07_plan and not a.tune) else None
     if T07 is not None:
         assert set(P[P.part == 'test'].chunk_id) <= set(T07.chunk_id), f'{a.test07_plan} does not contain {a.plan}\'s test set: rebuild it (materialize.py plan-test07)'
-    data_tag = '' if os.path.abspath(a.plan) == os.path.abspath(PLAN) else 'hq'
+    data_tag = '' if os.path.abspath(a.plan) == os.path.abspath(PLAN_V1) else 'hq'
     steps = [dict(max_steps=a.max_steps, eval_steps=a.eval_steps, patience=a.patience, dropout=d, augment=g, data=data_tag,
                   **({'min_epochs': a.min_epochs} if a.min_epochs else {}))
              for d in a.dropouts for g in a.augments] if a.max_steps else [{}]
