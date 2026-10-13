@@ -85,7 +85,7 @@ def make_splits(chunks, test_min, dev_min=15):
 
 
 def budget_order(train_chunks):
-    """Train chunks ordered latest session first, so D4's nested budgets
+    """Train chunks ordered latest session first, so the nested budgets
     (1,2,5,10,20,40,80 min) are prefixes of one ordering and nested by
     construction.  Latest-first keeps train temporally closest to dev/test."""
     return train_chunks.sort_values(['session', 'start'], ascending=[False, True])

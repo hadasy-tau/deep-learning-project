@@ -7,7 +7,7 @@ The number that matters is cross-person: B assigned an id and A says it is
 someone else, or a guest.  Recall is reported but is not the gate.
 
 Regression: the K25 guest->retired-MK errors found in the corpus must never
-receive an id under Path A.  The audio-embedding check (Step 4.2) needs
+receive an id under Path A.  The audio-embedding check (validate_audio.py) needs
 materialised audio and is not in this file.
 """
 import os

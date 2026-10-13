@@ -1,9 +1,9 @@
 """Drive the panel through train.py and evaluate.py: cells in, scored results out.
 
-One cell = (speaker, arm, site, method, budget, rank, lr, seed), D4's axes.  For
+One cell = (speaker, arm, site, method, budget, rank, lr, seed), the experiment's axes.  For
 each cell this trains the adapter (train.train_cell, idempotent), transcribes
 the speaker's personal-test chunks with the base model and with the tuned one
-(evaluate.transcribe_short, D7's primary protocol), scores both (evaluate.score:
+(evaluate.transcribe_short, the primary protocol), scores both (evaluate.score:
 counts, S/D/I, runaway), runs the paired bootstrap, and writes one JSON per
 cell under outputs/results/.  The base model's transcription of a speaker's
 test set is cached once per (arm, speaker) -- it is the same for every cell.
@@ -19,7 +19,7 @@ models agreeing against the protocol means the protocol is wrong, an assumption 
 to rest a result on.  The second
 and third runs' result files still carry `*_f` columns; the summary drops them.
 
-  the cross-speaker control (D3)   --control-folds K trains K adapters, each on a
+  the cross-speaker control   --control-folds K trains K adapters, each on a
         budget-matched pool drawn from the panel speakers of the other folds,
         and evaluates every speaker on the adapter that never saw them.  K=2 is
         one extra training run over a single adapter and leaves no
@@ -283,7 +283,7 @@ def run_cell(c, P, audio_dir, epochs, batch, grad_accum, eval_batch, model_overr
           f'in {(time.time()-t0)/60:.1f} min ' + ' '.join(f'{k} {v:.0f}s' for k, v in phase.items()), flush=True)
     return res
 
-# ---- the cross-speaker control (D3) --------------------------------------------------
+# ---- the cross-speaker control -------------------------------------------------------
 def pool_budget(P, speakers, budget_min, part='train', seed=0):
     """A budget-matched pool over several speakers: round-robin over each
     speaker's own budget ordering (latest session first, the same prefix the
@@ -435,7 +435,7 @@ def _table(rows, control_budget=80):
     # the acceptance rule: where did the improvement come from?
     R['improvement_from_insertions'] = ((R['base.I'] * R.wer_base - R['tuned.I'] * R.wer_tuned) / (R.wer_base - R.wer_tuned).replace(0, np.nan)).clip(-5, 5)
     R['style_not_speaker'] = R.improvement_from_insertions > 0.5
-    # D3: personalization = delta(own adapter) - delta(others' adapter), per speaker, on the same test chunks,
+    # personalization = delta(own adapter) - delta(others' adapter), per speaker, on the same test chunks,
     # within one recipe (the cell-name suffix).  A control trained at the cell's own budget is used when it
     # exists; otherwise the recipe's control at `control_budget` (80 min) -- the second run's rows, whose
     # smaller budgets read as 'less audio of the speaker versus 80 minutes of everyone else'.
@@ -641,7 +641,7 @@ if __name__ == '__main__':
     ap.add_argument('--epochs', type=int, default=8); ap.add_argument('--batch', type=int, default=8); ap.add_argument('--grad-accum', type=int, default=1)
     ap.add_argument('--eval-batch', type=int, default=8); ap.add_argument('--model', help='override the arm\'s checkpoint (smoke tests only)')
     ap.add_argument('--audio', default=AUDIO); ap.add_argument('--dry-run', action='store_true'); ap.add_argument('--summary', action='store_true')
-    ap.add_argument('--control-folds', type=int, default=0, help='D3: train the cross-speaker control in K folds after the cells (0 = none)')
+    ap.add_argument('--control-folds', type=int, default=0, help='train the cross-speaker control in K folds after the cells (0 = none)')
     ap.add_argument('--control-budget', type=int, default=80); ap.add_argument('--control-only', action='store_true')
     ap.add_argument('--transcribe-parts', action='store_true', help='both arms over every speaker\'s train and dev chunks (cached), then exit')
     ap.add_argument('--build-targets', action='store_true', help='write outputs/targets_verbatim.parquet from the cached train/dev transcriptions, then exit')

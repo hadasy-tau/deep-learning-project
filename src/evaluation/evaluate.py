@@ -61,7 +61,7 @@ def load(arm='B', adapter=None, device=None):
 
 
 def transcribe_short(model, proc, chunks, audio_dir, batch=32, device='cpu'):
-    """Short-form: one <=30 s chunk per example. D7's primary protocol.
+    """Short-form: one <=30 s chunk per example. The primary protocol.
 
     Greedy decoding, the checkpoint's own generation config, and the loop guard
     above -- identical for the base, the own adapter and the control, which is
@@ -105,7 +105,7 @@ def transcribe_long(model, proc, filenames, audio_dir, device='cpu'):
 
 def _transcribe_long(model, proc, filenames, audio_dir, device):
     """Long-form: the whole recording in one pass, so Whisper's own sequential
-    algorithm handles the >30 s audio. D7's secondary protocol -- and the only
+    algorithm handles the >30 s audio. The secondary protocol -- and the only
     one comparable with Stage 1, which scored whole recordings."""
     out = []
     for fn in filenames:
@@ -147,7 +147,7 @@ def score(refs, hyps):
                          werr=S + D + I, cerr=Levenshtein.distance(' '.join(r), ' '.join(h)),
                          S=S, D=D, I=I,
                          # Stage 1's runaway flag: a looping decoder, which
-                         # fine-tuned Whisper is known to regress into (D5).
+                         # fine-tuned Whisper is known to regress into.
                          runaway=len(h) > 3 * max(len(r), 1)))
     return pd.DataFrame(rows)
 

@@ -1,4 +1,4 @@
-"""Stage 3, Step 4.2 -- the audio gate.
+"""Stage 3 -- the audio gate.
 
 Every check so far reads text.  Path A requires the corpus and ivrit.ai to agree on
 a name; Path B requires the name to equal a seated MK's.  Neither can see the one
