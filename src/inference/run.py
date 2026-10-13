@@ -119,7 +119,7 @@ class Runner:
             for f in as_completed(futs): pass
         self.fh.close(); self.progress(self.stats['ok'] + self.stats['failed'], n, final=True)
 
-    # Live cost, from what each provider actually bills (docs/inference.md):
+    # Live cost, from what each provider actually bills:
     #   A  deepinfra   $0.00045 per audio-minute, no per-call fee
     #   B  RunPod      GPU worker-seconds; exec_s is the provider's own figure per job,
     #                  priced at the AMPERE_16 pool's A4000 rate; idle is not visible here

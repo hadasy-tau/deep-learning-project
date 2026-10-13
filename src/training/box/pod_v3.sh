@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Plan v3 on a GPU pod, stage by stage.  docs/archive/pod_runbook_v3.md is the order, the stop rules
-# and what to report; docs/training_plan_v3.md is why.  Every stage is idempotent: a scored
+# Plan v3 on a GPU pod, stage by stage.  Every stage is idempotent: a scored
 # cell, a finished adapter, a tuning run and a cached base transcription are all skipped on a
 # rerun, so after a crash or a preemption run the same stage again.
 #
@@ -15,7 +14,7 @@
 #   bash src/training/box/pod_v3.sh summary    # outputs/results.csv, one last backup
 #   bash src/training/box/pod_v3.sh all        # sanity -> tune -> base -> final -> seeds -> summary
 #
-# The panel is the 12 speakers of panel_plan_v2.parquet (30601 deferred, docs/training_plan_v3.md § 1).
+# The panel is the 12 speakers of panel_plan_v2.parquet (30601 deferred).
 #
 # Several GPUs: GPUS=N (default: every GPU the pod has).  The work is hundreds of independent
 # ~3-minute jobs, so N GPUs finish in about 1/N of the time at the same GPU-hours, i.e. the same
@@ -184,6 +183,6 @@ case "${1:-}" in
     setup|data|backup|sanity|tune|base|final|seeds|summary) run "$1" ;;
     all)
         run sanity; run tune; run base; run final; run seeds; run summary
-        say "all: done -- docs/archive/pod_runbook_v3.md § What to report" ;;
+        say "all: done" ;;
     *) awk 'NR > 1 && !/^#/ { exit } NR > 1' "$0"; exit 1 ;;     # the header comment is the usage
 esac

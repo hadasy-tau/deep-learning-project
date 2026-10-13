@@ -1,7 +1,7 @@
 """Stage 3 segments: cut labelled word runs into audio pieces, attach the
 person's demographics, and write the index.  No audio is touched.
 
-Conventions (docs/speaker_index_plan.md, VoxKnesset README):
+Conventions (as in the VoxKnesset dataset card):
   filename   {speaker_id}_{session_id}_{start_ms}_{end_ms}.wav  (0 = no id), so
              src/common.py's regex parses speaker and session unchanged
   gender     0 = female, 1 = male

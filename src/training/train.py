@@ -50,7 +50,7 @@ SITES = {
 # overrides these -- the optimization axis sweeps {3e-4, 1e-3, 3e-3} on adapters.
 DEFAULT_LR = {'lora': 1e-3, 'dora': 1e-3, 'ia3': 1e-3, 'full': 1e-5}
 
-# docs/training_plan_v3.md.  Step mode (max_steps set): every budget gets the same
+# Step mode (max_steps set): every budget gets the same
 # number of optimiser steps, validation every EVAL_STEPS, a constant rate after
 # WARMUP_STEPS (a decaying schedule would tie the rate to max_steps, and a run
 # that stops early would never reach its low-rate phase).
@@ -80,7 +80,7 @@ def recipe_tag(max_steps=None, eval_steps=EVAL_STEPS, patience=None, dropout=Non
 
 
 def _min_steps_early_stopping(patience, min_steps):
-    """EarlyStoppingCallback that may not stop before `min_steps` (docs/training_plan_v4.md):
+    """EarlyStoppingCallback that may not stop before `min_steps`:
     at 720 and 1,440 minutes the fixed patience would end training before one pass over the
     data, so the largest budgets would not really have been seen.  It keeps counting
     validations without improvement all along, so once min_steps is reached it stops at the
@@ -97,8 +97,8 @@ class ChunkDataset(Dataset):
     """Chunks -> (log-mel features, label ids). Audio is sliced out of the
     whole-recording wavs that `materialize` wrote.
 
-    augment: waveform augmentations for the TRAINING set only (docs/training_plan_v3.md
-    § Augmentation), drawn afresh every time a chunk is read.  'tempo' changes the
+    augment: waveform augmentations for the TRAINING set only,
+    drawn afresh every time a chunk is read.  'tempo' changes the
     speaking rate at the same pitch (0.9-1.1, half the chunks) -- unlike resampling
     'speed' perturbation it keeps the voice; 'noise' adds coloured noise at
     10-25 dB SNR (half the chunks).  SpecAugment is not here: it is Whisper's own,
@@ -189,9 +189,9 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     protocol), so variants of one recipe never collide.
     select: 'loss', the checkpoint with the lowest dev loss.  Selection on dev
     forgiven-shared WER ('forgiven', the second run's runs A and B) is removed with
-    that count (docs/STATUS.md § Withdrawn).
+    that count.
 
-    Step mode (docs/training_plan_v3.md), off unless max_steps is given:
+    Step mode, off unless max_steps is given:
     max_steps: the same number of optimiser steps for every budget (epochs is then
     ignored); validation loss every eval_steps, constant lr after WARMUP_STEPS,
     the best checkpoint restored at the end.
@@ -328,7 +328,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
     trainer.save_model(out)
     proc.save_pretrained(out)
     # What the run did, for the results table: steps and the dev-loss curve.
-    # Point 4 of the handoff's "Before the second run": passes are fixed at
+    # Passes are fixed at
     # `epochs`, so steps scale with the budget -- record them rather than hide it.
     st = trainer.state
     evals = [{k: h[k] for k in h if k.startswith('eval_') or k in ('epoch', 'step')} for h in st.log_history if 'eval_loss' in h]
@@ -372,7 +372,7 @@ def train_cell(chunks, audio_dir, out_root, speaker, arm='B', site='both',
 
 
 def overfit_check(chunks, audio_dir, speaker, arm='B', n=20, steps=60, batch=4):
-    """Training sanity (docs/adaptation_plan.md § Verification): a correct setup drives a 20-example
+    """Training sanity: a correct setup drives a 20-example
     subset to near-zero loss. If this does not fall, nothing downstream is
     worth running.
 

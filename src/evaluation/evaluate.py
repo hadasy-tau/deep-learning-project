@@ -23,7 +23,7 @@ from common import read_wav, normalize_he
 
 ARMS = {'A': 'openai/whisper-large-v3', 'B': 'ivrit-ai/whisper-large-v3'}
 
-# The loop guard (docs/training_run2.md § Conclusion, item 6).  Greedy decoding sometimes
+# The loop guard.  Greedy decoding sometimes
 # loops ("של פרסים של פרסים ..."): one chunk then costs ~200 insertions and decides a cell.
 # A hypothesis is a loop when its text compresses too well -- Whisper's own test, zlib
 # ratio over the UTF-8 bytes -- and only those chunks are decoded again, greedily, with

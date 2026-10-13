@@ -1,4 +1,4 @@
-"""The audio gate for run 4's two new speakers, on their own plan chunks (docs/training_plan_v4.md).
+"""The audio gate for run 4's two new speakers, on their own plan chunks.
 
 speaker_index/validate_audio.py embeds segments with ECAPA-TDNN and flags a segment that is
 closer to another speaker's centroid than to its own.  Run 2 ran it on the panel's own

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Follow-ups to the seed-0 run (docs/training_run2.md): wait for it, then
+# Follow-ups to the seed-0 run: wait for it, then
 #   1. the site axis: LoRA on the encoder only, 80 min, all speakers, + its control
 #   2. the lr axis: 1e-4 and 3e-4 at 80 min, all speakers, + their controls
 cd /workspace/deep-learning-project && source /workspace/env.sh

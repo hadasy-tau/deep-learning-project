@@ -1,7 +1,7 @@
 """Stage 3 protocol: load one session's text-side files, the matching corpus
 shard, and put both on the same character axis.
 
-Facts that shape this file (see docs/speaker_index_plan.md):
+Facts that shape this file:
   * transcript.refined.json['text'] is raw.protocol.txt; map.json[i] gives the
     char span of segments[i] in it; speakers.segments.txt gives each raw
     speaker's char range.  All three share one axis (create_maps.py, ivrit.ai).

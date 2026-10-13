@@ -3,8 +3,7 @@
 error_map.py answers Stage 1's questions.  These functions answer the ones the
 committees corpus raised on top of them, each a plain function over the scored
 chunk table `kept` that error_map.run() returns (or the per-speaker table
-`spk`).  Driven from notebooks/committees_error_map.ipynb § 11; results in
-docs/error_map.md § Beyond Stage 1.
+`spk`).  Driven from notebooks/committees_error_map.ipynb § 11.
 
   by_condition        corpus WER by year, committee, chunk length, speaking rate
   chunk_level         the distribution of per-chunk WER; where both arms fail
@@ -97,7 +96,7 @@ def content_table(content):
     return pd.DataFrame(rows)
 
 def forgiven_counts(kept):
-    """**Withdrawn as evidence** (docs/STATUS.md § Withdrawn): it assumes an insertion both
+    """**Withdrawn as evidence**: it assumes an insertion both
     arms produced is speech the protocol dropped, an assumption too strong to rest a
     result on.  Kept so the error map's recorded outputs and the
     notebooks still run; do not cite its numbers.

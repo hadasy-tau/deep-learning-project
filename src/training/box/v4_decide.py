@@ -1,4 +1,4 @@
-"""The decisions of run 4, made by rule (docs/training_plan_v4.md).
+"""The decisions of run 4, made by rule.
 
     python src/training/box/v4_decide.py pick           # the lr check at 360 min -> outputs/recipe_v4.json
     python src/training/box/v4_decide.py flags 360      # one budget's recipe as run_panel flags (refuses before pick)
@@ -41,7 +41,7 @@ MAX_STEPS = {5: 400, 20: 400, 80: 400, 160: 1200, 360: 1200, 720: 3000, 1440: 30
 # 720 and 1,440 minutes: early stopping may not stop before one full pass over the train set.
 # Added 2026-10-04 after the first 45 jobs: at 360 minutes the best checkpoint came after ~1.3
 # passes, so the fixed patience (80 steps) would end a 1,440-minute run before it had seen half
-# its data (docs/STATUS.md, run 4).
+# its data.
 MIN_EPOCHS = {720: 1, 1440: 1, 1200: 1}
 # 5 minutes (added 2026-10-04, for the two new speakers): run 3's 5-minute recipe, whose lr check
 # picked 1e-4 there (outputs/recipe_v3.json), so their points match 23558's and 30752's from run 3.

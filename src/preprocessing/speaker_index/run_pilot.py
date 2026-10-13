@@ -1,6 +1,6 @@
 """Stage 3 pilot: Path A on a stratified slice, learn the alias tables, then Path
 B on post-cutoff K25 sessions.  Writes segments_pilot.parquet, alias_names.csv,
-alias_et.csv and a match report.  Run order from docs/speaker_index_plan.md.
+alias_et.csv and a match report.
 """
 import os, sys, time
 import pandas as pd

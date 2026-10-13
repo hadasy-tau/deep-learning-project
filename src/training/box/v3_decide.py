@@ -1,4 +1,4 @@
-"""The decisions of plan v3, made by rule rather than by eye (docs/archive/pod_runbook_v3.md).
+"""The decisions of plan v3, made by rule rather than by eye.
 
 pod_v3.sh calls this between stages, so the run never waits on someone reading a table:
 
@@ -8,7 +8,7 @@ pod_v3.sh calls this between stages, so the run never waits on someone reading a
     python src/training/box/v3_decide.py base [ids]    # base WER on the high-quality test vs the error map (exit 1 = stop)
     python src/training/box/v3_decide.py --self-check
 
-The tuning rule (docs/training_plan_v3.md § 2), per budget (5 and 80 minutes), on the four
+The tuning rule, per budget (5 and 80 minutes), on the four
 tuning speakers: a candidate replaces the incumbent only if it raises the mean rel_drop
 (relative drop in validation loss) by at least 0.01 absolute AND beats the incumbent for at
 least 3 of the 4 speakers; among candidates that pass, the largest mean gain wins.  The
@@ -30,7 +30,7 @@ TUNE_BUDGETS = [5, 80]
 INCUMBENT = dict(lr=3e-4, rank=8, dropout=0.0, augment='none')
 LRS, RANKS, DROPOUTS, AUGMENTS = [1e-4, 3e-4, 1e-3], [8, 16], [0.0, 0.1], ['specaug', 'specaug+tempo']
 MIN_GAIN, MIN_HELPED = 0.01, 3
-BASE_MAX_ABOVE = 0.10  # training_plan_v3.md § 6: base WER more than this ABOVE the error map's wer_B = broken metric
+BASE_MAX_ABOVE = 0.10  # base WER more than this ABOVE the error map's wer_B = broken metric
 
 
 # ---- tuning ------------------------------------------------------------------------------

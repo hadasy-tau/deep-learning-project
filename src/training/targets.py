@@ -2,14 +2,14 @@
 
 **Rests on a withdrawn assumption.**  A word goes back when *both* base models produced it,
 on the reading that two models agreeing against the protocol means the protocol dropped a
-spoken word (docs/STATUS.md § Withdrawn), so these targets may put back unspoken words as
+spoken word, so these targets may put back unspoken words as
 well as spoken ones.  Kept so the second and third runs'
 `verbatim` cells stay reproducible; do not read their results as evidence about what the
 speaker said.  The forgiven-shared count that used to live here is removed.
 
-docs/archive/training_next.md § A1.  The reference is a cleaned protocol: words the speaker said
+The reference is a cleaned protocol: words the speaker said
 and the stenographer dropped count as insertions against both models, and a model trained
-toward the protocol learns to drop them too (docs/training_run2.md: 34 % of the base
+toward the protocol learns to drop them too (in run 2, 34 % of the base
 model's errors are insertions arm A also produced).  This builds a target closer to what
 was said: the protocol text with the words *both* base models produced at the same place
 put back.  Only insertions are added; nothing is removed, so a protocol word the models

@@ -10,14 +10,14 @@ of knesset-asr/knesset-committees-chunks transcribed by both arms
   3. does the amount of speech predict the level (no) or the spread (yes)
   4. which subgroup rules are viable and which actually separate speakers
 
-What changed from VoxKnesset, and why (docs/error_map.md has the numbers):
+What changed from VoxKnesset, and why:
 
   * The QC filter.  Stage 1 dropped segments whose reference could not account
     for their audio (a flat 300 s allowance).  That rule cannot fire on <=30 s
     chunks.  Here the same failure -- reference text that does not match the
     audio -- is what the corpus's per-chunk alignment `quality` measures: chunks
     under 0.7 score a WER near 1.0 under BOTH arms.  So the one filter is
-    quality >= 0.7, the consumer threshold docs/committees_handoff.md recommends.
+    quality >= 0.7, the threshold recommended to the corpus's consumers.
   * Viability pools hours from the whole corpus (what a subgroup arm could train
     on), while WER and gain come from the subset (what was transcribed).
   * Per-speaker WER and gain carry a bootstrap CI (chunks resampled), because
@@ -43,7 +43,7 @@ SPEAKERS  = os.path.join(ROOT, 'src', 'preprocessing', 'speaker_index', 'outputs
 OUT       = os.path.join(HERE, 'outputs')
 INFERENCE_REPO, SPEAKERS_REPO = 'knesset-asr/knesset-committees-inference', 'knesset-asr/knesset-committees-speakers'
 
-MIN_QUALITY  = 0.7      # the one QC filter; see the module docstring and docs/error_map.md
+MIN_QUALITY  = 0.7      # the one QC filter; see the module docstring
 MIN_SEG      = 20       # below this a speaker's WER is mostly sampling noise (Stage 1 §9; here too)
 MIN_SPEAKERS = 3        # a subgroup needs at least this many members
 MIN_HOURS    = 5.0      # ... and this much corpus audio after holding out its largest member
@@ -83,7 +83,7 @@ def count_errors(seg):
 # (evaluate.score), '_f' the protocol-aware one (error_analysis.forgiven_counts,
 # which adds werr_A_f, S_A_f, D_A_f, I_A_f and the B set).  Everything downstream
 # keeps the standard output names, so the same chain runs on either measure.
-# The '_f' measure is withdrawn as evidence (docs/STATUS.md § Withdrawn); the standard count is the result.
+# The '_f' measure is withdrawn as evidence; the standard count is the result.
 def corpus_scores(df, suffix=''):
     return pd.Series({'chunks': len(df), 'hours': df.duration_s.sum() / 3600, 'ref_words': int(df.n_words.sum()),
                       'WER_A': df[f'werr_A{suffix}'].sum() / df.n_words.sum(), 'WER_B': df[f'werr_B{suffix}'].sum() / df.n_words.sum(),
@@ -255,7 +255,7 @@ def candidates(spk):
     return d[['n_seg', 'hours', 'wer_A', 'wer_B', 'gain_abs', 'gain_abs_lo', 'gain_abs_hi', 'gain_rel']]
 
 def flagged_sessions(seg, min_chunks=5, wer=0.9):
-    """docs/committees_handoff.md: a time-origin offset between audio and alignment
+    """A time-origin offset between audio and alignment
     would show as a whole session near WER 1.0 under BOTH arms.  Listed, not removed."""
     s = seg.groupby('session').agg(speaker_id=('speaker_id', 'first'), session_date=('session_date', 'first'),
                                    chunks=('chunk_id', 'size'), words=('n_words', 'sum'),
@@ -277,7 +277,7 @@ def run(out=OUT, n_boot=1000, n_perm=2000, verbose=True, scoring='standard', seg
     protocol-aware one (error_analysis.forgiven_counts) run through the identical
     chain, written with `_forgiven` before the extension.  `seg` lets a caller
     reuse the scored chunk table between the two.  The 'forgiven' outputs are
-    withdrawn as evidence (docs/STATUS.md § Withdrawn); they are written only as a record."""
+    withdrawn as evidence; they are written only as a record."""
     assert scoring in ('standard', 'forgiven'), scoring
     os.makedirs(out, exist_ok=True); log = print if verbose else (lambda *a, **k: None)
     f = '' if scoring == 'standard' else '_f'; tagf = '' if scoring == 'standard' else '_forgiven'
@@ -339,7 +339,7 @@ def compare(std, fgv, n_bottom=40):
 
 def run_all(out=OUT, verbose=True, **kw):
     """Both scorings from one scored chunk table, plus the comparison.  The forgiven
-    side is withdrawn as evidence (docs/STATUS.md § Withdrawn); prefer run(scoring='standard')."""
+    side is withdrawn as evidence; prefer run(scoring='standard')."""
     std = run(out=out, verbose=verbose, scoring='standard', **kw)
     fgv = run(out=out, verbose=verbose, scoring='forgiven', seg=std['seg'], **kw)
     cmp_ = compare(std, fgv)
