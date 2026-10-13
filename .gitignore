@@ -33,7 +33,7 @@ __pycache__/
 !/src/training/outputs/capacity_v4.csv
 !/src/training/outputs/targets_verbatim.parquet
 
-# executed copies of notebooks kept for viewing; git carries the source-only notebook
+# executed copies of notebooks.  git carries each notebook with the outputs of a full run
 notebooks/*.executed.ipynb
 
 # the paper's LaTeX build folder (README, Running: Paper)
