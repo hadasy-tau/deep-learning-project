@@ -26,7 +26,8 @@ What changed from VoxKnesset, and why:
     kept as hypothesis_A_auto and reported once, as the detection-failure rate.
 
 Plain functions, driven from notebooks/committees_error_map.ipynb; `run()` writes
-every table under src/evaluation/outputs/.  Self-checks at the bottom.
+every table under src/evaluation/outputs/ (python src/evaluation/error_map.py --run).
+Self-checks at the bottom.
 """
 import json, os, sys
 import numpy as np, pandas as pd
@@ -44,7 +45,7 @@ OUT       = os.path.join(HERE, 'outputs')
 INFERENCE_REPO, SPEAKERS_REPO = 'knesset-asr/knesset-committees-inference', 'knesset-asr/knesset-committees-speakers'
 
 MIN_QUALITY  = 0.7      # the one QC filter; see the module docstring
-MIN_SEG      = 20       # below this a speaker's WER is mostly sampling noise (Stage 1 §9; here too)
+MIN_SEG      = 20       # below this a speaker's WER is mostly sampling noise (as on VoxKnesset; here too)
 MIN_SPEAKERS = 3        # a subgroup needs at least this many members
 MIN_HOURS    = 5.0      # ... and this much corpus audio after holding out its largest member
 
@@ -143,7 +144,7 @@ def per_speaker(seg, n_boot=1000, seed=0, suffix=''):
     return spk[cols]
 
 def volume_table(spk):
-    """Stage 1 §9: level flat, spread shrinks with more chunks (a measurement effect)."""
+    """As on VoxKnesset: level flat, spread shrinks with more chunks (a measurement effect)."""
     bucket = pd.cut(spk.n_seg, [0, 5, 20, 50, 150, 400, 20000], labels=['1-5', '6-20', '21-50', '51-150', '151-400', '400+'])
     return spk.groupby(bucket, observed=True).agg(speakers=('wer_A', 'size'),
                                                   median_wer_A=('wer_A', 'median'), sd_wer_A=('wer_A', 'std'),
@@ -168,6 +169,14 @@ NOT_A_GROUP = {'Unknown', 'Unrecorded'}
 def _clean(s):
     return s.astype(str).str.strip().replace({'nan': np.nan, 'None': np.nan, '': np.nan, '<NA>': np.nan})
 
+def _need_index():
+    """The chunk index (gender, age, quality, committee per chunk).  It is git-ignored and not
+    published: build it once.  coverage.parquet has none of these columns."""
+    if not os.path.exists(INDEX):
+        raise FileNotFoundError(f'{INDEX} is missing: build it once with  python src/inference/data.py --index  '
+                                '(metadata of the 410 corpus shards, no audio, no token)')
+    return INDEX
+
 def speaker_attrs(seg, min_quality=MIN_QUALITY):
     """Per-speaker attributes: demographics from the speaker index, speaking rate
     and age from the subset, and corpus hours (quality >= min_quality) from the
@@ -177,14 +186,11 @@ def speaker_attrs(seg, min_quality=MIN_QUALITY):
     cols = ['speaker_id', 'speaker_name', 'place_of_birth', 'religion', 'nationality', 'religious_orientation', 'year_of_aliya', 'label']
     dem = pq.read_table(_local_or_hub(SPEAKERS, SPEAKERS_REPO, 'segments.parquet'), columns=cols).to_pandas()
     dem = dem[dem.speaker_id.isin(ids)].drop_duplicates('speaker_id').set_index('speaker_id')
-    idx = pd.read_parquet(_local_or_hub(INDEX, INFERENCE_REPO, 'coverage.parquet') if not os.path.exists(INDEX) else INDEX,
-                          columns=['speaker_id', 'duration_s', 'quality', 'gender', 'age'] if os.path.exists(INDEX) else ['speaker_id', 'duration_s'])
+    idx = pd.read_parquet(_need_index(), columns=['speaker_id', 'duration_s', 'quality', 'gender', 'age'])
     idx = idx[idx.speaker_id.isin(ids)]
-    hours = idx[idx.quality >= min_quality].groupby('speaker_id').duration_s.sum().div(3600).rename('hours_corpus') if 'quality' in idx else \
-            idx.groupby('speaker_id').duration_s.sum().div(3600).rename('hours_corpus')
+    hours = idx[idx.quality >= min_quality].groupby('speaker_id').duration_s.sum().div(3600).rename('hours_corpus')
     a = seg.groupby('speaker_id').agg(wpm_median=('wpm', 'median'))
-    if 'gender' in idx:
-        a = a.join(idx.groupby('speaker_id').agg(gender_code=('gender', 'first'), age_mean=('age', 'mean')))
+    a = a.join(idx.groupby('speaker_id').agg(gender_code=('gender', 'first'), age_mean=('age', 'mean')))
     a = a.join(dem).join(hours)
     a['speaker_name'] = a.speaker_name.fillna('')
     a['gender']      = np.where(a.gender_code == 1, 'Male', np.where(a.gender_code == 0, 'Female', 'Unknown'))
@@ -199,7 +205,7 @@ def speaker_attrs(seg, min_quality=MIN_QUALITY):
     return a
 
 def subgroup_table(G, col, min_speakers=MIN_SPEAKERS, min_hours=MIN_HOURS):
-    """Stage 1 §10.1.  WER pools subset error counts; hours are corpus hours."""
+    """WER pools subset error counts; hours are corpus hours."""
     t = G.groupby(col, observed=True).agg(
         speakers=('n_seg', 'size'), chunks=('n_seg', 'sum'), hours_subset=('hours', 'sum'),
         hours_corpus=('hours_corpus', 'sum'), largest=('hours_corpus', 'max'), words=('n_words', 'sum'),
@@ -385,4 +391,4 @@ if __name__ == '__main__' and '--run' not in sys.argv:
     print('count_errors: normalisation + Levenshtein OK')
     print('error_map.py self-checks OK')
 elif __name__ == '__main__':
-    run_all()
+    run()      # the tables in git; run_all() adds the withdrawn forgiven-shared ones

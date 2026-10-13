@@ -19,10 +19,19 @@ __pycache__/
 # the RunPod key and the HuggingFace tokens live.
 /cache/
 
-# Training runs and adapters.  src/evaluation/outputs/ is NOT ignored -- it
-# carries the per-speaker results table, which is evidence, not build product.
+# Training runs and adapters.  Of what a run writes to src/training/outputs/, only the
+# result tables the paper reads and the verbatim targets run 3 trained on are in git.
+# src/evaluation/outputs/ is NOT ignored -- it carries the per-speaker results table,
+# which is evidence, not build product.
 /src/training/runs/
-/src/training/outputs/
+/src/training/outputs/*
+!/src/training/outputs/results_v3.csv
+!/src/training/outputs/tuning_v3.csv
+!/src/training/outputs/recipe_v3.json
+!/src/training/outputs/results_v4.csv
+!/src/training/outputs/curve_v4.csv
+!/src/training/outputs/capacity_v4.csv
+!/src/training/outputs/targets_verbatim.parquet
 
 # executed copies of notebooks kept for viewing; git carries the source-only notebook
 notebooks/*.executed.ipynb
