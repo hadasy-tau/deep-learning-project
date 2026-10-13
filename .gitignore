@@ -1,10 +1,6 @@
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
-# Claude Code local state
-.claude/worktrees/
-.claude/settings.local.json
-
 # Python
 __pycache__/
 *.pyc
