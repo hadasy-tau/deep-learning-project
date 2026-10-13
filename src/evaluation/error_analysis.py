@@ -195,8 +195,8 @@ def cross_corpus(spk, plenum_path=PLENUM, min_seg=20):
 def with_committee(kept):
     """kept + committee_name and year, from the inference index."""
     import error_map as E
-    idx = pd.read_parquet(E.INDEX, columns=['chunk_id', 'committee_name']) if os.path.exists(E.INDEX) else None
-    k = kept.merge(idx, on='chunk_id', how='left') if idx is not None else kept.assign(committee_name='?')
+    idx = pd.read_parquet(E._need_index(), columns=['chunk_id', 'committee_name'])
+    k = kept.merge(idx, on='chunk_id', how='left')
     k['year'] = k.session_date.str[:4]
     return k
 

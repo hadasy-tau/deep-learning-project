@@ -1,16 +1,19 @@
-"""Stage 4 data: iterate Hadas's chunk corpus without holding it.
+"""Stage 4 data: iterate the chunk corpus without holding it.
 
-Hadas/knesset-committees-chunks is 410 parquet shards, ~275 GB, one row group
+knesset-asr/knesset-committees-chunks is 410 parquet shards, ~275 GB, one row group
 each, FLAC bytes inline.  Two facts shape the reader:
-  * The metadata columns of all 410 shards fit in memory (1.2 M rows, ~150 MB)
-    and were already pulled once into chunk_corpus/cache/hadas_chunks_meta.parquet.
+  * The metadata columns of all 410 shards fit in memory (1.2 M rows, ~150 MB);
+    index() pulls them once into cache/index.parquet.
     Selection (speakers, sessions, quality, limit, resume) happens on that
     table; audio is fetched only for the rows that survive.
   * A shard's audio column is read whole (one row group), so selecting rows
     across shards means reading each touched shard once, not once per row.
 Pinned to one dataset revision so a run cannot straddle a re-upload.
+
+    python src/inference/data.py --index    # build the chunk index only: metadata, no audio
+    python src/inference/data.py            # the index, then the self-checks, which fetch 3 chunks' audio
 """
-import io, os, json
+import io, os, json, sys
 import pandas as pd
 import requests
 import pyarrow.parquet as pq
@@ -69,9 +72,6 @@ def shard_url(name):
 HERE   = os.path.dirname(os.path.abspath(__file__))
 CACHE  = os.path.join(HERE, 'cache')
 REPO   = 'knesset-asr/knesset-committees-chunks'
-# Chunk-corpus metadata, so it lives with the chunk-corpus builder.
-META   = os.path.join(HERE, '..', 'preprocessing', 'chunk_corpus', 'cache',
-                      'hadas_chunks_meta.parquet')
 META_COLS = ['chunk_id', 'speaker_id', 'speaker_name', 'session', 'session_date', 'knesset',
              'committee_name', 'duration_s', 'quality', 'n_words', 'text', 'gender', 'age']
 
@@ -285,6 +285,8 @@ if __name__ == '__main__':
     df = index()
     print(f'index: {len(df):,} chunks, {df.speaker_id.nunique()} speakers, {df.shard.nunique()} shards, revision {revision()[:8]}')
     assert len(df) == 1_204_617 and df.shard.nunique() == 410, (len(df), df.shard.nunique())
+    if '--index' in sys.argv:
+        sys.exit(0)
     s = select(df, min_quality=0.7, min_s=5, max_s=25, limit=3, seed=1)
     assert len(s) == 3 and (s.quality >= 0.7).all()
     n = 0

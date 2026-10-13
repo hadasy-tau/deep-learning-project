@@ -1,0 +1,13 @@
+# Reproducing the paper: the error map, the three paper notebooks and their figures
+# (README, "Reproduce the paper").  No GPU and no token.  Inference and training have
+# their own lists, src/inference/requirements.txt and src/training/requirements.txt.
+pandas>=2.2
+numpy
+scipy
+pyarrow
+rapidfuzz
+requests
+huggingface_hub>=1.22
+matplotlib
+pillow
+jupyter
