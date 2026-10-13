@@ -323,3 +323,9 @@ after the run: `results_v3.csv`, `tuning_v3.csv`, `results_v4.csv`.
 cd paper/Toward_Personalized_Hebrew_ASR_overleaf && latexmk -pdf -outdir=/tmp/paper acl_latex.tex && cp /tmp/paper/acl_latex.pdf ../Toward_Personalized_Hebrew_ASR.pdf
 cd paper/Toward_Personalized_Hebrew_ASR_overleaf && rm -f ../Toward_Personalized_Hebrew_ASR_overleaf.zip && zip -q -r -X ../Toward_Personalized_Hebrew_ASR_overleaf.zip . -x '.DS_Store'
 ```
+
+## Licence
+
+The code is under the MIT licence (`LICENSE`). The data keeps its sources' licences: the audio
+and the protocol text come from `ivrit-ai/knesset-committees` under the ivrit.ai licence, and
+the speaker attribution and demographics from the Knesset Corpus under CC BY-SA 4.0.
