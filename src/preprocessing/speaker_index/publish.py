@@ -34,7 +34,9 @@ def card(df):
     mk = df[df.label == 'mk']
     h = df.groupby('label').duration_s.sum().div(3600).round(1)
     return f"""---
-license: cc-by-sa-4.0
+license: other
+license_name: ivrit.ai
+license_link: https://huggingface.co/datasets/ivrit-ai/knesset-committees/blob/main/LICENSE
 language:
 - he
 task_categories:
@@ -104,8 +106,9 @@ record of which sessions were excluded and why), `match_report.txt`,
 Audio, protocol text and alignment: ivrit.ai, `ivrit-ai/knesset-committees` (ivrit.ai
 licence). Sentence-level speaker attribution and demographics: Goldin, Howell,
 Ordan, Rabinovich, Wintner, *The Knesset Corpus* (Lang Resources & Evaluation, 2025),
-CC-BY-SA 4.0. MK service dates: Knesset ODATA. This index is released under
-CC-BY-SA 4.0.
+CC-BY-SA 4.0. MK service dates: Knesset ODATA. The index carries protocol text
+(`reference_text`), so it is under the ivrit.ai licence. The attribution and
+demographics it adds keep CC-BY-SA 4.0.
 """
 
 def publish(dry_run=True, private=True):

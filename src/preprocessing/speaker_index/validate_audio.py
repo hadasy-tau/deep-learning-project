@@ -52,10 +52,15 @@ def sample(df, per_speaker=12, min_segments=8, min_s=3.0, seed=0, speakers=None,
     return pd.concat(out).sample(frac=1, random_state=seed).reset_index(drop=True), thin
 
 def fetch_audio(session, start, end, token):
-    """Decode just the needed span straight from the session's m4a over HTTP."""
+    """Decode just the needed span straight from the session's m4a over HTTP.
+
+    The token stays in this process: the Hub answers with a short-lived signed CDN
+    URL, and only that URL goes on ffmpeg's command line, which any local user can read."""
+    from huggingface_hub import get_hf_file_metadata
     url = f'https://huggingface.co/datasets/{COMMITTEES}/resolve/main/{session}/audio.m4a'
-    cmd = ['ffmpeg', '-v', 'error', '-headers', f'Authorization: Bearer {token}\r\n',
-           '-ss', f'{start:.3f}', '-i', url, '-t', f'{end - start:.3f}',
+    signed = get_hf_file_metadata(url, token=token).location
+    cmd = ['ffmpeg', '-v', 'error',
+           '-ss', f'{start:.3f}', '-i', signed, '-t', f'{end - start:.3f}',
            '-ac', '1', '-ar', str(SR), '-f', 'wav', 'pipe:1']
     return subprocess.run(cmd, capture_output=True, check=True).stdout
 
@@ -117,7 +122,9 @@ if __name__ == '__main__':
     ap.add_argument('--others', type=int, default=60, help='with --speakers: how many other MK speakers form the reference population')
     ap.add_argument('--tag', default='', help='suffix for the output files')
     a = ap.parse_args()
-    token = os.environ.get('HF_TOKEN') or open(os.path.join(CACHE, 'hf_write_token')).read().strip()
+    from huggingface_hub import get_token
+    token = get_token()                     # HF_TOKEN or the login token, read scope is enough
+    assert token, 'not logged in to HuggingFace: run  hf auth login'
 
     df = pd.read_parquet(a.segments)
     rows, thin = sample(df, a.per_speaker, a.min_segments, speakers=a.speakers, others=a.others)
