@@ -3,7 +3,8 @@
 error_map.py answers Stage 1's questions.  These functions answer the ones the
 committees corpus raised on top of them, each a plain function over the scored
 chunk table `kept` that error_map.run() returns (or the per-speaker table
-`spk`).  Driven from notebooks/committees_error_map.ipynb § 11.
+`spk`).  Driven from notebooks/committees_error_map.ipynb (§ 5, 7 and 8) and
+by run(), which writes their tables.
 
   by_condition        corpus WER by year, committee, chunk length, speaking rate
   chunk_level         the distribution of per-chunk WER; where both arms fail

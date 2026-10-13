@@ -49,7 +49,7 @@ src/
   evaluation/outputs/          committees_*.csv -- that error map (speaker_performance.csv is
                                the VoxKnesset one Stage 1 produced, kept as the reference point)
 
-notebooks/                     explore_committees.ipynb, committees_error_map(_v2).ipynb (the
+notebooks/                     explore_committees.ipynb, committees_error_map.ipynb (the
                                Stage 1 analysis on the committees), training_run3_figures.ipynb
                                and training_run4_figures.ipynb (the paper's Stage 2 figures)
 paper/                         the paper: LaTeX source, figures, the compiled PDF and the
