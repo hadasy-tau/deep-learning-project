@@ -9,7 +9,7 @@ Two models, the comparison the whole project rests on:
 | Arm | Model | Role |
 |---|---|---|
 | **A** | `openai/whisper-large-v3` | General multilingual. Positive control — makes a null result on B interpretable |
-| **B** | `ivrit-ai/whisper-large-v3` | Hebrew fine-tune. The real adaptation target |
+| **B** | `ivrit-ai/whisper-large-v3` | Hebrew fine-tune. The real adaptation target. The error map and the published transcriptions use `ivrit-ai/whisper-large-v3-turbo-ct2`, a separate Hebrew fine-tune of `whisper-large-v3-turbo` |
 
 **Why committees and not plenums.** Arm B was fine-tuned on ~4,700 h of *plenum* audio.
 [VoxKnesset](https://huggingface.co/datasets/ivrit-ai/VoxKnesset) is also plenum speech, so

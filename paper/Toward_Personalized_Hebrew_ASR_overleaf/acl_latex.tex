@@ -55,7 +55,7 @@
 Automatic speech recognition (ASR) systems are evaluated by error rates averaged across many speakers, which says little
 about how well they serve any one person, yet many deployments serve a single speaker. We ask two questions: does a Hebrew ASR model
 serve all its speakers equally, and how can it be adapted to a single speaker?
-On 267 speakers in Knesset committee recordings, a Hebrew fine-tune of Whisper
+On 261 speakers in Knesset committee recordings, a Hebrew fine-tune of Whisper
 lowers every speaker's error. The gain varies between speakers, and somewhat
 between groups such as fast and slow speakers, but speakers largely keep their
 order. We then adapt the Hebrew model to 12 speakers with LoRA. With 80 minutes
@@ -88,7 +88,7 @@ model serve all its speakers equally, and how can it be adapted to a single
 speaker? We answer them on Knesset committee recordings, which the Hebrew model
 was not trained on and which hold thousands of hours of speech from hundreds of
 identified speakers. Our contributions are threefold. First, a speaker-level
-error map of a general Whisper model and its Hebrew fine-tune over 267 speakers,
+error map of a general Whisper model and a Hebrew fine-tune over 267 speakers,
 the first for Hebrew. Second, adaptation of the Hebrew model to individual speakers
 with LoRA, on 5 minutes up to 24 hours of a speaker's speech, with the training
 settings tuned in 64 runs on validation data. The adapters lower the speakers'
@@ -111,8 +111,8 @@ trains in a few minutes on a standard GPU.
 
 \paragraph{Hebrew ASR.}
 Whisper \citep{radford2023whisper} is much weaker on languages with little
-training data, Hebrew among them. ivrit.ai narrowed this gap by fine-tuning it on
-Hebrew, mostly Knesset plenary speech \citep{marmor2025hebrewasr}, the starting
+training data, Hebrew among them. ivrit.ai narrowed this gap \citep{marmor2025hebrewasr} by fine-tuning it on
+Hebrew, mostly Knesset plenary speech \citep{ivritai2025whisperv3}, the starting
 point for our work.
 
 \paragraph{Gaps within a language.}
@@ -133,12 +133,12 @@ unadapted model.
 \subsection{Overview}
 \label{sec:overview}
 
-Our study has two experiments. In the first, a general Whisper model and its
+Our study has two experiments. In the first, a general Whisper model and a
 Hebrew fine-tune (Section~\ref{sec:models}) transcribe the same speech, and we
 compare the error of each speaker and group under the two models. In the second, we select 12 speakers from this map: speakers
 the fine-tune helped least, speakers hard under both models, typical speakers, a
 speaker with a low word error rate (WER), and two speakers the fine-tune served well. We then adapt the Hebrew model to each speaker's own speech
-with LoRA, on 5 to 80 minutes and, for four speakers, up to 6 hours, and for two of them up to 24. We compare each adapter with a control trained on the
+with LoRA, on 5 to 80 minutes and, for four speakers (two of the 12), up to 6 hours, and for two of them up to 24. We compare each adapter with a control trained on the
 same amount of speech from other speakers, which separates learning the voice
 from learning committee speech in general.
 
@@ -156,7 +156,7 @@ verbatim, so a low score may reflect a mismatch between the text and the audio,
 and the protocol text is the reference for every WER we report (see
 Limitations). The
 corpus spans November 2018 to January 2026 with 13{,}177 sessions and 15{,}466
-recorded hours, of which 7{,}886 are aligned speech with quality of at least 0.7.
+recorded hours, of which about 7{,}886 are aligned speech and about 7{,}070 have quality of at least 0.7.
 
 
 % ------------------------------------------------------------
@@ -166,12 +166,10 @@ recorded hours, of which 7{,}886 are aligned speech with quality of at least 0.7
 We compare two models. Arm~\textbf{A} is
 \texttt{openai/whisper-large-v3} \citep{radford2023whisper}, the general
 multilingual model, and arm~\textbf{B} is \texttt{ivrit-ai/whisper-large-v3}
-\citep{marmor2025hebrewasr}, the same model fine-tuned on roughly 4{,}700 hours
+\citep{ivritai2025whisperv3}, the same model fine-tuned on roughly 4{,}700 hours
 of Hebrew \emph{plenary} speech, so our committee recordings are new to it,
 though many of the speakers are not (see Limitations). Every adapter in this
-work is trained and evaluated on the full arm~B. For the speaker-level analysis, arm~B is served
-through ivrit.ai's inference checkpoint (\texttt{whisper-large-v3-turbo-ct2},
-with 4 decoder layers instead of 32).
+work is trained and evaluated on the full arm~B. For the speaker-level analysis, arm~B is a separate Hebrew fine-tune of OpenAI's turbo model with 4 decoder layers, ivrit.ai's \texttt{whisper-large-v3-turbo-ct2}.
 
 % ------------------------------------------------------------
 \subsection{Preprocessing}
@@ -179,17 +177,15 @@ with 4 decoder layers instead of 32).
 
 The released corpus needs two steps before use: a speaker-level analysis needs every
 protocol segment linked to a verified person, and Whisper takes at most 30 seconds of audio
-while sessions last hours. We follow the procedure of VoxKnesset
+while sessions last hours. Like VoxKnesset
 \citep{marmor2026voxknesset}, a 2{,}300-hour corpus of Knesset plenary speech
-with verified speakers, and apply it to the committee recordings. We do not
+with verified speakers, we identify speakers by their official Knesset ids. We do not
 use VoxKnesset's audio, which comes from the plenary sessions
 arm~B was fine-tuned on.
 
 
-For the first, we match each protocol speaker name exactly to the Knesset's
-official roster of name variants, within the member's term of service, and
-discard names that do not match, since a wrong identity would be worse than a
-missing one. The matched identity also gives each member's birth year, gender,
+For the first, we link each protocol speaker name to a Knesset member, through the speaker attribution of the Knesset Corpus \citep{goldin2025knesset} where it exists and by exact match to a member seated that day otherwise, and
+discard names that do not match. The matched identity also gives each member's birth year, gender,
 origin, nationality and religion, which we use to group speakers. For the second,
 each identified speaker turn is cut into pieces of at most 30 seconds, which we
 call chunks, that never cross a speaker change, with the aligned protocol text
@@ -221,7 +217,7 @@ $(\text{WER}_A-\text{WER}_B)/\text{WER}_A$.
 \paragraph{Speakers and data.}
 The sessions of each of the 12 selected speakers are split into training,
 validation and test sets that share no session, with the newest sessions held
-out for testing (Appendix~\ref{app:additional}). Each speaker is trained on budgets of 5,
+out for testing. Each speaker is trained on budgets of 5,
 20 and 80 minutes of their own speech, nested and filled from their most recent
 training sessions first.  Every model is scored on two test sets from the
 same held-out sessions (Appendix~\ref{app:data}): chunks at quality $\geq 0.95$
@@ -273,7 +269,7 @@ the own gain minus the control gain. Every comparison between two models, includ
 personal margin, gets a 95\% interval and a p-value from a paired bootstrap over
 test chunks (Appendix~\ref{app:significance}), and we call a difference
 significant when $p<0.05$. All
-budgets use seed 0, and at 80 minutes seeds 1 and 2 repeat the own adapters and
+budgets use seed 0, and at 80, 360 and 1{,}440 minutes seeds 1 and 2 repeat the own adapters and
 the controls, with the folds redrawn, to separate speaker-level effects from
 seed variance.
 
@@ -303,7 +299,7 @@ per-speaker 95\% confidence intervals come from bootstrapping each speaker's chu
 
 \paragraph{The fine-tune helps every speaker, and speakers keep their order.}
 All 261 speakers have a lower WER under arm~B, by a median 24\% of arm~A's error
-(11\% to 58\%), and every improvement is beyond sampling noise (Figure~\ref{fig:gain}, Appendix~\ref{app:additional}).
+(11\% to 58\%, Figure~\ref{fig:gain}), and every improvement is beyond sampling noise (Appendix~\ref{app:boot-errormap}).
 Yet the spread of per-speaker WER shrinks (standard deviation 0.099 to 0.069)
 only in proportion to the lower average (coefficient of variation 0.25 and 0.23,
 Figure~\ref{fig:hist}). Speakers keep their order (Spearman $\rho=0.90$ between
@@ -317,7 +313,7 @@ speaking-rate tertile. The clearest difference is speaking rate
 (Figure~\ref{fig:rate}, with the other six in Figure~\ref{fig:groups}): slow
 speakers gain more than fast ones (27\% vs.\ 22\% of arm~A's error removed).
 Arab, Muslim, Druze and Bedouin speakers also gain more than Jewish speakers
-(29--30\% vs.\ 24\%). But group sizes are highly imbalanced (229 Jewish speakers
+(29--30\% vs.\ 24\%). But group sizes are highly imbalanced (224 Jewish speakers
 against 5 Bedouin), and the variation within each group far exceeds the
 differences between group medians. A speaker's group thus says little about how
 much the fine-tune helps them, which motivates adapting to individual speakers.
@@ -581,20 +577,20 @@ Base model & \texttt{ivrit-ai/whisper-large-v3}, frozen, bfloat16 \\
 Adapter & LoRA on the query and value projections of every attention layer (encoder, decoder self- and cross-attention) \\
 Rank / $\alpha$ / LoRA dropout & 8 / 16 / 0.05 \\
 Trainable parameters & 3{,}932{,}160 \\
-Learning rate & $10^{-4}$ at 5 minutes, $3\times10^{-4}$ at 20 and 80 minutes \\
+Learning rate & $10^{-4}$ at 5 minutes, $3\times10^{-4}$ from 20 minutes on \\
 Schedule & constant after 20 warm-up steps \\
 Batch size & 8, no gradient accumulation \\
 Weight decay & 0.01 \\
 Whisper dropout & 0 \\
 Augmentation & none \\
-Training length & at most 400 steps \\
+Training length & at most 400 steps up to 80 minutes, 1{,}200 at 160 and 360, 3{,}000 at 720 and 1{,}440 \\
 Validation & loss every 20 steps \\
-Early stopping & after 4 validations without improvement, best checkpoint restored \\
+Early stopping & after 4 validations without improvement, best checkpoint restored, and not before one full pass at 720 and 1{,}440 minutes \\
 Training labels & protocol text \\
-Seeds & 0 at every budget, 1 and 2 at 80 minutes \\
+Seeds & 0 at every budget, 1 and 2 at 80, 360 and 1{,}440 minutes \\
 \bottomrule
 \end{tabular}
-\caption{Training hyperparameters, identical for every own and control adapter.}
+\caption{Training hyperparameters, shared by each own adapter and its control (the check in Table~\ref{tab:capacity} uses rank 32, $\alpha$ 64).}
 \label{tab:hyperparams}
 \end{table}
 
@@ -633,8 +629,8 @@ adapter.}
     \centering
     \includegraphics[width=\columnwidth]{figures/error_map_gain.png}
     \caption{Left: per-speaker WER under arm~A against arm~B. Every point is one
-    speaker, the bar is the 95\% bootstrap interval on WER$_B$ and the dashed line is
-    no change. Right: distribution of the relative gain over the 261 speakers with at
+    of all 267 speakers, the bar is the 95\% bootstrap interval on WER$_B$ alone, not on the gain, and the dashed line is
+    no change. Right: distribution of the relative gain of arm~B over arm~A, for the 261 speakers with at
     least 20 chunks.}
     \label{fig:gain}
 \end{figure}
@@ -685,7 +681,7 @@ fewer than three speakers are omitted.
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=\columnwidth]{figures/stage2_data_curve_6h.png}
-    \caption{As Figure~\ref{fig:curve}, for the two speakers trained on up to 360
+    \caption{As Figure~\ref{fig:curve}, for 30752 (one of the 12) and 23635 (from outside them), trained on up to 360
     minutes.}
     \label{fig:curve6h}
 \end{figure}

@@ -50,7 +50,9 @@ def card(w, long):
     """Dataset card: what the files are, how they were produced, what to read for Stage 1."""
     ws = w[w.in_stage1_subset]
     return f"""---
-license: cc-by-sa-4.0
+license: other
+license_name: ivrit.ai
+license_link: https://huggingface.co/datasets/ivrit-ai/knesset-committees/blob/main/LICENSE
 language:
 - he
 task_categories:
@@ -115,8 +117,9 @@ script: A 99.7 %, B 99.99 %.
 
 ## Licence
 
-References and speaker attribution derive from the Knesset Corpus (CC-BY-SA
-4.0); audio from ivrit.ai. This dataset is released under CC-BY-SA 4.0.
+Audio and the reference text come from `ivrit-ai/knesset-committees` and are under
+the ivrit.ai licence. Speaker attribution and demographics derive from the Knesset
+Corpus (CC-BY-SA 4.0).
 """
 
 if __name__ == '__main__':

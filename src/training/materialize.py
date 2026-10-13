@@ -371,7 +371,9 @@ def upload(repo, audio_dir=AUDIO, plan_path=PLAN):
     selection = ('alignment quality >= 0.7' if name == 'panel_plan.parquet' or name.startswith('panel_test07') else
                  'alignment quality >= 0.95 with the word rule of src/training/word_quality.py (high-quality data only, every split)')
     card = f"""---
-license: cc-by-sa-4.0
+license: other
+license_name: ivrit.ai
+license_link: https://huggingface.co/datasets/ivrit-ai/knesset-committees/blob/main/LICENSE
 language: [he]
 pretty_name: Knesset Committees Panel
 ---
@@ -383,7 +385,7 @@ as 16 kHz 16-bit mono WAV under `panel_audio/<speaker_id>/<chunk_id>.wav`. `{nam
 table: one row per chunk with the reference text, session and date, and the split (`part`: test = the
 speaker's newest sessions, then dev, the rest train; session-disjoint by date; train ordered latest-first so
 nested budgets are prefixes). Built by `src/training/materialize.py` in hadasy-tau/deep-learning-project.
-Source audio: ivrit.ai; references: the Knesset protocols.
+Source audio and reference text: `ivrit-ai/knesset-committees`, under the ivrit.ai licence.
 """
     api.upload_file(path_or_fileobj=card.encode('utf-8'), path_in_repo='README.md', repo_id=repo, repo_type='dataset')
     api.upload_file(path_or_fileobj=plan_path, path_in_repo=os.path.basename(plan_path), repo_id=repo, repo_type='dataset')
