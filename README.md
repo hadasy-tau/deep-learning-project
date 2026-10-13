@@ -104,3 +104,35 @@ python src/inference/providers.py                      # both provider contracts
 python src/preprocessing/speaker_index/roster.py       # PersonID uniqueness, active_on
 python src/preprocessing/speaker_index/names.py        # cleaning rules, strict agreement
 ```
+
+## Running
+
+Secrets come from the environment, else from the git-ignored `cache/` (mode 600), and are never
+written to any output: `HF_INFERENCE_TOKEN` (arm A), `RUNPOD_API_KEY` and `RUNPOD_ENDPOINT_ID`
+(arm B), `HF_WRITE_TOKEN` (uploads only).
+
+**Inference**, both arms over the chunk corpus. First the 10 fixed verification chunks, then the
+subset as it was run (resumable: a rerun sends only what has no successful row yet):
+
+```bash
+pip install -r src/inference/requirements.txt
+python src/inference/run.py --arm A --chunk-ids src/inference/verify_chunks.txt
+python src/inference/run.py --arm B --chunk-ids src/inference/verify_chunks.txt
+python src/inference/verify.py src/inference/outputs/A_*.jsonl src/inference/outputs/B_*.jsonl --expect src/inference/verify_chunks.txt
+python src/inference/run_lean.py --workers-a 96 --workers-b 24 --prefetch 2
+zsh src/inference/finish.sh          # retry pass, merge, coverage, validate, upload only on pass
+```
+
+**Training**, on a GPU pod. Each script runs in stages, and its header comment lists them in order:
+
+```bash
+bash src/training/box/pod_v3.sh all  # run 3: 5, 20 and 80 minutes over the panel (after setup and data)
+bash src/training/box/pod_v4.sh all  # run 4: beyond 80 minutes (boot, run, finish)
+```
+
+**Paper**. After a change to the folder, rebuild the PDF and the Overleaf zip in the same commit:
+
+```bash
+cd paper/Toward_Personalized_Hebrew_ASR_overleaf && latexmk -pdf -outdir=/tmp/paper acl_latex.tex && cp /tmp/paper/acl_latex.pdf ../Toward_Personalized_Hebrew_ASR.pdf
+cd paper/Toward_Personalized_Hebrew_ASR_overleaf && rm -f ../Toward_Personalized_Hebrew_ASR_overleaf.zip && zip -q -r -X ../Toward_Personalized_Hebrew_ASR_overleaf.zip . -x '.DS_Store'
+```
