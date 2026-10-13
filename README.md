@@ -50,8 +50,9 @@ src/
                                the VoxKnesset one Stage 1 produced, kept as the reference point)
 
 notebooks/                     explore_committees.ipynb, committees_error_map.ipynb (the
-                               Stage 1 analysis on the committees), training_run3_figures.ipynb
-                               and training_run4_figures.ipynb (the paper's Stage 2 figures)
+                               Stage 1 analysis on the committees), personalization.ipynb (the
+                               main experiment, run 3) and personalization_beyond_80_minutes.ipynb
+                               (run 4): the paper's Stage 2 figures
 paper/                         the paper: LaTeX source, figures, the compiled PDF and the
                                same folder zipped for Overleaf
 cache/                         git-ignored. Secrets (mode 600) read by inference/providers.py
