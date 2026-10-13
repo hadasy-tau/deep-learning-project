@@ -146,9 +146,12 @@ def plan_v2(out=PLAN_V2, budget_min=BUDGET_MIN, dev_min=DEV_MIN, test_min=TEST_F
     and dev for a speaker short of high-quality minutes (30843).  The session that crosses a target is inside it, as in plan()."""
     import word_quality as WQ
     P = _plan_hq(WQ.panel_speakers(), lambda sid: budget_min, lambda sid: budget_min, out, dev_min, test_min, index_path)
-    P1 = pd.read_parquet(PLAN)
-    log(f'plan v2: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers, '
-        f'{int((~P.chunk_id.isin(set(P1.chunk_id))).sum()):,} chunks not in v1 (to extract) -> {out}')
+    # plan v1 (run 2) is not committed: it only feeds this log line, never the plan
+    new = ''
+    if os.path.exists(PLAN):
+        v1 = set(pd.read_parquet(PLAN).chunk_id)
+        new = f', {int((~P.chunk_id.isin(v1)).sum()):,} chunks not in v1 (to extract)'
+    log(f'plan v2: {len(P):,} chunks, {P.duration_s.sum()/3600:.1f} h, {P.speaker_id.nunique()} speakers{new} -> {out}')
     return P
 
 def _plan_hq(speakers, train_fill, train_need, out, dev_min=DEV_MIN, test_min=TEST_FLOOR_MIN, index_path=INDEX):
